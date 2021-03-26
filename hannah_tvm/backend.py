@@ -1,12 +1,15 @@
+import copy 
 import logging
-import torch
 
+import torch
 import tvm
 from tvm import relay
 from tvm.contrib import graph_runtime
 
 from speech_recognition.callbacks.backends import InferenceBackendBase
-
+from speech_recognition.models.factory.qat import QAT_MODULE_MAPPINGS
+from .quantize import quantize 
+from .optimize import pre_quantize_opts
 
 class TVMBackend(InferenceBackendBase):
     def __init__(self, **kwargs):
@@ -20,11 +23,30 @@ class TVMBackend(InferenceBackendBase):
         self.module = None
 
     def prepare(self, module):
-        self.module = module
-        scripted_model = torch.jit.trace(module.model, module.example_feature_array).eval()
+        module = copy.deepcopy(module)
+        model = module.model 
+       
+        if hasattr(model, 'qconfig'):
+            model = torch.quantization.convert(
+                model, mapping=QAT_MODULE_MAPPINGS, remove_qconfig=True
+            )
+            module.model = model
+
+        print(model)
+        breakpoint()
+
+        self.module = module 
+
+        scripted_model = torch.jit.trace(model, module.example_feature_array.to(module.device)).eval()
         shape_list = [('input0', module.example_feature_array.shape)]
         
         mod, params = relay.frontend.from_pytorch(scripted_model, shape_list)
+
+        mod = pre_quantize_opts(mod, params)
+
+
+        mod = quantize(mod, params)
+
 
         self.tvm_model = mod
         self.tvm_params = params 
@@ -33,6 +55,7 @@ class TVMBackend(InferenceBackendBase):
         target_host = "llvm"
         ctx = tvm.cpu(0)
         with tvm.transform.PassContext(opt_level=3):
+            
             lib = relay.build(mod, target=target, target_host=target_host, params=params)
 
         self.tvm_ctx = ctx
@@ -47,7 +70,7 @@ class TVMBackend(InferenceBackendBase):
 
 
         m = graph_runtime.GraphModule(self.tvm_lib["default"](self.tvm_ctx))
-        inputs = self.module._extract_features(inputs)
+        inputs = self.module._extract_features(inputs.cuda())
         inputs = self.module.normalizer(inputs)
 
         splitted_inputs = torch.split(inputs, 1)
