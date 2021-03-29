@@ -55,7 +55,6 @@ class TVMBackend(InferenceBackendBase):
         target_host = "llvm"
         ctx = tvm.cpu(0)
         with tvm.transform.PassContext(opt_level=3):
-            
             lib = relay.build(mod, target=target, target_host=target_host, params=params)
 
         self.tvm_ctx = ctx
