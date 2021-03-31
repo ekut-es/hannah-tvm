@@ -17,9 +17,14 @@ class Board:
     
 
 @dataclass
+class Model:
+    file: str = MISSING
+    input_shapes: Any = None  
+
+@dataclass
 class Config:
     board: Board = Board()
-    model: str = MISSING
+    model: Model = Model()
 
 cs = ConfigStore.instance()
 cs.store(name="config", node=Config)

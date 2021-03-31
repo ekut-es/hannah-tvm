@@ -21,7 +21,8 @@ def compile(config):
     target = tvm.target.Target(config.board.target)
     target_host = tvm.target.Target(config.board.target_host)
 
-    autotvm.measure.measure_methods.set_cuda_target_arch(target.attrs["arch"])
+    if target.kind == "cuda":
+        autotvm.measure.measure_methods.set_cuda_target_arch(target.attrs["arch"])
 
     # def tvm_callback_cuda_compile(code):
     #     """use nvcc to generate ptx code for better optimization"""
@@ -53,10 +54,6 @@ def compile(config):
 
     tuner.tune(tune_option)
 
-
-
-
-
     # target = "llvm"
     # target_host = "llvm"
     # ctx = tvm.cpu(0)
@@ -68,7 +65,7 @@ def compile(config):
     #    traced_output = traced_model(batch)
 
 
-@hydra.main(config_name="config")
+@hydra.main(config_name="config", config_path="conf")
 def main(config):
     return compile(config)
 
