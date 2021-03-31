@@ -6,8 +6,12 @@ import tvm
 from tvm import relay
 from tvm.contrib import graph_runtime
 
-from speech_recognition.callbacks.backends import InferenceBackendBase
-from speech_recognition.models.factory.qat import QAT_MODULE_MAPPINGS
+try:
+    from speech_recognition.callbacks.backends import InferenceBackendBase
+    from speech_recognition.models.factory.qat import QAT_MODULE_MAPPINGS
+except:
+    pass
+
 from .quantize import quantize 
 from .optimize import pre_quantize_opts
 
