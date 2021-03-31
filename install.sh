@@ -1,10 +1,9 @@
 #!/bin/bash
 
-mkdir -p tvm/build
-cp tvm_config.cmake tvm/build/config.cmake
-pushd tvm/build
-cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/
+mkdir -p external/tvm/build
+cp tvm_config.cmake external/tvm/build/config.cmake
+pushd external/tvm/build
+cmake --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_CXX_COMPILER=$(which g++-8)
 cmake --build .
-#cmake --build . --target install 
 popd
-pip install -e tvm/python 
+pip install -e external/tvm/python 
