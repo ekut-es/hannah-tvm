@@ -24,35 +24,6 @@ def compile(config):
     if target.kind == "cuda":
         autotvm.measure.measure_methods.set_cuda_target_arch(target.attrs["arch"])
 
-    # def tvm_callback_cuda_compile(code):
-    #     """use nvcc to generate ptx code for better optimization"""
-    #     print(target.attrs["arch"])
-    #     ptx = tvm.contrib.nvcc.compile_cuda(code, target="ptx", arch=target.attrs["arch"])
-    #     return ptx
-
-    # tvm.register_func(tvm_callback_cuda_compile, override=True)
-
-    logging.info("Extracting tasks ...")
-    tasks, task_weights = auto_scheduler.extract_tasks(relay_mod["main"], params, target, target_host)
-
-    for idx, task in enumerate(tasks):
-        logging.info("========== Task %d  (workload key: %s) ==========" % (idx, task.workload_key))
-        logging.info(task.compute_dag)
-
-
-    runner = measure_context.runner
-    
-
-    logging.info("Begin tuning...")
-    log_file = f"{config.board.name}.log"
-    tuner = auto_scheduler.TaskScheduler(tasks, task_weights)
-    tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=20000,
-        runner=runner,
-        measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
-    )
-
-    tuner.tune(tune_option)
 
     # target = "llvm"
     # target_host = "llvm"

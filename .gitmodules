@@ -1,5 +1,5 @@
 [submodule "tvm"]
-	path = tvm
+	path = external/tvm
 	url = https://github.com/apache/tvm.git
 [submodule "external/automate"]
 	path = external/automate
