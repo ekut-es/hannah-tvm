@@ -4,3 +4,6 @@
 [submodule "external/automate"]
 	path = external/automate
 	url = git@atreus.informatik.uni-tuebingen.de:ties/timing/schrank/automate.git
+[submodule "external/utvm_staticrt_codegen"]
+	path = external/utvm_staticrt_codegen
+	url = https://github.com/tum-ei-eda/utvm_staticrt_codegen.git
