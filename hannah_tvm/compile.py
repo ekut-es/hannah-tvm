@@ -19,7 +19,9 @@ def compile(config):
     #measure_context = measure.AutomateRPCMeasureContext(config.board)
     
     target = tvm.target.Target(config.board.target)
-    target_host = tvm.target.Target(config.board.target_host)
+    target_host = None
+    if config.board.target_host:
+        target_host = tvm.target.Target(config.board.target_host)
 
     if target.kind == "cuda":
         if "arch" in target.attrs:
