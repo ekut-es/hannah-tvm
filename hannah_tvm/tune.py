@@ -23,14 +23,6 @@ def compile(config):
 
     autotvm.measure.measure_methods.set_cuda_target_arch(target.attrs["arch"])
 
-    # def tvm_callback_cuda_compile(code):
-    #     """use nvcc to generate ptx code for better optimization"""
-    #     print(target.attrs["arch"])
-    #     ptx = tvm.contrib.nvcc.compile_cuda(code, target="ptx", arch=target.attrs["arch"])
-    #     return ptx
-
-    # tvm.register_func(tvm_callback_cuda_compile, override=True)
-
     logging.info("Extracting tasks ...")
     tasks, task_weights = auto_scheduler.extract_tasks(relay_mod["main"], params, target, target_host)
 
@@ -52,20 +44,6 @@ def compile(config):
     )
 
     tuner.tune(tune_option)
-
-
-
-
-
-    # target = "llvm"
-    # target_host = "llvm"
-    # ctx = tvm.cpu(0)
-    # with tvm.transform.PassContext(opt_level=3):
-    #     lib = relay.build(relay_mod, target=target, target_host=target_host, params=params)
-
-    #for batch in dataset:
-    #    output = model(batch)
-    #    traced_output = traced_model(batch)
 
 
 @hydra.main(config_name="config")

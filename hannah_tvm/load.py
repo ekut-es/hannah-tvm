@@ -8,8 +8,8 @@ import numpy as np
 
 from hydra.utils import to_absolute_path
 
-def _load_torch(model_path):
-    pass
+def _load_torch(model_path, input_shapes):
+    script_model = torch.script.load(model_path)
 
 def _load_onnx(model_path):
     onnx_model = onnx.load(model_path)
@@ -29,12 +29,12 @@ def _load_onnx(model_path):
 
     return mod, params, input_data
 
-def load_model(model_path):
-    model_path = Path(to_absolute_path(model_path))
+def load_model(model):
+    model_path = Path(to_absolute_path(model.file))
     
     if model_path.suffix == '.onnx':
         return _load_onnx(model_path)
-    elif model_path.suffix == '.torch':
+    elif model_path.suffix == '.pt':
         return _load_torch(model_path)
     else:
         raise Exception(f"File format not supported {model_path.suffix}")
