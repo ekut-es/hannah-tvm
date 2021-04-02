@@ -1,0 +1,9 @@
+# @package _group_
+
+name: jetsonagx
+target: "cuda -arch=sm_72" 
+target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu" 
+opencl: True
+cuda: True
+    
+

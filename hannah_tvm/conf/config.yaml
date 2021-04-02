@@ -1,0 +1,3 @@
+defaults:
+  - board: jetsontx2
+  - model: shufflenet
