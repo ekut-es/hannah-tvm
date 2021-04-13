@@ -43,6 +43,11 @@ def _load_onnx(model_path, input_shapes):
 
 def _load_tflite(model_path, input_shapes):
 
+    try:
+        import tflite
+        from tflite.TensorType import TensorType as TType
+    except: 
+        logger.error("Could import tflite")
     class TensorInfo:
         def __init__(self, t):
             self.name = t.Name().decode()
@@ -79,12 +84,35 @@ def _load_tflite(model_path, input_shapes):
                 self.outTensors.append(TensorInfo(t))
 
 
-def load_model(model, input_shapes):
+    modelBuf = open(model_path, "rb").read()
+
+    tflModel = tflite.Model.GetRootAsModel(modelBuf, 0)
+
+    shapes = {}
+    types = {}
+
+    modelInfo = ModelInfo(tflModel)
+    for t in modelInfo.inTensors:
+        logger.info(f'Input, "{t.name}" {t.ty} {t.shape}')
+        shapes[t.name] = t.shape
+        types[t.name] = t.ty
+
+    mod, params = relay.frontend.from_tflite(tflModel, shape_dict=shapes, dtype_dict=types)
+
+
+    return mod, params, shapes 
+
+
+
+def load_model(model):
     model_path = Path(to_absolute_path(model.file))
-    
+    input_shapes = model.input_shapes 
+
     if model_path.suffix == '.onnx':
         return _load_onnx(model_path, input_shapes)
     elif model_path.suffix == '.pt':
         return _load_torch(model_path, input_shapes)
+    elif model_path.suffix == '.tflite':
+        return _load_tflite(model_path, input_shapes)
     else:
         raise Exception(f"File format not supported {model_path.suffix}")

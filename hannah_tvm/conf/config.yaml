@@ -1,3 +1,4 @@
 defaults:
   - board: jetsontx2
   - model: shufflenet
+  - qconfig: 8bit

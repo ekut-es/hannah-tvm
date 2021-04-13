@@ -5,6 +5,8 @@ from automate.config import AutomateConfig
 from automate.context import AutomateContext
 import tvm.auto_scheduler as auto_scheduler
 
+logger = logging.getLogger("hannah_tvm.measure")
+
 _automate_context = None
 
 def _server_process(name, rundir, tracker_port):
@@ -12,10 +14,18 @@ def _server_process(name, rundir, tracker_port):
     automate_context = AutomateContext(automate_config)
     board_connection =  automate_context.board(name).connect()
 
+
+    result = board_connection.run("killall python3.6 -m tvm.exec.rpc_server", warn=True, hide=True)
     with board_connection.forward_remote(9000, tracker_port):
         with board_connection.forward_local(9090, 9090):
-            board_connection.run(f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port=9090 --tracker=localhost:9000", env = {'PYTHONPATH': str(rundir)}, shell = True)
- 
+            result = board_connection.run(f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port=9090 --tracker=localhost:9000", env = {'PYTHONPATH': str(rundir)}, shell = True, hide=True)
+            if not result:
+                board_connection.close()
+                logger.critical("Could not start tvm rpc server")
+                logger.critical(result.stdout)
+                logger.critical(result.stderr)
+                
+
 class AutomateRPCMeasureContext:
     """A context wrapper for running RPCRunner locally.
     This will launch a local RPC Tracker and local RPC Server.
@@ -98,7 +108,7 @@ class AutomateRPCMeasureContext:
             self.server_process = multiprocessing.Process(target=_server_process, args=(self.board.name, str(self.board.rundir / "tvm/python"), self.tracker.port))
             self.server_process.start()
         except Exception as e:
-            logging.warn("Could not start server process rebuilding device runtime")
+            logger.warn("Could not start server process rebuilding device runtime")
             self._build_runtime()
 
             self.server_process = multiprocessing.Process(target=_server_process, args=(self.board.name, str(self.board.rundir / "tvm/python"), self.tracker.port))
