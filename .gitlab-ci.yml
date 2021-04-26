@@ -10,7 +10,7 @@ variables:
   DEBIAN_FRONTEND: noninteractive
 
 build:
-  image: ubuntu:latest
+  image: quay.io/pypa/manylinux_2_24_x86_64
   before_script:
     - apt-get update
     - apt-get install -y build-essential curl python3 ninja-build cmake
