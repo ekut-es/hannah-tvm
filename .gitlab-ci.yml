@@ -2,7 +2,7 @@ build:
   image: ubuntu:latest
   before_script:
     - apt-get update
-    - apt-get install -y build-essential curl python3 jinja cmake
+    - apt-get install -y build-essential curl python3 ninja-build cmake
     - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
     - poetry install 
     - ./install.sh
