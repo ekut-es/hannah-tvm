@@ -1,5 +1,5 @@
 build:
-  image: ubuntu:20.4
+  image: ubuntu:latest
   before_script:
     - apt-get update
     - apt-get install -y build-essential 
