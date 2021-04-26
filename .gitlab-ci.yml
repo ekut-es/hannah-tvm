@@ -1,9 +1,21 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
+  GIT_SUBMODULE_STRATEGY: recursive
+  DEBIAN_FRONTEND: noninteractive
+
 build:
   image: ubuntu:latest
   before_script:
     - apt-get update
     - apt-get install -y build-essential curl python3 ninja-build cmake
     - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
+    - export PATH=${POETRY_HOME}/bin:${PATH}
     - poetry install 
     - ./install.sh
   script:
