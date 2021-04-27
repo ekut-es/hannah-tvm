@@ -12,8 +12,9 @@ fi
 echo "Installing clang"
 mkdir -p external/pulp-llvm/build
 pushd external/pulp-llvm/build
-cmake -DLLVM_ENABLE_PROJECTS=clang -G "Ninja" ../llvm -DCMAKE_CXX_COMPILER=$CXX_COMPILER
+cmake -DLLVM_ENABLE_PROJECTS=clang -G "Ninja" ../llvm -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DCMAKE_INSTALL_PREFIX=$PWD/../install
 cmake --build .
+cmake --build . --target install
 popd
 
 echo "Installing tvm"
