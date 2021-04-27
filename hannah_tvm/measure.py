@@ -1,9 +1,16 @@
 import logging
 import multiprocessing
 import time
-from automate.config import AutomateConfig
-from automate.context import AutomateContext
+
 import tvm.auto_scheduler as auto_scheduler
+
+try:
+    from automate.config import AutomateConfig
+    from automate.context import AutomateContext
+
+    automate_available = True
+except ModuleNotFoundError:
+    automate_available = False
 
 logger = logging.getLogger("hannah_tvm.measure")
 
@@ -18,6 +25,7 @@ def _server_process(name, rundir, tracker_port):
     result = board_connection.run(
         "killall python3.6 -m tvm.exec.rpc_server", warn=True, hide=True
     )
+    time.sleep(10)
     with board_connection.forward_remote(9000, tracker_port):
         with board_connection.forward_local(9090, 9090):
             result = board_connection.run(
@@ -84,6 +92,11 @@ class AutomateRPCMeasureContext:
         cooldown_interval=0.0,
         enable_cpu_cache_flush=False,
     ):
+        if not automate_available:
+            raise Exception(
+                "automate remote execution framework is not installed please install with poetry install -E automate"
+            )
+
         host = "0.0.0.0"
         self.board_config = board_config
         device_key = board_config.name
@@ -135,7 +148,7 @@ class AutomateRPCMeasureContext:
                 ),
             )
             self.server_process.start()
-
+        time.sleep(30)
         self.runner = auto_scheduler.RPCRunner(
             device_key,
             host,
