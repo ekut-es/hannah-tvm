@@ -1,5 +1,14 @@
 #!/bin/bash -e 
 
+if command -v nvcc;
+then
+    CXX_COMPILER=$(which g++-8)
+    USE_CUDA=ON
+else
+    CXX_COMPILER=g++
+    USE_CUDA=OFF
+fi
+
 echo "Installing tvm"
 mkdir -p external/tvm/build
 cp tvm_config.cmake external/tvm/build/config.cmake
