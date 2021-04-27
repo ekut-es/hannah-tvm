@@ -43,3 +43,7 @@ build:
     - ./install.sh
   tags:
     - docker
+  artifacts:
+    paths:
+      - external/pulp-llvm/build
+      - external/tvm/build
