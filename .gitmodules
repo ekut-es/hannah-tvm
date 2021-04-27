@@ -7,3 +7,6 @@
 [submodule "external/utvm_staticrt_codegen"]
 	path = external/utvm_staticrt_codegen
 	url = https://github.com/tum-ei-eda/utvm_staticrt_codegen.git
+[submodule "external/pulp-llvm"]
+	path = external/pulp-llvm
+	url = ../../timing/pulp-llvm.git

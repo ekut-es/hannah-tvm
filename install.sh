@@ -9,6 +9,13 @@ else
     USE_CUDA=OFF
 fi
 
+echo "Installing clang"
+mkdir -p external/pulp-llvm/build
+pushd external/pulp-llvm/build
+cmake -DLLVM_ENABLE_PROJECTS=clang -G "Ninja" ../llvm -DCMAKE_CXX_COMPILER=$CXX_COMPILER
+cmake --build . 
+popd
+
 echo "Installing tvm"
 mkdir -p external/tvm/build
 cp tvm_config.cmake external/tvm/build/config.cmake
