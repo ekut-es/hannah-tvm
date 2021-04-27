@@ -17,10 +17,10 @@ build:
     - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
     - export PATH=${POETRY_HOME}/bin:${PATH}
     - poetry config experimental.new-installer false
-    - poetry install 
-    
+    - poetry install
+
   script:
-    - set -e  
+    - set -e
     - ./install.sh
   tags:
     - docker

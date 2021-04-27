@@ -22,6 +22,8 @@ hannah-tvm-memory = 'hannah_tvm.analysis:memory_main'
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.0"
+black = "^21.4b0"
+pre-commit = "^2.12.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

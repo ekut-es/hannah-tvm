@@ -1,7 +1,8 @@
 import tvm
 import tvm.topi as topi
 import tvm.te as te
-import tvm.relay as relay 
+import tvm.relay as relay
+
 
 def get_1dconv(bw_f=8, bw_b=8, bw_w=8, bw_acc=32):
     shape_input = (1, 16, 32)
@@ -29,7 +30,7 @@ def test_conv1d():
 
     target = "llvm -mtriple=riscv32-generic-eabi -mcpu=generic-rv32"
     target_host = target
-    
+
     with tvm.transform.PassContext(opt_level=3):
         lib = relay.build(mod, target=target, target_host=target_host)
 

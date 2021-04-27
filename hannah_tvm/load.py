@@ -4,10 +4,10 @@ import sys
 from pathlib import Path
 
 import onnx
-import torch 
+import torch
 import tvm
 import tvm.relay as relay
-import numpy as np 
+import numpy as np
 
 from hydra.utils import to_absolute_path
 
@@ -17,10 +17,11 @@ logger = logging.getLogger("hannah-tvm.compile")
 def _load_torch(model_path, input_shapes):
     script_model = torch.script.load(model_path)
 
+
 def _load_onnx(model_path, input_shapes):
-    try: 
+    try:
         import onnx
-    except: 
+    except:
         logger.error("Could not import onnx")
         sys.exit(-1)
 
@@ -41,13 +42,15 @@ def _load_onnx(model_path, input_shapes):
 
     return mod, params, input_data
 
+
 def _load_tflite(model_path, input_shapes):
 
     try:
         import tflite
         from tflite.TensorType import TensorType as TType
-    except: 
+    except:
         logger.error("Could import tflite")
+
     class TensorInfo:
         def __init__(self, t):
             self.name = t.Name().decode()
@@ -55,7 +58,7 @@ def _load_tflite(model_path, input_shapes):
             typeLookup = {
                 TType.FLOAT32: (4, "float32"),
                 TType.UINT8: (1, "uint8"),
-                TType.INT8: (1, "int8")
+                TType.INT8: (1, "int8"),
             }
             self.tysz, self.ty = typeLookup[t.Type()]
             assert self.ty != ""
@@ -66,7 +69,6 @@ def _load_tflite(model_path, input_shapes):
             self.size = self.tysz
             for dimSz in self.shape:
                 self.size *= dimSz
-
 
     class ModelInfo:
         def __init__(self, model):
@@ -83,7 +85,6 @@ def _load_tflite(model_path, input_shapes):
                 t = g.Tensors(g.Outputs(i))
                 self.outTensors.append(TensorInfo(t))
 
-
     modelBuf = open(model_path, "rb").read()
 
     tflModel = tflite.Model.GetRootAsModel(modelBuf, 0)
@@ -97,22 +98,22 @@ def _load_tflite(model_path, input_shapes):
         shapes[t.name] = t.shape
         types[t.name] = t.ty
 
-    mod, params = relay.frontend.from_tflite(tflModel, shape_dict=shapes, dtype_dict=types)
+    mod, params = relay.frontend.from_tflite(
+        tflModel, shape_dict=shapes, dtype_dict=types
+    )
 
-
-    return mod, params, shapes 
-
+    return mod, params, shapes
 
 
 def load_model(model):
     model_path = Path(to_absolute_path(model.file))
-    input_shapes = model.input_shapes 
+    input_shapes = model.input_shapes
 
-    if model_path.suffix == '.onnx':
+    if model_path.suffix == ".onnx":
         return _load_onnx(model_path, input_shapes)
-    elif model_path.suffix == '.pt':
+    elif model_path.suffix == ".pt":
         return _load_torch(model_path, input_shapes)
-    elif model_path.suffix == '.tflite':
+    elif model_path.suffix == ".tflite":
         return _load_tflite(model_path, input_shapes)
     else:
         raise Exception(f"File format not supported {model_path.suffix}")

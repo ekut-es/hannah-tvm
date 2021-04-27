@@ -1,14 +1,16 @@
-import logging 
-from dataclasses import dataclass 
-from functools import reduce 
+import logging
+from dataclasses import dataclass
+from functools import reduce
 
 import tvm
 from tvm import tir, relay, autotvm
 
+
 @dataclass
 class DomainElement:
-    extent: int 
+    extent: int
     var: str
+
 
 class MemoryAnalysis:
     def __init__(self):
@@ -19,10 +21,10 @@ class MemoryAnalysis:
     def _dtype_size(self, dtype):
         if dtype.startswith("int"):
             dtype = dtype.replace("int", int)
-            size = int(dtype) 
+            size = int(dtype)
         elif dtype.startswith("float"):
             dtype = dtype.replace("float", "")
-            size = int(dtype) 
+            size = int(dtype)
         else:
             logging.warn(f"Unknown dtype {dtype} assuming 32 bits")
             size = 32
@@ -39,23 +41,23 @@ class MemoryAnalysis:
         else:
             logging.warning(f"Unhandled buffer type: {type(buffer)}")
 
-        elements = reduce(lambda x, y: x*y, shape, 1)
+        elements = reduce(lambda x, y: x * y, shape, 1)
         if elements == 0:
             elements = 1
 
-        return element_size * elements 
+        return element_size * elements
 
     def extract_buffers(self, op):
         if isinstance(op, tir.stmt.Allocate):
-            #print(op)
-            assert op.span is None 
+            # print(op)
+            assert op.span is None
             # if tvm.ir.structural_equal(op.condition, tvm.ir.make_node("IntImm", dtype="int32", value=1)):
             assert op.condition.value == 1
             self.buffers[op.buffer_var] = op
 
-    def extract_memory_references(self, op, iteration_domain = None):
+    def extract_memory_references(self, op, iteration_domain=None):
         if iteration_domain is None:
-            iteration_domain = []            
+            iteration_domain = []
 
         print(type(op))
 
@@ -88,41 +90,43 @@ class MemoryAnalysis:
         self.global_symbol = f.attrs["global_symbol"]
         for param in f.params:
             buffer = f.buffer_map[param]
-            self.buffers[buffer] = buffer            
-    
+            self.buffers[buffer] = buffer
+
         tir.stmt_functor.post_order_visit(f.body, self.extract_buffers)
-        
+
         self.extract_memory_references(f.body)
 
         for var, buffer in self.buffers.items():
             print(var, self._buffer_size(buffer))
+
 
 @tvm.tir.transform.prim_func_pass(opt_level=0)
 def memory_analysis(f, mod, ctx):
     print("===================================================")
     print("Analyzing:", f)
     print("")
-    
+
     analysis = MemoryAnalysis()
     analysis(f, mod, ctx)
 
     print("===================================================")
     print("")
 
-    return f 
+    return f
 
 
 def memory_main():
     import sys
     from .load import load_model
+
     model_file = sys.argv[1]
     mod, params, input_shapes = load_model(model_file)
 
-    target=tvm.target.Target("nvidia/jetson-tx2")
-    target_host=tvm.target.Target("llvm")
+    target = tvm.target.Target("nvidia/jetson-tx2")
+    target_host = tvm.target.Target("llvm")
 
     autotvm.measure.measure_methods.set_cuda_target_arch(target.attrs["arch"])
-    with tvm.transform.PassContext(opt_level=3, config={"tir.add_lower_pass": [(4, memory_analysis)]}):
+    with tvm.transform.PassContext(
+        opt_level=3, config={"tir.add_lower_pass": [(4, memory_analysis)]}
+    ):
         lib = relay.build(mod, target=target, target_host=target_host, params=params)
-      
-    

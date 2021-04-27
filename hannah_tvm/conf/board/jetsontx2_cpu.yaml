@@ -1,9 +1,7 @@
 # @package _group_
 
 name: jetsontx2
-target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu" 
-target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu" 
+target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
+target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
 opencl: True
 cuda: True
-    
-

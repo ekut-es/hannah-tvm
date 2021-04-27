@@ -13,4 +13,4 @@ def pre_quantize_opts(mod, param):
 
     mod = trans(mod)
 
-    return mod 
+    return mod
