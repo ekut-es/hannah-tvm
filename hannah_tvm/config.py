@@ -8,6 +8,8 @@ from omegaconf import MISSING
 
 @dataclass
 class HardwareParams:
+    """Board hardware params used for auto_scheduler"""
+
     num_cores: int = 4
     vector_unit_bytes: int = 64
     cache_line_bytes: int = 64
@@ -16,6 +18,13 @@ class HardwareParams:
     max_threads_per_block: int = 1024
     max_vthread_extent: int = 8  # 32 / 4
     warp_size: int = 32
+
+
+@dataclass
+class MicroConfig:
+    "MicroTVM configuration"
+    prefix: Optional[str] = None
+    opts: Optional[Any] = None
 
 
 @dataclass
@@ -28,7 +37,7 @@ class Board:
     cuda: bool = True
     rebuild_runtime: bool = False
     hardware_params: HardwareParams = HardwareParams()
-    micro: bool = False
+    micro: Optional[MicroConfig] = None
 
 
 @dataclass

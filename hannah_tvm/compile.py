@@ -12,6 +12,7 @@ from tvm.contrib import graph_runtime
 from . import config
 from . import measure
 from . import load
+from .compiler import Compiler_Ext
 
 logger = logging.getLogger("hannah-tvm-compile")
 
@@ -41,11 +42,16 @@ def compile(config):
         )
 
     if config.board.micro:
+        logger.info("Building micro target")
         workspace = micro.Workspace(debug=True)
         opts = micro.default_options(
             os.path.join(micro.get_standalone_crt_dir(), "template", "host")
         )
-        compiler = micro.DefaultCompiler(target=target)
+        compiler = Compiler_Ext(
+            target=target,
+            prefix=config.board.micro.prefix,
+            opts=config.board.micro.opts,
+        )
         micro_binary = micro.build_static_runtime(
             workspace,
             compiler,
