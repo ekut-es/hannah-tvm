@@ -27,8 +27,8 @@ def compile(config):
             logger.warning("CUDA target has no architecture attribute")
 
     logging.info("Extracting tasks ...")
-    hardware_params = None
-    if config.board.get("hardware_params", None):
+    hardware_params = config.board.get("hardware_params", None)
+    if hardware_params:
         hardware_params = auto_scheduler.HardwareParams(**hardware_params)
 
     tasks, task_weights = auto_scheduler.extract_tasks(

@@ -49,7 +49,8 @@ def _load_tflite(model_path, input_shapes):
         import tflite
         from tflite.TensorType import TensorType as TType
     except:
-        logger.error("Could import tflite")
+        logger.error("Could not import tflite")
+        sys.exit(-1)
 
     class TensorInfo:
         def __init__(self, t):

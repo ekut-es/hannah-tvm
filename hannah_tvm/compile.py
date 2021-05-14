@@ -12,17 +12,16 @@ from tvm.contrib import graph_runtime
 from . import config
 from . import measure
 from . import load
-from .compiler import Compiler_Ext
+from .compiler import Compiler_Ext, get_compiler_options
 
 logger = logging.getLogger("hannah-tvm-compile")
 
 
 def compile(config):
     relay_mod, params, inputs = load.load_model(config.model)
-    # measure_context = measure.AutomateRPCMeasureContext(config.board)
 
     target = tvm.target.Target(config.board.target)
-    target_host = None
+    target_host = target
     if config.board.target_host:
         target_host = tvm.target.Target(config.board.target_host)
 
@@ -37,16 +36,16 @@ def compile(config):
         build_cfg = {"tir.disable_vectorize": True}
 
     with tvm.transform.PassContext(opt_level=3, config=build_cfg):
-        lib = relay.build(
-            relay_mod, target=target, target_host=target_host, params=params
-        )
+        lib = relay.build(relay_mod, target=target, params=params)
 
     if config.board.micro:
         logger.info("Building micro target")
+
+        for i, m in enumerate(lib.module._collect_dso_modules()):
+            with open("/tmp/build/lib" + str(i) + ".ll", "w") as file:
+                file.write(m.get_source())
         workspace = micro.Workspace(debug=True)
-        opts = micro.default_options(
-            os.path.join(micro.get_standalone_crt_dir(), "template", "host")
-        )
+        opts = get_compiler_options(config.board.micro)
         compiler = Compiler_Ext(
             target=target,
             prefix=config.board.micro.prefix,

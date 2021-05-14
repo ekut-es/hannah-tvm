@@ -4,7 +4,7 @@ import logging
 import torch
 import tvm
 from tvm import relay
-from tvm.contrib import graph_runtime
+from tvm.contrib import graph_executor
 
 try:
     from speech_recognition.callbacks.backends import InferenceBackendBase
@@ -38,7 +38,6 @@ class TVMBackend(InferenceBackendBase):
             module.model = model
 
         print(model)
-        breakpoint()
 
         self.module = module
 
@@ -49,9 +48,8 @@ class TVMBackend(InferenceBackendBase):
 
         mod, params = relay.frontend.from_pytorch(scripted_model, shape_list)
 
-        mod = pre_quantize_opts(mod, params)
-
-        mod = quantize(mod, params)
+        # mod = pre_quantize_opts(mod, params)
+        # mod = quantize(mod, params)
 
         self.tvm_model = mod
         self.tvm_params = params
@@ -73,7 +71,7 @@ class TVMBackend(InferenceBackendBase):
             logging.critical("Backend batch is empty")
             return None
 
-        m = graph_runtime.GraphModule(self.tvm_lib["default"](self.tvm_ctx))
+        m = graph_executor.GraphModule(self.tvm_lib["default"](self.tvm_ctx))
         inputs = self.module._extract_features(inputs.cuda())
         inputs = self.module.normalizer(inputs)
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 import hydra
 from hydra.core.config_store import ConfigStore
@@ -24,7 +24,12 @@ class HardwareParams:
 class MicroConfig:
     "MicroTVM configuration"
     prefix: Optional[str] = None
-    opts: Optional[Any] = None
+    opts: List[str] = field(default_factory=list)
+    cflags: List[str] = field(default_factory=list)
+    ccflags: List[str] = field(default_factory=list)
+    ldflags: List[str] = field(default_factory=list)
+    include_dirs: List[str] = field(default_factory=list)
+    libs: List[str] = field(default_factory=list)
 
 
 @dataclass

@@ -1,0 +1,34 @@
+# @package _group_
+
+name: gvsoc_llvm
+target: "llvm -mtriple=riscv32  -runtime=c -system-lib=1"
+opencl: false
+cuda: false
+micro:
+  prefix: riscv32-unknown-elf-
+  opts:  # Opts are used for linker and compiler
+    - "-march=rv32imcxpulpv2"
+    - "-fdata-sections"
+    - "-ffunction-sections"
+    - "-fno-use-cxa-atexit"
+    - "-ffreestanding"
+  cflags:
+    - "-include${env:PULP_SDK_HOME}/include/fc_config.h"
+  ccflags:
+    - "-include${env:PULP_SDK_HOME}/include/fc_config.h"
+  include_dirs:
+    - "${env:PULP_SDK_HOME}/include"
+#    - "${env:PULP_SDK_HOME}/include/io"
+  ldflags:
+    - "-nostartfiles"
+#    - "-nostdlib"
+    - "-Wl,--gc-sections"
+    - "-L${env:PULP_SDK_HOME}/pulp-rt/rules"
+    - "-Tlink.ld"
+    - "-L${env:PULP_SDK_HOME}/lib"
+    - "-fno-use-cxa-atexit"
+  libs:
+    - "-lrt"
+    - "-lstdc++"
+    - "-lrtio"
+    - "-lrt"
