@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+pushd external/tvm
+git apply ../../patches/tvm.patch
+popd
+
 echo "Installing clang"
 mkdir -p external/pulp-llvm/build
 pushd external/pulp-llvm/build

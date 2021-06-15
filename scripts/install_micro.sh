@@ -1,5 +1,8 @@
 #!/bin/bash -e
 
+pushd external/tvm
+git apply ../../patches/tvm.patch
+popd
 
 echo "Installing tvm"
 mkdir -p external/tvm/build
