@@ -12,4 +12,4 @@
 	url = ../../timing/pulp-llvm.git
 [submodule "external/custom-pulp-sdk"]
 	path = external/custom-pulp-sdk
-	url = git@atreus.informatik.uni-tuebingen.de:ties/pulp-platform/custom-pulp-sdk.git
+	url =  ../../pulp-platform/custom-pulp-sdk.git
