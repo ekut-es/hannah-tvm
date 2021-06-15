@@ -1,0 +1,109 @@
+From 568eb9656a0cb40da949b3ff45442c5926d9b0b4 Mon Sep 17 00:00:00 2001
+From: Christoph Gerum <christoph.gerum@uni-tuebingen.de>
+Date: Tue, 15 Jun 2021 15:31:48 +0200
+Subject: [PATCH] UTVM: Add support for stm32f429i discovery board
+
+---
+ .../host_driven/boards/stm32f429i_disc1.conf       | 31 ++++++++++++++++++++++
+ apps/microtvm/zephyr/host_driven/src/main.c        |  2 +-
+ python/tvm/micro/contrib/zephyr.py                 |  5 ++--
+ python/tvm/target/target.py                        |  1 +
+ 4 files changed, 36 insertions(+), 3 deletions(-)
+ create mode 100644 apps/microtvm/zephyr/host_driven/boards/stm32f429i_disc1.conf
+
+diff --git a/apps/microtvm/zephyr/host_driven/boards/stm32f429i_disc1.conf b/apps/microtvm/zephyr/host_driven/boards/stm32f429i_disc1.conf
+new file mode 100644
+index 000000000..34d8cdd76
+--- /dev/null
++++ b/apps/microtvm/zephyr/host_driven/boards/stm32f429i_disc1.conf
+@@ -0,0 +1,31 @@
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
++#
++#   http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
++#
++# This file is specific to the STM32F429i Discovery board.
++
++# For intrinsics used by generated optimized operators.
++CONFIG_CMSIS_DSP=y
++
++# For operations that stack allocates a large float array.
++CONFIG_MAIN_STACK_SIZE=1536
++
++# For random number generation.
++CONFIG_TEST_RANDOM_GENERATOR=y
++CONFIG_TIMER_RANDOM_GENERATOR=y
++
++# For debugging.
++CONFIG_LED=y
+\ No newline at end of file
+diff --git a/apps/microtvm/zephyr/host_driven/src/main.c b/apps/microtvm/zephyr/host_driven/src/main.c
+index 637a58ae9..dd5cba566 100644
+--- a/apps/microtvm/zephyr/host_driven/src/main.c
++++ b/apps/microtvm/zephyr/host_driven/src/main.c
+@@ -130,7 +130,7 @@ tvm_crt_error_t TVMPlatformGenerateRandom(uint8_t* buffer, size_t num_bytes) {
+ }
+ 
+ // Heap for use by TVMPlatformMemoryAllocate.
+-K_HEAP_DEFINE(tvm_heap, 216 * 1024);
++K_HEAP_DEFINE(tvm_heap, 128 * 1024);
+ 
+ // Called by TVM to allocate memory.
+ tvm_crt_error_t TVMPlatformMemoryAllocate(size_t num_bytes, DLDevice dev, void** out_ptr) {
+diff --git a/python/tvm/micro/contrib/zephyr.py b/python/tvm/micro/contrib/zephyr.py
+index fedd470a8..623ffe034 100644
+--- a/python/tvm/micro/contrib/zephyr.py
++++ b/python/tvm/micro/contrib/zephyr.py
+@@ -218,7 +218,7 @@ class ZephyrCompiler(tvm.micro.Compiler):
+         build_dir = os.path.join(output, "__tvm_build")
+         os.mkdir(build_dir)
+         self._subprocess_env.run(
+-            ["cmake", "..", f"-DBOARD={self._board}"] + self._options_to_cmake_args(options),
++            [os.getenv("CMAKE", "cmake"), "..", f"-DBOARD={self._board}"] + self._options_to_cmake_args(options),
+             cwd=build_dir,
+         )
+         num_cpus = multiprocessing.cpu_count()
+@@ -254,7 +254,7 @@ class ZephyrCompiler(tvm.micro.Compiler):
+ 
+         # expected not to exist after populate_tvm_objs
+         cmake_args = [
+-            "cmake",
++            os.getenv("CMAKE", "cmake"),
+             os.path.abspath(self._project_dir),
+             f"-DBOARD={self._board}",
+         ] + self._options_to_cmake_args(options)
+@@ -405,6 +405,7 @@ class ZephyrFlasher(tvm.micro.compiler.Flasher):
+     BOARD_USB_FIND_KW = {
+         "nucleo_f746zg": {"idVendor": 0x0483, "idProduct": 0x374B},
+         "stm32f746g_disco": {"idVendor": 0x0483, "idProduct": 0x374B},
++        "stm32f429i_disc1": {"idVendor": 0x0483, "idProduct": 0x374B}
+     }
+ 
+     def openocd_serial(self, cmake_entries):
+diff --git a/python/tvm/target/target.py b/python/tvm/target/target.py
+index be39a6f6b..2b23460b8 100644
+--- a/python/tvm/target/target.py
++++ b/python/tvm/target/target.py
+@@ -277,6 +277,7 @@ def intel_graphics(model="unknown", options=None):
+ MICRO_SUPPORTED_MODELS = {
+     "host": [],
+     "stm32f746xx": ["-mcpu=cortex-m7", "-march=armv7e-m"],
++    "stm32f4xx": ["-mcpu=cortex-m4", "-march=armv7e-m"],
+     "nrf5340dk": ["-mcpu=cortex-m33"],
+     "mps2_an521": ["-mcpu=cortex-m33"],
+ }
+-- 
+2.16.6
+
