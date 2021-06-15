@@ -15,6 +15,7 @@ This installation installs tvm with microtvm support without llvm backend
 ```
 ./scripts/install_micro.sh
 ./scripts/install_zephyr.sh
+source env
 ```
 
 Zephyr installation is optional but is currently needed for host driven execution. 
