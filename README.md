@@ -18,6 +18,8 @@ This installation installs tvm with microtvm support without llvm backend
 ```
 
 Zephyr installation is optional but is currently needed for host driven execution. 
+For an example using host driven execution and the micro tvm zephyr runtime on stm32f429i discovery boards 
+see `samples/micro/zephyr_host_driven_stm32f429i.py`.
 
 ## MicroTVM with pulp-llvm support
 
