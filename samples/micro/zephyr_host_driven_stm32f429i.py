@@ -273,8 +273,9 @@ with tvm.micro.Session(binary=micro_binary, flasher=flasher) as session:
     # The model consumes a single float32 value and returns a predicted sine value.  To pass the
     # input value we construct a tvm.nd.array object with a single contrived number as input. For
     # this model values of 0 to 2Pi are acceptable.
-    graph_mod.set_input(input_tensor, tvm.nd.array(np.array([0.5], dtype="float32")))
-    graph_mod.run()
+    for inp in [0.0, 0.5, 0.75, 1.0]:
+        graph_mod.set_input(input_tensor, tvm.nd.array(np.array([0.5], dtype="float32")))
+        graph_mod.run()
 
-    tvm_output = graph_mod.get_output(0).numpy()
-    print("result is: " + str(tvm_output))
+        tvm_output = graph_mod.get_output(0).numpy()
+        print(str(inp) + " result is: " + str(tvm_output))
