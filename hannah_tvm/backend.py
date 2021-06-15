@@ -28,7 +28,7 @@ class TVMBackend(InferenceBackendBase):
         self.module = None
 
     def prepare(self, module):
-        module = copy.deepcopy(module)
+        # module = copy.deepcopy(module)
         model = module.model
 
         if hasattr(model, "qconfig"):
