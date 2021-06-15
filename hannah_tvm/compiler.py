@@ -1,4 +1,5 @@
 import copy
+import glob
 import os
 
 import tvm
@@ -84,5 +85,5 @@ class Compiler_Ext(tvm.micro.DefaultCompiler):
         extra_libs = options.get("libs", [])
         args.extend(extra_libs)
 
-        run_cmd(args)
+        tvm.micro.compiler.run_cmd(args)
         return tvm.micro.MicroBinary(output, output_filename, [])
