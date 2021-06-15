@@ -43,6 +43,7 @@ build_micro:
     - poetry run ./scripts/install_zephyr.sh 
   tags:
     - docker
+  interruptible: true
 
 build_full:
   stage: build
@@ -60,6 +61,7 @@ build_full:
     - poetry run ./scripts/install_full.sh 
   tags:
     - docker
+  interruptible: true
 
 
 
@@ -79,5 +81,6 @@ build_micro_pulp:
     - poetry run ./scripts/install_micro_pulp.sh 
   tags:
     - docker
+  interruptible: true
 
 
