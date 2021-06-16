@@ -121,6 +121,7 @@ model with Relay.
 # directory into a buffer
 
 import os
+import sys 
 import numpy as np
 import logging
 import pathlib 
@@ -131,21 +132,6 @@ from tvm.contrib.download import download_testdata
 from tvm.contrib import graph_executor, utils
 from tvm import relay
 
-def _read_line(fd):
-    data = ""
-    new_line = False
-    while True:
-        if new_line:
-            break
-        new_data = fd.read(1, timeout_sec=10)
-        logging.debug(f"read data: {new_data}")
-        for item in new_data:
-            new_c = chr(item)
-            data = data + new_c
-            if new_c == "\n":
-                new_line = True
-                break
-    return data
 
 def _create_header_file(tensor_name, npy_data, output_path):
     """
@@ -314,5 +300,6 @@ transport.write(b"start\n", timeout_sec=5)
 
 print("Results:")
 while True:
-    res = _read_line(transport)
-    print(res)
+    res = transport.read(1, timeout_sec=10)
+    for c in res:
+        sys.stdout.write(chr(c))
