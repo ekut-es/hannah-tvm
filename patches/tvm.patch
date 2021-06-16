@@ -59,14 +59,14 @@ index b92366a70..90a3cb8b9 100644
 @@ -38,7 +38,7 @@
  #include "posix_board_if.h"
  #endif
- 
+
 -#define WORKSPACE_SIZE (270 * 1024)
 +#define WORKSPACE_SIZE (128 * 1024)
- 
+
  static uint8_t g_aot_memory[WORKSPACE_SIZE];
  extern tvm_model_t network;
 @@ -215,12 +215,15 @@ void main(void) {
- 
+
    size_t max_ind = -1;
    float max_val = -FLT_MAX;
 +  TVMLogf("#result_data*1000:");
@@ -125,11 +125,11 @@ index 637a58ae9..dd5cba566 100644
 +++ b/apps/microtvm/zephyr/host_driven/src/main.c
 @@ -130,7 +130,7 @@ tvm_crt_error_t TVMPlatformGenerateRandom(uint8_t* buffer, size_t num_bytes) {
  }
- 
+
  // Heap for use by TVMPlatformMemoryAllocate.
 -K_HEAP_DEFINE(tvm_heap, 216 * 1024);
 +K_HEAP_DEFINE(tvm_heap, 128 * 1024);
- 
+
  // Called by TVM to allocate memory.
  tvm_crt_error_t TVMPlatformMemoryAllocate(size_t num_bytes, DLDevice dev, void** out_ptr) {
 diff --git a/python/tvm/micro/contrib/zephyr.py b/python/tvm/micro/contrib/zephyr.py
@@ -146,7 +146,7 @@ index 2f85b3573..b02ed03a3 100644
          )
          num_cpus = multiprocessing.cpu_count()
 @@ -257,7 +257,7 @@ class ZephyrCompiler(tvm.micro.Compiler):
- 
+
          # expected not to exist after populate_tvm_objs
          cmake_args = [
 -            "cmake",
@@ -160,7 +160,7 @@ index 2f85b3573..b02ed03a3 100644
          "stm32f746g_disco": {"idVendor": 0x0483, "idProduct": 0x374B},
 +        "stm32f429i_disc1": {"idVendor": 0x0483, "idProduct": 0x374B}
      }
- 
+
      def openocd_serial(self, cmake_entries):
 diff --git a/python/tvm/target/target.py b/python/tvm/target/target.py
 index be39a6f6b..2b23460b8 100644
@@ -174,6 +174,5 @@ index be39a6f6b..2b23460b8 100644
      "nrf5340dk": ["-mcpu=cortex-m33"],
      "mps2_an521": ["-mcpu=cortex-m33"],
  }
--- 
+--
 2.16.6
-

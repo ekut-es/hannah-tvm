@@ -121,10 +121,10 @@ model with Relay.
 # directory into a buffer
 
 import os
-import sys 
+import sys
 import numpy as np
 import logging
-import pathlib 
+import pathlib
 
 import tvm
 import tvm.micro as micro
@@ -160,6 +160,7 @@ def _create_header_file(tensor_name, npy_data, output_path):
         for i in np.ndindex(npy_data.shape):
             header_file.write(f"{npy_data[i]}, ")
         header_file.write("};\n\n")
+
 
 model_url = "https://people.linaro.org/~tom.gall/sine_model.tflite"
 model_file = "sine_model.tflite"
@@ -198,7 +199,9 @@ input_shape = (1,)
 input_dtype = "float32"
 
 mod, params = relay.frontend.from_tflite(
-    tflite_model, shape_dict={input_tensor: input_shape}, dtype_dict={input_tensor: input_dtype}
+    tflite_model,
+    shape_dict={input_tensor: input_shape},
+    dtype_dict={input_tensor: input_dtype},
 )
 
 ######################################################################
@@ -211,8 +214,8 @@ mod, params = relay.frontend.from_tflite(
 # TARGET and a proper board/VM to run it (Zephyr will create the right QEMU VM based on BOARD. In
 # the example below the x86 arch is selected and a x86 VM is picked up accordingly:
 #
-#TARGET = tvm.target.target.micro("host")
-#BOARD = "qemu_x86"
+# TARGET = tvm.target.target.micro("host")
+# BOARD = "qemu_x86"
 #
 # Compiling for physical hardware
 #  When running on physical hardware, choose a TARGET and a BOARD that describe the hardware. The
@@ -221,7 +224,9 @@ mod, params = relay.frontend.from_tflite(
 #  board but a couple of wirings and configs differ, it's necessary to select the "stm32f746g_disco"
 #  board to generated the right firmware image.
 #
-TARGET = tvm.target.target.micro("stm32f4xx", options=["-link-params=1", "--executor=aot"])
+TARGET = tvm.target.target.micro(
+    "stm32f4xx", options=["-link-params=1", "--executor=aot"]
+)
 BOARD = "stm32f429i_disc1"  # "nucleo_f746zg" # or "stm32f746g_disco#"
 #
 #  For some boards, Zephyr runs them emulated by default, using QEMU. For example, below is the
@@ -237,7 +242,9 @@ BOARD = "stm32f429i_disc1"  # "nucleo_f746zg" # or "stm32f746g_disco#"
 # Now, compile the model for the target:
 
 with tvm.transform.PassContext(
-    opt_level=3, config={"tir.disable_vectorize": True}, disabled_pass=["FuseOps", "AlterOpLayout"]
+    opt_level=3,
+    config={"tir.disable_vectorize": True},
+    disabled_pass=["FuseOps", "AlterOpLayout"],
 ):
     lowered = relay.build(mod, target_host=TARGET, target=TARGET, params=params)
 
@@ -247,10 +254,10 @@ with tvm.transform.PassContext(
 #
 # First, compile a static microTVM runtime for the targeted device. In this case, the host simulated
 # device is used.
-#compiler = tvm.micro.DefaultCompiler(target=TARGET)
-#opts = tvm.micro.default_options(
+# compiler = tvm.micro.DefaultCompiler(target=TARGET)
+# opts = tvm.micro.default_options(
 #    os.path.join(tvm.micro.get_standalone_crt_dir(), "template", "host")
-#)
+# )
 
 # Compiling for physical hardware (or an emulated board, like the mps_an521)
 # --------------------------------------------------------------------------
@@ -260,8 +267,12 @@ with tvm.transform.PassContext(
 import subprocess
 from tvm.micro.contrib import zephyr
 
-repo_root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], encoding='utf-8').strip()
-project_dir = os.path.join(repo_root, "external", "tvm", "apps", "microtvm", "zephyr", "aot_demo")
+repo_root = subprocess.check_output(
+    ["git", "rev-parse", "--show-toplevel"], encoding="utf-8"
+).strip()
+project_dir = os.path.join(
+    repo_root, "external", "tvm", "apps", "microtvm", "zephyr", "aot_demo"
+)
 
 sample = np.array([0.5], dtype="float32")
 output_shape = (1,)
@@ -269,14 +280,14 @@ output_shape = (1,)
 model_files_path = os.path.join(project_dir, "include")
 _create_header_file((f"input_data"), sample, model_files_path)
 _create_header_file(
-        "output_data", np.zeros(shape=output_shape, dtype="float32"), model_files_path
+    "output_data", np.zeros(shape=output_shape, dtype="float32"), model_files_path
 )
 
 compiler = zephyr.ZephyrCompiler(
     project_dir=project_dir,
     board=BOARD,
     zephyr_toolchain_variant="zephyr",
-    env_vars={"ZEPHYR_RUNTIME": "ZEPHYR-AOT"}
+    env_vars={"ZEPHYR_RUNTIME": "ZEPHYR-AOT"},
 )
 
 logging.basicConfig(level="DEBUG")
@@ -284,13 +295,13 @@ workspace = tvm.micro.Workspace(debug=True)
 opts = tvm.micro.default_options(f"{project_dir}/crt")
 opts["bin_opts"]["include_dirs"].append(os.path.join(project_dir, "include"))
 opts["lib_opts"]["include_dirs"].append(os.path.join(project_dir, "include"))
-micro_binary =  tvm.micro.build_static_runtime(
-        workspace,
-        compiler,
-        lowered.lib,
-        opts,
-        executor="aot",
-        extra_libs=[tvm.micro.get_standalone_crt_lib("memory")],
+micro_binary = tvm.micro.build_static_runtime(
+    workspace,
+    compiler,
+    lowered.lib,
+    opts,
+    executor="aot",
+    extra_libs=[tvm.micro.get_standalone_crt_lib("memory")],
 )
 
 flasher = compiler.flasher()

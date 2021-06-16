@@ -167,7 +167,9 @@ input_shape = (1,)
 input_dtype = "float32"
 
 mod, params = relay.frontend.from_tflite(
-    tflite_model, shape_dict={input_tensor: input_shape}, dtype_dict={input_tensor: input_dtype}
+    tflite_model,
+    shape_dict={input_tensor: input_shape},
+    dtype_dict={input_tensor: input_dtype},
 )
 
 ######################################################################
@@ -180,8 +182,8 @@ mod, params = relay.frontend.from_tflite(
 # TARGET and a proper board/VM to run it (Zephyr will create the right QEMU VM based on BOARD. In
 # the example below the x86 arch is selected and a x86 VM is picked up accordingly:
 #
-#TARGET = tvm.target.target.micro("host")
-#BOARD = "qemu_x86"
+# TARGET = tvm.target.target.micro("host")
+# BOARD = "qemu_x86"
 #
 # Compiling for physical hardware
 #  When running on physical hardware, choose a TARGET and a BOARD that describe the hardware. The
@@ -206,7 +208,9 @@ BOARD = "stm32f429i_disc1"  # "nucleo_f746zg" # or "stm32f746g_disco#"
 # Now, compile the model for the target:
 
 with tvm.transform.PassContext(
-    opt_level=3, config={"tir.disable_vectorize": True}, disabled_pass=["FuseOps", "AlterOpLayout"]
+    opt_level=3,
+    config={"tir.disable_vectorize": True},
+    disabled_pass=["FuseOps", "AlterOpLayout"],
 ):
     graph, c_mod, c_params = relay.build(mod, target=TARGET, params=params)
 
@@ -216,10 +220,10 @@ with tvm.transform.PassContext(
 #
 # First, compile a static microTVM runtime for the targeted device. In this case, the host simulated
 # device is used.
-#compiler = tvm.micro.DefaultCompiler(target=TARGET)
-#opts = tvm.micro.default_options(
+# compiler = tvm.micro.DefaultCompiler(target=TARGET)
+# opts = tvm.micro.default_options(
 #    os.path.join(tvm.micro.get_standalone_crt_dir(), "template", "host")
-#)
+# )
 
 # Compiling for physical hardware (or an emulated board, like the mps_an521)
 # --------------------------------------------------------------------------
@@ -229,12 +233,14 @@ with tvm.transform.PassContext(
 import subprocess
 from tvm.micro.contrib import zephyr
 
-repo_root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], encoding='utf-8').strip()
-project_dir = os.path.join(repo_root, "external", "tvm", "apps", "microtvm", "zephyr", "host_driven")
+repo_root = subprocess.check_output(
+    ["git", "rev-parse", "--show-toplevel"], encoding="utf-8"
+).strip()
+project_dir = os.path.join(
+    repo_root, "external", "tvm", "apps", "microtvm", "zephyr", "host_driven"
+)
 compiler = zephyr.ZephyrCompiler(
-    project_dir=project_dir,
-    board=BOARD,
-    zephyr_toolchain_variant="zephyr",
+    project_dir=project_dir, board=BOARD, zephyr_toolchain_variant="zephyr"
 )
 
 opts = tvm.micro.default_options(f"{project_dir}/crt")
@@ -274,7 +280,9 @@ with tvm.micro.Session(binary=micro_binary, flasher=flasher) as session:
     # input value we construct a tvm.nd.array object with a single contrived number as input. For
     # this model values of 0 to 2Pi are acceptable.
     for inp in [0.0, 0.5, 0.75, 1.0]:
-        graph_mod.set_input(input_tensor, tvm.nd.array(np.array([0.5], dtype="float32")))
+        graph_mod.set_input(
+            input_tensor, tvm.nd.array(np.array([0.5], dtype="float32"))
+        )
         graph_mod.run()
 
         tvm_output = graph_mod.get_output(0).numpy()

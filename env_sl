@@ -1,4 +1,4 @@
-source /afs/wsi/es/tools/gcc/activate.sh 8.3 -a 
+source /afs/wsi/es/tools/gcc/activate.sh 8.3 -a
 export LD_LIBRARY_PATH=/afs/wsi/es/tools/gcc/8.3/lib:/afs/wsi/es/tools/gcc/8.3/lib64
 export ZEPHYR_BASE=$PWD/zephyrproject/zephyr
 export PATH=/afs/wsi/es/tools/arm/gcc-arm-none-eabi-7-2018-q2-update/bin/:/afs/wsi/es/tools/clang/9.0/bin/:$PATH
