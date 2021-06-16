@@ -1,4 +1,4 @@
-#!/bin/sh -e 
+#!/bin/bash -e 
 
 west init zephyrproject --mr v2.5.0
 pushd zephyrproject
