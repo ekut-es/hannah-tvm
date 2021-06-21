@@ -2,7 +2,8 @@
 
 if command -v nvcc;
 then
-    CXX_COMPILER=$(which g++-8)
+    CXX_COMPILER=$(which g++-7)
+    C_COMPILER=$(which gcc-7)
     USE_CUDA=ON
 else
     CXX_COMPILER=g++
@@ -10,14 +11,14 @@ else
 fi
 
 pushd external/tvm
-git apply ../../patches/tvm.patch
+#git apply ../../patches/tvm.patch
 popd
 
 echo "Installing tvm"
 mkdir -p external/tvm/build
 cp cmake/cuda_config.cmake external/tvm/build/config.cmake
 pushd external/tvm/build
-cmake --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DUSE_CUDA=$USE_CUDA
+cmake --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DUSE_CUDA=$USE_CUDA
 cmake --build .
 popd
 pip install -e external/tvm/python

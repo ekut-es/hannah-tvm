@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 import hydra
 import torch
@@ -20,8 +21,9 @@ def compile(config):
     target = tvm.target.Target(config.board.target)
     target_host = tvm.target.Target(config.board.target_host)
 
-    if target.kind == "cuda":
+    if str(target.kind) == "cuda":
         if "arch" in target.attrs:
+            logging.info("Setting cuda target arch %s", target.attrs["arch"])
             autotvm.measure.measure_methods.set_cuda_target_arch(target.attrs["arch"])
         else:
             logger.warning("CUDA target has no architecture attribute")
