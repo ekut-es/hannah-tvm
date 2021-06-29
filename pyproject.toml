@@ -28,6 +28,7 @@ numpy = "^1.20.2"
 tflite = "^2.4.0"
 pyserial = "^3.5"
 usb = "^0.0.83-alpha.0"
+west = "^0.11.0"
 
 
 [tool.poetry.scripts]
