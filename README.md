@@ -4,7 +4,7 @@ To get the basic installation use:
 
 1. `poetry shell`
 2. `poetry install`
-3. checkout submodules: `git submodules update --init --recursive`
+3. checkout submodules: `git submodule update --init --recursive`
 
 For the tvm installation there are the following installation options.
 
