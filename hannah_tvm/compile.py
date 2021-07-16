@@ -51,6 +51,7 @@ def compile(config):
             prefix=config.board.micro.prefix,
             opts=config.board.micro.opts,
         )
+
         micro_binary = micro.build_static_runtime(
             workspace,
             compiler,

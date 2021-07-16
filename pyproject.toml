@@ -34,6 +34,7 @@ west = "^0.11.0"
 [tool.poetry.scripts]
 hannah-tvm-compile = 'hannah_tvm.compile:main'
 hannah-tvm-tune = 'hannah_tvm.tune:main'
+hannah-tvm-bench = 'hannah_tvm.bench:main'
 hannah-tvm-memory = 'hannah_tvm.analysis:memory_main'
 
 [tool.poetry.dev-dependencies]
