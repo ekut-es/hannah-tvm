@@ -14,12 +14,15 @@ from . import measure
 from . import load
 
 
-def compile(config):
+def tune(config):
     relay_mod, params, inputs = load.load_model(config.model)
     measure_context = measure.AutomateRPCMeasureContext(config.board)
 
     target = tvm.target.Target(config.board.target)
     target_host = tvm.target.Target(config.board.target_host)
+
+    print(target)
+    print(target_host)
 
     if str(target.kind) == "cuda":
         if "arch" in target.attrs:
@@ -51,6 +54,7 @@ def compile(config):
     tuner = auto_scheduler.TaskScheduler(tasks, task_weights)
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=20000,
+        builder="local",
         runner=runner,
         measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
     )
@@ -60,7 +64,7 @@ def compile(config):
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config):
-    return compile(config)
+    return tune(config)
 
 
 if __name__ == "__main__":
