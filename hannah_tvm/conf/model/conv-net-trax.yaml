@@ -1,0 +1,3 @@
+# @package _group_
+
+file: models/conv-net-trax.onnx
