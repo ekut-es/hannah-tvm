@@ -1,8 +1,11 @@
+import atexit
 import logging
 import multiprocessing
 import time
 
+
 import tvm.auto_scheduler as auto_scheduler
+import tvm.rpc
 
 try:
     from automate.config import AutomateConfig
@@ -15,30 +18,88 @@ except ModuleNotFoundError:
 logger = logging.getLogger("hannah_tvm.measure")
 
 _automate_context = None
+_automate_measure_contexts = []
 
 
-def _server_process(name, rundir, tracker_port):
-    automate_config = AutomateConfig()
-    automate_context = AutomateContext(automate_config)
-    board_connection = automate_context.board(name).connect()
+@atexit.register
+def cleanup():
+    logging.info("Cleaning up measurement contexts")
+    for rpc in _automate_measure_contexts:
+        context.finish()
 
-    result = board_connection.run(
-        "killall python3.6 -m tvm.exec.rpc_server", warn=True, hide=True
-    )
-    time.sleep(10)
-    with board_connection.forward_remote(9000, tracker_port):
-        with board_connection.forward_local(9090, 9090):
-            result = board_connection.run(
-                f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port=9090 --tracker=localhost:9000",
-                env={"PYTHONPATH": str(rundir)},
-                shell=True,
-                hide=True,
-            )
-            if not result:
-                board_connection.close()
-                logger.critical("Could not start tvm rpc server")
-                logger.critical(result.stdout)
-                logger.critical(result.stderr)
+
+class ServerProcess(multiprocessing.Process):
+    def __init__(self, board_name, rundir, tracker_port):
+        super().__init__()
+        self.board_name = board_name
+        self.rundir = rundir
+        self.tracker_port = tracker_port
+        self._pconn, self._cconn = multiprocessing.Pipe()
+
+    def run(self):
+        print("Running server")
+        rundir = self.rundir
+        tracker_port = self.tracker_port
+        name = self.board_name
+        automate_config = AutomateConfig()
+        automate_context = AutomateContext(automate_config)
+        board_connection = automate_context.board(name).connect()
+
+        with board_connection.forward_remote(9000, tracker_port):
+            with board_connection.forward_local(9090, 9090):
+                promise = board_connection.run(
+                    f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port=9090 --tracker=localhost:9000",
+                    env={"PYTHONPATH": str(rundir)},
+                    shell=True,
+                    warn=True,
+                    pty=True,
+                    asynchronous=True,
+                )
+
+                while (
+                    not promise.runner.process_is_finished
+                    and not promise.runner.has_dead_threads
+                ):
+                    if self._cconn.poll():
+                        msg = self._cconn.recv()
+                        if msg == "exit":
+                            promise.runner.send_interrupt(
+                                Exception("Could not send interrupt")
+                            )
+                    time.sleep(0.5)
+
+                result = promise.join()
+                if not result:
+                    board_connection.close()
+                    self._cconn.send(str(result))
+
+    def running(self):
+        if self._pconn.poll():
+            error = self._pconn.recv()
+            raise Exception(str(error))
+
+        try:
+            conn = tvm.rpc.connect_tracker("localhost", self.tracker_port)
+            queue_info = conn.summary()["queue_info"]
+            if self.board_name in queue_info:
+                if queue_info[self.board_name]["free"] > 0:
+                    return True
+            conn.close()
+
+        except Exception as e:
+            print(str(e))
+            pass
+        return False
+
+    def finish(self):
+        self._pconn.send("exit")
+        while True:
+            try:
+                if not self.running:
+                    return
+                time.sleep(0.5)
+            except Exception:
+                pass
 
 
 class AutomateRPCMeasureContext:
@@ -126,29 +187,29 @@ class AutomateRPCMeasureContext:
         if board_config.rebuild_runtime:
             self._build_runtime()
         try:
-            self.server_process = multiprocessing.Process(
-                target=_server_process,
-                args=(
-                    self.board.name,
-                    str(self.board.rundir / "tvm/python"),
-                    self.tracker.port,
-                ),
+            self.server_process = ServerProcess(
+                self.board.name,
+                str(self.board.rundir / "tvm/python"),
+                self.tracker.port,
             )
             self.server_process.start()
+            print("waiting for server")
+            while not self.server_process.running():
+                time.sleep(1.0)
+                print(".", end="")
+            print("")
+
         except Exception as e:
             logger.warn("Could not start server process rebuilding device runtime")
-            self._build_runtime()
-
-            self.server_process = multiprocessing.Process(
-                target=_server_process,
-                args=(
-                    self.board.name,
-                    str(self.board.rundir / "tvm/python"),
-                    self.tracker.port,
-                ),
+            logger.warn(
+                "Use board.rebuild_runtime=true to rebuild tvm runtime for target board"
             )
-            self.server_process.start()
-        time.sleep(30)
+            raise Exception("Could not start server process")
+
+        conn = tvm.rpc.connect_tracker("localhost", self.tracker.port)
+        logger.info("%s", conn.text_summary())
+        conn.close()
+
         self.runner = auto_scheduler.RPCRunner(
             device_key,
             host,
@@ -162,10 +223,8 @@ class AutomateRPCMeasureContext:
             cooldown_interval,
             enable_cpu_cache_flush,
         )
-        # Wait for the processes to start
-        time.sleep(0.5)
 
-    def __del__(self):
+    def finish(self):
         # Close the tracker and server before exit
         if self.server_process is not None:
             self._terminate_server()
@@ -199,5 +258,6 @@ class AutomateRPCMeasureContext:
     def _terminate_server(self):
         if self.server_process:
             if self.server_process.is_alive():
+                self.server_process.finish()
                 self.server_process.terminate()
                 self.server_process = None
