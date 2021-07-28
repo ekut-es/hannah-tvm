@@ -100,10 +100,10 @@ set(USE_STACKVM_RUNTIME OFF)
 set(USE_GRAPH_RUNTIME ON)
 
 # Whether enable additional graph debug functions
-set(USE_GRAPH_RUNTIME_DEBUG OFF)
+set(USE_GRAPH_RUNTIME_DEBUG ON)
 
 # Whether enable additional vm profiler functions
-set(USE_VM_PROFILER OFF)
+set(USE_VM_PROFILER ON)
 
 # Whether enable uTVM standalone runtime
 set(USE_MICRO_STANDALONE_RUNTIME OFF)

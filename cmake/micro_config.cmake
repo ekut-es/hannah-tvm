@@ -97,10 +97,10 @@ set(USE_CPP_RPC ON)
 set(USE_STACKVM_RUNTIME OFF)
 
 # Whether enable tiny embedded graph runtime.
-set(USE_GRAPH_RUNTIME ON)
+set(USE_GRAPH_EXECUTOR ON)
 
 # Whether enable additional graph debug functions
-set(USE_GRAPH_RUNTIME_DEBUG OFF)
+set(USE_GRAPH_EXECUTOR_DEBUG ON)
 
 # Whether enable additional vm profiler functions
 set(USE_VM_PROFILER OFF)
