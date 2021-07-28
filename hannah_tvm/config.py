@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
 
 import hydra
 from hydra.core.config_store import ConfigStore
@@ -69,10 +69,10 @@ class QConfig:
 
 @dataclass
 class Config:
-    board: Board = Board()
-    model: Model = Model()
+    board: Dict[str, Board] = MISSING
+    model: Dict[str, Model] = MISSING
     qconfig: Optional[QConfig] = None
 
 
 cs = ConfigStore.instance()
-cs.store(name="config", node=Config)
+cs.store(name="base_config", node=Config)

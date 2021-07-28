@@ -1,13 +1,12 @@
-# @package _group_
+jetsonnano_cpu:
+  name: jetsonnano
+  target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57"
+  target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57"
+  opencl: True
+  cuda: True
+  setup:
+    - sudo nvpmodel -m 0
+    - sudo jetson_clocks
 
-name: jetsonnano
-target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57,+neon"
-target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57,+neon"
-opencl: True
-cuda: True
-setup:
-  - sudo nvpmodel -m 0
-  - sudo jetson_clocks
-
-teardown:
-  - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang
+  teardown:
+    - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang

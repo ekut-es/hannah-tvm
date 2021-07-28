@@ -1,7 +1,6 @@
-# @package _group_
-
-name: n1sdp
-target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
-target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
-opencl: false
-cuda: false
+n1sdp:
+  name: n1sdp
+  target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
+  target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
+  opencl: false
+  cuda: false

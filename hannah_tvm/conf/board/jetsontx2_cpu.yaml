@@ -1,13 +1,12 @@
-# @package _group_
+jetsontx2_cpu:
+  name: jetsontx2
+  target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
+  target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
+  opencl: True
+  cuda: True
+  setup:
+    - sudo nvpmodel -m 0
+    - sudo jetson_clocks
 
-name: jetsontx2
-target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
-target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
-opencl: True
-cuda: True
-setup:
-  - sudo nvpmodel -m 0
-  - sudo jetson_clocks
-
-teardown:
-  - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang
+  teardown:
+    - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang

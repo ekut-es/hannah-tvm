@@ -9,8 +9,7 @@ license = "MIT"
 python = "^3.7.1"
 torchaudio = "^0.8.1"
 torchvision = "^0.9.1"
-hydra-core = "<1.1.0"
-#automate = {path = "external/automate", extras = ["postgres"], optional=true}
+hydra-core = "^1.1.0"
 onnx = "^1.8.1"
 xgboost = "^1.3.3"
 artifactory = "^0.1.17"
@@ -31,6 +30,7 @@ usb = "^0.0.83-alpha.0"
 west = "^0.11.0"
 automate = {path = "external/automate", extras = ["postgres"], develop=true}
 tvm = {path = "external/tvm/python", develop=true}
+
 
 
 [tool.poetry.scripts]

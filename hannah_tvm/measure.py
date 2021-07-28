@@ -24,7 +24,7 @@ _automate_measure_contexts = []
 @atexit.register
 def cleanup():
     logging.info("Cleaning up measurement contexts")
-    for rpc in _automate_measure_contexts:
+    for context in _automate_measure_contexts:
         context.finish()
 
 
@@ -88,7 +88,6 @@ class ServerProcess(multiprocessing.Process):
 
         except Exception as e:
             print(str(e))
-            pass
         return False
 
     def finish(self):
@@ -152,6 +151,8 @@ class AutomateRPCMeasureContext:
         min_repeat_ms=0,
         cooldown_interval=0.0,
         enable_cpu_cache_flush=False,
+        tracker_port=None,
+        start_server=True,
     ):
         if not automate_available:
             raise Exception(

@@ -1,4 +1,9 @@
 defaults:
-  - board: jetsontx2
-  - model: shufflenet
+  - base_config
+  - board:
+      - jetsonnano_cpu
+      - jetsontx2_cpu
+  - model:
+      - efficientnet-lite4-11
+      - resnet50
   - qconfig: null
