@@ -177,7 +177,7 @@ class AutomateRPCMeasureContext:
 
         self.board = _automate_context.board(board_config.name)
         self.board.lock()
-        self.board_connection = self.board.connect()
+        self.board_connection = self.board.connect(timeout=320)
         for command in self.board_config.setup:
             self.board_connection.run(command)
 
