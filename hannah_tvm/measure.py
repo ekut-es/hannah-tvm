@@ -179,7 +179,7 @@ class AutomateRPCMeasureContext:
         self.board.lock()
         self.board_connection = self.board.connect()
         for command in self.board_config.setup:
-            conn.run(command)
+            self.board_connection.run(command)
 
         from tvm.rpc.tracker import Tracker
 
@@ -227,17 +227,17 @@ class AutomateRPCMeasureContext:
         )
 
     def finish(self):
-        # Close the tracker and server before exit
-        if self.server_process is not None:
-            self._terminate_server()
+        logging.info("Finishing remote measurement context")
+        # Terminate the tracker process
         if self.tracker is not None:
             if hasattr(self.tracker, "proc"):
                 self.tracker.terminate()
+
         if self.board_connection is not None:
             self.board_connection.close()
 
-        if self.board_config.teardown:
-            with self.board.connection() as conn:
+        if self.board and self.board_config.teardown:
+            with self.board.connect() as conn:
                 for command in self.board_config.teardown:
                     conn.run(command)
 
@@ -263,9 +263,8 @@ class AutomateRPCMeasureContext:
                     connection.run('sed -i "s/USE_CUDA OFF/USE_CUDA ON/" config.cmake')
                 connection.run("make runtime -j4")
 
-    def _terminate_server(self):
-        if self.server_process:
-            if self.server_process.is_alive():
-                self.server_process.finish()
-                self.server_process.terminate()
-                self.server_process = None
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, tb):
+        self.finish()
