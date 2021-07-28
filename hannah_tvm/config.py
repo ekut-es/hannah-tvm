@@ -43,6 +43,8 @@ class Board:
     rebuild_runtime: bool = False
     hardware_params: HardwareParams = HardwareParams()
     micro: Optional[MicroConfig] = None
+    setup: List[str] = field(default_factory=list)
+    teardown: List[str] = field(default_factory=list)
 
 
 @dataclass

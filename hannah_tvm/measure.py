@@ -178,6 +178,8 @@ class AutomateRPCMeasureContext:
         self.board = _automate_context.board(board_config.name)
         self.board.lock()
         self.board_connection = self.board.connect()
+        for command in self.board_config.setup:
+            conn.run(command)
 
         from tvm.rpc.tracker import Tracker
 
@@ -233,6 +235,12 @@ class AutomateRPCMeasureContext:
                 self.tracker.terminate()
         if self.board_connection is not None:
             self.board_connection.close()
+
+        if self.board_config.teardown:
+            with self.board.connection() as conn:
+                for command in self.board_config.teardown:
+                    conn.run(command)
+
         if self.board:
             self.board.unlock()
 
