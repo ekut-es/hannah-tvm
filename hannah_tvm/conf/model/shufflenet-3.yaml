@@ -1,0 +1,2 @@
+shufflenet-3:
+  file: models/shufflenet-3.onnx

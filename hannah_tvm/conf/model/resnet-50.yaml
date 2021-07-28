@@ -1,0 +1,2 @@
+resnet-50:
+  file: models/resnet50-v2-7.onnx
