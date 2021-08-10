@@ -1,0 +1,2 @@
+resnet-18:
+  file: models/resnet18-v2-7.onnx

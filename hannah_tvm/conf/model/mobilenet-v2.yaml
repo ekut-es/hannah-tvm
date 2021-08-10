@@ -1,2 +1,2 @@
-mobilentv2-7:
+mobilenet-v2:
   file: models/mobilenetv2-7.onnx

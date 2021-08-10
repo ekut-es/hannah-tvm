@@ -1,0 +1,2 @@
+efficientnet-lite4:
+  file: models/efficientnet-lite4-11.onnx

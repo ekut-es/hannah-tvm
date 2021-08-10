@@ -1,0 +1,2 @@
+vgg19:
+  file: models/vgg19-7.onnx

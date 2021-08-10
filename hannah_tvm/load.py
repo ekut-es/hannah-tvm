@@ -15,12 +15,16 @@ logger = logging.getLogger("hannah-tvm.compile")
 
 
 def _load_torch(model_path, input_shapes):
+    logger.info("Loading model %s", str(model_path))
+
     script_model = torch.script.load(model_path)
 
 
 def _load_onnx(model_path, input_shapes):
+    logger.info("Loading model %s", str(model_path))
     try:
         import onnx
+        import onnx.version_converter
     except:
         logger.error("Could not import onnx")
         sys.exit(-1)
@@ -28,6 +32,7 @@ def _load_onnx(model_path, input_shapes):
     onnx_model = onnx.load(model_path)
     onnx.checker.check_model(onnx_model)
     inferred_model = onnx.shape_inference.infer_shapes(onnx_model)
+    # inferred_model = onnx.version_converter.convert_version(inferred_model, 11)
     graph = inferred_model.graph
 
     input = graph.input[0]
@@ -38,17 +43,19 @@ def _load_onnx(model_path, input_shapes):
 
     mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
 
-    input_data = {input.name: np.random.uniform(input_shape)}
+    input_data = {input.name: np.random.uniform(size=input_shape)}
 
     return mod, params, input_data
 
 
 def _load_tflite(model_path, input_shapes):
 
+    logger.info("Loading model %s", str(model_path))
+
     try:
         import tflite
         from tflite.TensorType import TensorType as TType
-    except:
+    except ModuleNotFoundError:
         logger.error("Could not import tflite")
         sys.exit(-1)
 
@@ -103,7 +110,11 @@ def _load_tflite(model_path, input_shapes):
         tflModel, shape_dict=shapes, dtype_dict=types
     )
 
-    return mod, params, shapes
+    inputs = {}
+    for name, shape in shapes.items():
+        inputs[name] = np.random.uniform(size=shape)
+
+    return mod, params, inputs
 
 
 def load_model(model):

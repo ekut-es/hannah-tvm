@@ -18,59 +18,67 @@ logger = logging.getLogger("hannah-tvm-compile")
 
 
 def compile(config):
-    relay_mod, params, inputs = load.load_model(config.model)
+    for board_name, board in config.board.items():
+        for model_name, model in config.model.items():
+            logger.info("Compiling model %s for board %s", model_name, board_name)
+            relay_mod, params, inputs = load.load_model(model)
 
-    target = tvm.target.Target(config.board.target)
-    target_host = target
-    if config.board.target_host:
-        target_host = tvm.target.Target(config.board.target_host)
+            target = tvm.target.Target(board.target)
+            target_host = target
+            if board.target_host:
+                target_host = tvm.target.Target(board.target_host)
 
-    if target.kind == "cuda":
-        if "arch" in target.attrs:
-            autotvm.measure.measure_methods.set_cuda_target_arch(target.attrs["arch"])
-        else:
-            logger.warning("CUDA target has no architecture attribute")
+            if target.kind == "cuda":
+                if "arch" in target.attrs:
+                    autotvm.measure.measure_methods.set_cuda_target_arch(
+                        target.attrs["arch"]
+                    )
+                else:
+                    logger.warning("CUDA target has no architecture attribute")
 
-    build_cfg = {}
-    if target.kind == "c":
-        build_cfg = {"tir.disable_vectorize": True}
+            build_cfg = {}
+            if str(target.kind) == "c":
+                build_cfg = {"tir.disable_vectorize": True}
 
-    with tvm.transform.PassContext(opt_level=3, config=build_cfg):
-        lib = relay.build(relay_mod, target=target, params=params)
+            print(build_cfg)
+            print(relay_mod)
 
-    if config.board.micro:
-        logger.info("Building micro target")
+            with tvm.transform.PassContext(opt_level=3, config=build_cfg):
+                lib = relay.build(relay_mod, target=target, params=params)
 
-        for i, m in enumerate(lib.module._collect_dso_modules()):
-            with open("/tmp/build/lib" + str(i) + ".ll", "w") as file:
-                file.write(m.get_source())
-        workspace = micro.Workspace(debug=True)
-        opts = get_compiler_options(config.board.micro)
-        compiler = Compiler_Ext(
-            target=target,
-            prefix=config.board.micro.prefix,
-            opts=config.board.micro.opts,
-        )
+            if board.micro:
+                logger.info("Building micro target")
 
-        micro_binary = micro.build_static_runtime(
-            workspace,
-            compiler,
-            lib.module,
-            opts,
-            extra_libs=[tvm.micro.get_standalone_crt_lib("memory")],
-        )
+                for i, m in enumerate(lib.module._collect_dso_modules()):
+                    with open("/tmp/build/lib" + str(i) + ".ll", "w") as file:
+                        file.write(m.get_source())
+                workspace = micro.Workspace(debug=True)
+                opts = get_compiler_options(board.micro)
+                compiler = hydra.utils.instantiate(board.micro.compiler)
 
-        # Prepare target data
-        outDir = "out"
-        os.makedirs(outDir, exist_ok=True)
-        shutil.copy2(workspace.path + "/src/module/lib1.c", outDir + "/kernels.c")
-        shutil.copy2(workspace.path + "/src/module/lib0.c", outDir + "/syslib.c")
-        with open(outDir + "/graph.json", "w") as f:
-            f.write(lib.graph_json)
-        with open(outDir + "/params.bin", "wb") as f:
-            f.write(relay.save_param_dict(lib.params))
+                micro_binary = micro.build_static_runtime(
+                    workspace,
+                    compiler,
+                    lib.module,
+                    opts,
+                    extra_libs=[tvm.micro.get_standalone_crt_lib("memory")],
+                )
 
-        # codegen.generateTargetCode(outDir + "/runtime_wrapper.c", lib.graph_json, relay.save_param_dict(lib.params), self.modelInfo)
+                # Prepare target data
+                outDir = "out"
+                os.makedirs(outDir, exist_ok=True)
+                shutil.copy2(
+                    workspace.path + "/src/module/lib1.c", outDir + "/kernels.c"
+                )
+                shutil.copy2(
+                    workspace.path + "/src/module/lib0.c", outDir + "/syslib.c"
+                )
+                with open(outDir + "/graph.json", "w") as f:
+                    f.write(lib.graph_json)
+                with open(outDir + "/params.bin", "wb") as f:
+                    f.write(relay.save_param_dict(lib.params))
+
+            # codegen.generateTargetCode(outDir + "/runtime_wrapper.c", lib.graph_json, relay.save_param_dict(lib.params), self.modelInfo)
 
 
 @hydra.main(config_name="config", config_path="conf")

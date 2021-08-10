@@ -1,9 +1,12 @@
+import importlib
+import os
+
 from dataclasses import dataclass, field
 from typing import Any, Optional, List, Dict
 
 import hydra
 from hydra.core.config_store import ConfigStore
-from omegaconf import MISSING
+from omegaconf import MISSING, OmegaConf
 
 
 @dataclass
@@ -23,6 +26,7 @@ class HardwareParams:
 @dataclass
 class MicroConfig:
     "MicroTVM configuration"
+    compiler: Any
     prefix: Optional[str] = None
     opts: List[str] = field(default_factory=list)
     cflags: List[str] = field(default_factory=list)
@@ -76,3 +80,21 @@ class Config:
 
 cs = ConfigStore.instance()
 cs.store(name="base_config", node=Config)
+
+
+# Custom OmegaConf resolvers
+
+
+OmegaConf.register_resolver(
+    "models_dir",
+    lambda: os.path.join(os.path.dirname(os.path.abspath(__file__)), "models"),
+)
+
+
+def find_tvm_root():
+    spec = importlib.util.find_spec("tvm")
+    origin = spec.origin
+    return os.path.abspath(os.path.join(os.path.dirname(origin), "..", ".."))
+
+
+OmegaConf.register_resolver("tvm_root", find_tvm_root)

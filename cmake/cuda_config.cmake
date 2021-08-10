@@ -269,3 +269,12 @@ set(USE_HEXAGON_SDK /path/to/sdk)
 
 # Whether to use ONNX codegen
 set(USE_TARGET_ONNX ON)
+
+
+# Whether to enable PAPI support in profiling. PAPI provides access to hardware
+# counters while profiling.
+# Possible values:
+# - ON: enable PAPI support. Will search PKG_CONFIG_PATH for a papi.pc
+# - OFF: disable PAPI support.
+# - /path/to/folder/containing/: Path to folder containing papi.pc.
+set(USE_PAPI ON)

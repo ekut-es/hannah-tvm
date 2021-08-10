@@ -6,10 +6,12 @@ import time
 
 import tvm.auto_scheduler as auto_scheduler
 import tvm.rpc
+import tvm.rpc.tracker
 
 try:
     from automate.config import AutomateConfig
     from automate.context import AutomateContext
+    from automate.utils.network import find_local_port, find_remote_port
 
     automate_available = True
 except ModuleNotFoundError:
@@ -29,66 +31,81 @@ def cleanup():
 
 
 class ServerProcess(multiprocessing.Process):
-    def __init__(self, board_name, rundir, tracker_port):
+    def __init__(self, board_name, rundir, tracker_port, setup=[], teardown=[]):
         super().__init__()
         self.board_name = board_name
         self.rundir = rundir
         self.tracker_port = tracker_port
         self._pconn, self._cconn = multiprocessing.Pipe()
+        self.setup = setup
+        self.teardown = teardown
 
     def run(self):
-        print("Running server")
         rundir = self.rundir
         tracker_port = self.tracker_port
         name = self.board_name
         automate_config = AutomateConfig()
         automate_context = AutomateContext(automate_config)
-        board_connection = automate_context.board(name).connect()
-
-        with board_connection.forward_remote(9000, tracker_port):
-            with board_connection.forward_local(9090, 9090):
-                promise = board_connection.run(
-                    f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port=9090 --tracker=localhost:9000",
-                    env={"PYTHONPATH": str(rundir)},
-                    shell=True,
-                    warn=True,
-                    pty=True,
-                    asynchronous=True,
-                )
-
-                while (
-                    not promise.runner.process_is_finished
-                    and not promise.runner.has_dead_threads
-                ):
-                    if self._cconn.poll():
-                        msg = self._cconn.recv()
-                        if msg == "exit":
-                            promise.runner.send_interrupt(
-                                Exception("Could not send interrupt")
-                            )
-                    time.sleep(0.5)
-
-                result = promise.join()
-                if not result:
-                    board_connection.close()
-                    self._cconn.send(str(result))
-
-    def running(self):
-        if self._pconn.poll():
-            error = self._pconn.recv()
-            raise Exception(str(error))
-
         try:
-            conn = tvm.rpc.connect_tracker("localhost", self.tracker_port)
-            queue_info = conn.summary()["queue_info"]
-            if self.board_name in queue_info:
-                if queue_info[self.board_name]["free"] > 0:
-                    return True
-            conn.close()
+            with automate_context.board(name).connect() as board_connection:
 
+                for setup in self.setup:
+                    board_connection.run(setup)
+
+                logger.info(
+                    "forwarding remote port %d to local port %i", 9000, tracker_port
+                )
+                with board_connection.forward_remote(9000, tracker_port):
+                    local_port = find_local_port(9091, 90199)
+                    logger.info(
+                        "forwarding local port %d to remote port %i",
+                        local_port,
+                        local_port,
+                    )
+                    with board_connection.forward_local(local_port, local_port):
+                        logger.info("Starting remote server")
+                        promise = board_connection.run(
+                            f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port={local_port} --port-end={local_port+1} --tracker=localhost:9000",
+                            env={"PYTHONPATH": str(rundir)},
+                            shell=True,
+                            warn=True,
+                            pty=True,
+                            asynchronous=True,
+                        )
+
+                        killed = False
+                        while (
+                            not promise.runner.process_is_finished
+                            and not promise.runner.has_dead_threads
+                        ):
+                            if self._cconn.poll():
+                                msg = self._cconn.recv()
+                                if msg == "exit":
+                                    promise.runner.send_interrupt(
+                                        Exception("Could not send interrupt")
+                                    )
+                                    killed = True
+                            time.sleep(2.0)
+
+                        result = promise.join()
+
+                        if (not result) and (not killed):
+                            logger.info("Result %s", str(result))
+                            self._cconn.send(str(result))
+
+                for teardown in self.teardown:
+                    board_connection.run(teardown)
+                logger.info("Server has finished")
         except Exception as e:
-            print(str(e))
-        return False
+            logger.critical("Could not start server process")
+            logger.critical(str(e))
+
+    @property
+    def running(self):
+        if not self.is_alive():
+            return False
+
+        return True
 
     def finish(self):
         self._pconn.send("exit")
@@ -97,8 +114,8 @@ class ServerProcess(multiprocessing.Process):
                 if not self.running:
                     return
                 time.sleep(0.5)
-            except Exception:
-                pass
+            except Exception as e:
+                print(str(e))
 
 
 class AutomateRPCMeasureContext:
@@ -182,9 +199,9 @@ class AutomateRPCMeasureContext:
         for command in self.board_config.setup:
             self.board_connection.run(command)
 
-        from tvm.rpc.tracker import Tracker
-
-        self.tracker = Tracker(host, port=9000, port_end=9090, silent=False)
+        self.tracker = tvm.rpc.tracker.Tracker(
+            host, port=9000, port_end=9090, silent=False
+        )
         time.sleep(1.0)
 
         if board_config.rebuild_runtime:

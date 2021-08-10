@@ -1,0 +1,2 @@
+squeezenet-1.1:
+  file: models/squeezenet1.1-7.onnx

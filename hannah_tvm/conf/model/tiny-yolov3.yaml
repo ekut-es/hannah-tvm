@@ -1,2 +1,2 @@
-tiny-yolov3-11:
+tiny-yolov3:
   file: models/tiny-yolov3-11.onnx

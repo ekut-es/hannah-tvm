@@ -1,0 +1,11 @@
+stm32f429i_disc1:
+  name: stm32f429_disco1
+  target: "c -mcpu=cortex-m4 -march=armv7e-m -runtime=c -system-lib=1 -model=stm32f4xx"
+  opencl: false
+  cuda: false
+  micro:
+    compiler:
+      _target_: tvm.micro.contrib.zephyr.ZephyrCompiler
+      project_dir: ${tvm_root:}/apps/microtvm/zephyr/host_driven/
+      board: stm32f429i_disc1
+      zephyr_toolchain_variant: zephyr
