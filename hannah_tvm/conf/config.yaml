@@ -4,6 +4,7 @@ defaults:
       - jetsonnano_cpu
       - jetsontx2_cpu
       - jetsonagx_cpu
+      - n1sdp
   - model:
       #- densenet-121
       - conv-net-trax
@@ -16,4 +17,5 @@ defaults:
       - squeezenet-1.1
       - vgg16
       - vgg19
-  - qconfig: null
+
+tune: true

@@ -1,0 +1,2 @@
+tinyml_ad01:
+  file: ${models_dir:}/tiny_ml_perf/anomaly_detection/ad01_int8.tflite

@@ -4,30 +4,8 @@ gvsoc_llvm:
   opencl: false
   cuda: false
   micro:
-    prefix: riscv32-unknown-elf-
-    opts:  # Opts are used for linker and compiler
-      - "-march=rv32imcxpulpv2"
-      - "-fdata-sections"
-      - "-ffunction-sections"
-      - "-fno-use-cxa-atexit"
-      - "-ffreestanding"
-    cflags:
-      - "-include${env:PULP_SDK_HOME}/include/fc_config.h"
-    ccflags:
-      - "-include${env:PULP_SDK_HOME}/include/fc_config.h"
-    include_dirs:
-      - "${env:PULP_SDK_HOME}/include"
-  #    - "${env:PULP_SDK_HOME}/include/io"
-    ldflags:
-      - "-nostartfiles"
-  #    - "-nostdlib"
-      - "-Wl,--gc-sections"
-      - "-L${env:PULP_SDK_HOME}/pulp-rt/rules"
-      - "-Tlink.ld"
-      - "-L${env:PULP_SDK_HOME}/lib"
-      - "-fno-use-cxa-atexit"
-    libs:
-      - "-lrt"
-      - "-lstdc++"
-      - "-lrtio"
-      - "-lrt"
+    template_dir: ${template_dir:}/pulp/
+    project_options:
+      project_type: host_driven
+      board: gvsoc_pulpissimo
+      compiler_prefix: riscv32-unknown-elf-

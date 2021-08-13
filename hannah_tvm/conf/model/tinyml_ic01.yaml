@@ -1,0 +1,2 @@
+tinyml_ic01:
+  file: ${models_dir:}/tiny_ml_perf/image_classification/pretrainedResnet_quant.tflite

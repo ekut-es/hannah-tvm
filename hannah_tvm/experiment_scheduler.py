@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import time
+import traceback
 
 import tvm
 import tvm.auto_scheduler as auto_scheduler
@@ -21,6 +22,7 @@ from . import load
 
 
 logger = logging.getLogger(__name__)
+manager = multiprocessing.Manager()
 
 
 class TuningTask(multiprocessing.Process):
@@ -37,26 +39,50 @@ class TuningTask(multiprocessing.Process):
 
         self.target = tvm.target.Target(self.board_config.target)
         self.target_host = tvm.target.Target(self.board_config.target_host)
+        self.results = manager.dict()
+
+        self.results["board"] = board_key
+        self.results["model"] = model_key
+        # self.results["tasks"] = manager.dict()
+        self.results["status"] = "created"
+        self.results["error"] = None
 
         name = f"tuning-task-{board_key}-{model_key}"
         super().__init__(name=name)
 
     def run(self):
-        relay_mod, params, inputs = load.load_model(self.model_config)
+        try:
+            self.results["status"] = "running"
+            relay_mod, params, inputs = load.load_model(self.model_config)
 
-        if str(self.target.kind) == "cuda":
-            if "arch" in self.target.attrs:
-                logger.info("Setting cuda target arch %s", self.target.attrs["arch"])
-                autotvm.measure.measure_methods.set_cuda_target_arch(
-                    self.target.attrs["arch"]
-                )
-            else:
-                logger.warning("CUDA target has no architecture attribute")
+            if str(self.target.kind) == "cuda":
+                if "arch" in self.target.attrs:
+                    logger.info(
+                        "Setting cuda target arch %s", self.target.attrs["arch"]
+                    )
+                    autotvm.measure.measure_methods.set_cuda_target_arch(
+                        self.target.attrs["arch"]
+                    )
+                else:
+                    logger.warning("CUDA target has no architecture attribute")
 
-        self._run_autoscheduler(relay_mod, params)
+            start_time = time.time()
+            self._run_autoscheduler(relay_mod, params)
+            final_time = time.time()
+            self.results["tuning_duration"] = final_time - start_time
 
-        remote, rlib = self._build_and_upload(relay_mod, params)
-        self._evaluate(inputs, remote, rlib)
+            remote, rlib = self._build_and_upload(relay_mod, params)
+            self._evaluate(inputs, remote, rlib)
+            self.results["status"] = "finished"
+        except Exception as e:
+            logger.critical(
+                "Tuning model %s on board %s failed", self.model_key, self.board_key
+            )
+            logger.critical(str(e))
+            traceback.print_tb(e.__traceback__)
+
+            self.results["status"] = "failed"
+            self.results["error"] = e
 
     def _run_autoscheduler(self, relay_mod, params):
 
@@ -85,13 +111,15 @@ class TuningTask(multiprocessing.Process):
             )
 
             logger.info("Begin tuning...")
-            tuner = auto_scheduler.TaskScheduler(tasks, task_weights)
+            tuner = auto_scheduler.TaskScheduler(
+                tasks, task_weights, callbacks=[measure.PrintPBarInfo(self.results)]
+            )
             tune_option = auto_scheduler.TuningOptions(
-                num_measure_trials=len(tasks) * 1024,
+                num_measure_trials=len(tasks) * 2,
                 builder="local",
                 runner=runner,
                 measure_callbacks=[auto_scheduler.RecordToFile(self.log_file)],
-                verbose=1,
+                verbose=0,
             )
 
             tuner.tune(tune_option)
@@ -103,7 +131,7 @@ class TuningTask(multiprocessing.Process):
                 with tvm.transform.PassContext(
                     opt_level=3, config={"relay.backend.use_auto_scheduler": True}
                 ):
-                    lib = relay.build(
+                    lib = relay.build_module.build(
                         relay_mod,
                         target=self.target,
                         target_host=self.target_host,
@@ -111,7 +139,7 @@ class TuningTask(multiprocessing.Process):
                     )
         else:
             with tvm.transform.PassContext(opt_level=3):
-                lib = relay.build(
+                lib = relay.build_module.build(
                     relay_mod,
                     target=self.target,
                     target_host=self.target_host,
@@ -138,17 +166,18 @@ class TuningTask(multiprocessing.Process):
     def _evaluate(self, inputs, remote, rlib):
         # Create graph executor
         logger.info("Start evaluation")
+        print(remote)
         dev = remote.cpu()
         module = tvm.contrib.graph_executor.GraphModule(rlib["default"](dev))
         logger.info("Set inputs")
         for name, val in inputs.items():
             logger.info("  %s", name)
-            data_tvm = tvm.nd.array(val.astype("float32"))
+            data_tvm = tvm.nd.array(val)
             module.set_input(name, data_tvm)
 
         # Evaluate
         logger.info("Evaluate inference time cost...")
-        ftimer = module.module.time_evaluator("run", dev, repeat=3, min_repeat_ms=500)
+        ftimer = module.module.time_evaluator("run", dev, repeat=10, min_repeat_ms=500)
         prof_res = np.array(ftimer().results) * 1e3  # convert to millisecond
         logger.info(
             "Mean inference time (std dev): %.2f ms (%.2f ms)"
@@ -163,6 +192,7 @@ class TuningTask(multiprocessing.Process):
 class ExperimentScheduler:
     def __init__(self, config) -> None:
         self.config = config
+        self.tasks = []
         self.worklist = []
         self.n_jobs = config.get("n_jobs", 4)
         self.running_tasks = {}
@@ -191,13 +221,15 @@ class ExperimentScheduler:
                     board_config,
                     network_config,
                     self.tracker_port,
-                    tune=True,
+                    tune=self.config.tune,
                 )
                 self.worklist.append(task)
+                self.tasks.append(task)
 
         with tqdm(total=len(self.worklist)) as pbar:
             with logging_redirect_tqdm():
                 while self.worklist or self.running_tasks:
+                    self.report()
                     for board_name, server in list(self.server.items()):
                         if not server.is_alive():
                             logger.info(
@@ -211,7 +243,8 @@ class ExperimentScheduler:
                                     "Server process for %s has been terminated during tuning restarting",
                                     board_name,
                                 )
-                                self._start_server(board_name)
+                                task = self.runing_tasks[board_name]
+                                self._start_server(task.board_config)
 
                     board_summary = self.tracker_conn.summary()
 
@@ -221,7 +254,7 @@ class ExperimentScheduler:
                         for idx, task in list(enumerate(self.worklist)):
                             board_name = task.board_config.name
                             if not (board_name in self.server):
-                                self._start_server(board_name)
+                                self._start_server(task.board_config)
                             else:
                                 queue_summary = board_summary["queue_info"]
                                 if (
@@ -252,16 +285,24 @@ class ExperimentScheduler:
 
                     time.sleep(1.0)
 
-    def _start_server(self, board_name):
+    def _start_server(self, board_config):
+        board_name = board_config.name
         logger.info("Starting server for %s", board_name)
         board = self._automate_context.board(board_name)
         status = board.trylock()
         if status:
-            server_process = measure.ServerProcess(
-                board_name, str(board.rundir / "tvm/python"), self.tracker_port
-            )
+            server_process = measure.ServerProcess(board_config, self.tracker_port)
             self.server[board_name] = server_process
             server_process.start()
+
+    def report(self):
+        import tabulate
+
+        results = []
+        for task in self.tasks:
+            results.append(task.results)
+
+        logging.info("Results:\n" + tabulate.tabulate(results))
 
     def finish(self):
         if self.tracker is not None:

@@ -1,0 +1,2 @@
+tinyml_kws01:
+  file: ${models_dir:}/tiny_ml_perf/keyword_spotting/kws_ref_model.tflite

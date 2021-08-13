@@ -1,0 +1,2 @@
+tinyml_vww01:
+  file: ${models_dir:}/tiny_ml_perf/visual_wake_words/vww_96_int8.tflite

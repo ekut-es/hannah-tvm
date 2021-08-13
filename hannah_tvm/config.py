@@ -40,13 +40,13 @@ class MicroConfig:
 class Board:
     name: Any = MISSING
     target: Any = "llvm"
-    target_host: Any = "llvm"
+    target_host: Any = ""
     tracker: Optional[str] = None
     opencl: bool = True
     cuda: bool = True
     rebuild_runtime: bool = False
     hardware_params: HardwareParams = HardwareParams()
-    micro: Optional[MicroConfig] = None
+    micro: Any = None
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)
 
@@ -58,24 +58,10 @@ class Model:
 
 
 @dataclass
-class QConfig:
-    engine: str = MISSING
-    calibrate_mode: str = "global_scale"
-    global_scale: float = 8.0
-    weight_scale: str = "max"
-    skip_dense_layer: bool = False
-    skip_conv_layers: Any = field(default_factory=list)
-    do_simulation: bool = False
-    round_for_shift: bool = False
-    rounding: str = "UPWARD"
-    partition_conversions: str = "enabled"
-
-
-@dataclass
 class Config:
     board: Dict[str, Board] = MISSING
     model: Dict[str, Model] = MISSING
-    qconfig: Optional[QConfig] = None
+    tune: bool = True
 
 
 cs = ConfigStore.instance()
@@ -83,11 +69,14 @@ cs.store(name="base_config", node=Config)
 
 
 # Custom OmegaConf resolvers
-
-
-OmegaConf.register_resolver(
+OmegaConf.register_new_resolver(
     "models_dir",
-    lambda: os.path.join(os.path.dirname(os.path.abspath(__file__)), "models"),
+    lambda: os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models"),
+)
+
+OmegaConf.register_new_resolver(
+    "template_dir",
+    lambda: os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "template"),
 )
 
 
@@ -97,4 +86,4 @@ def find_tvm_root():
     return os.path.abspath(os.path.join(os.path.dirname(origin), "..", ".."))
 
 
-OmegaConf.register_resolver("tvm_root", find_tvm_root)
+OmegaConf.register_new_resolver("tvm_root", find_tvm_root)

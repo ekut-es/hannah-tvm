@@ -33,6 +33,7 @@ def _load_onnx(model_path, input_shapes):
     onnx.checker.check_model(onnx_model)
     inferred_model = onnx.shape_inference.infer_shapes(onnx_model)
     # inferred_model = onnx.version_converter.convert_version(inferred_model, 11)
+
     graph = inferred_model.graph
 
     input = graph.input[0]
@@ -111,8 +112,8 @@ def _load_tflite(model_path, input_shapes):
     )
 
     inputs = {}
-    for name, shape in shapes.items():
-        inputs[name] = np.random.uniform(size=shape)
+    for tensor_info in modelInfo.inTensors:
+        inputs[t.name] = np.random.uniform(size=t.shape).astype(t.ty)
 
     return mod, params, inputs
 
