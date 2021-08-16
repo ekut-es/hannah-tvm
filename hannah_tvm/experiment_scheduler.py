@@ -115,7 +115,7 @@ class TuningTask(multiprocessing.Process):
                 tasks, task_weights, callbacks=[measure.PrintPBarInfo(self.results)]
             )
             tune_option = auto_scheduler.TuningOptions(
-                num_measure_trials=len(tasks) * 2,
+                num_measure_trials=len(tasks) * 512,
                 builder="local",
                 runner=runner,
                 measure_callbacks=[auto_scheduler.RecordToFile(self.log_file)],

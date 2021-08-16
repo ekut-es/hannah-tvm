@@ -36,15 +36,32 @@ def _load_onnx(model_path, input_shapes):
 
     graph = inferred_model.graph
 
+    type_map = {
+        onnx.TensorProto.FLOAT: "float32",
+        onnx.TensorProto.INT32: "int32",
+        onnx.TensorProto.INT16: "int16",
+        onnx.TensorProto.INT8: "int8",
+        onnx.TensorProto.UINT32: "uint32",
+        onnx.TensorProto.UINT16: "uint16",
+        onnx.TensorProto.UINT8: "uint8",
+    }
+
+    shape_dict = {}
+    dtype_dict = {}
+
     input = graph.input[0]
-    tensor_type = input.type.tensor_type
-    input_shape = [d.dim_value for d in tensor_type.shape.dim]
+    for input in graph.input:
+        tensor_type = input.type.tensor_type
+        input_shape = [d.dim_value for d in tensor_type.shape.dim]
 
-    shape_dict = {input.name: tuple(input_shape)}
+        shape_dict[input.name] = tuple(input_shape)
+        dtype_dict[input.name] = type_map[input.type.tensor_type.elem_type]
 
-    mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
+    mod, params = relay.frontend.from_onnx(onnx_model, shape_dict, dtype_dict)
 
-    input_data = {input.name: np.random.uniform(size=input_shape)}
+    input_data = {}
+    for name, shape in shape_dict.items():
+        input_data[name] = np.random.uniform(size=shape).astype(dtype_dict[name])
 
     return mod, params, input_data
 
