@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "cstring": "cpp",
+        "iostream": "cpp",
+        "iterator": "cpp",
+        "*.ipp": "cpp"
+    }
+}
