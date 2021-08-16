@@ -6,11 +6,8 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 import torch.fx
-from tvm.relay import op
 
-from . import qat
-from . import qconfig
-from . import pooling
+from hannah.models.factory import qat, qconfig, pooling
 
 try:
     import tvm.relay as relay
@@ -19,7 +16,7 @@ except ModuleNotFoundError:
     relay = None
     tvm = None
 
-logger = logging.getLogger("tracer")
+logger = logging.getLogger("__name__")
 
 
 @dataclass
