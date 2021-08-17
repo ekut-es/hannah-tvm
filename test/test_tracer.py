@@ -238,9 +238,6 @@ def test_tracer(dim, act, bw_w):
 
     run_test(cell, input_shape, act, input_bits, output_bits, "int8")
 
-    # print(params)
-    # print(lib.lib.get_source())
-
 
 class TestCellReduction(nn.Module):
     def __init__(self, dim=1, act=False, bw_w=8, bw_b=8, bw_f=8):

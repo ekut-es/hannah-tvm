@@ -79,7 +79,7 @@ def compile(config):
 
                 # Build and flash the project
                 generated_project.build()
-                generated_project.flash()
+                # generated_project.flash()
 
 
 @hydra.main(config_name="config", config_path="conf")

@@ -3,7 +3,6 @@ import logging
 import torch
 import tvm
 import tvm.relay
-from tvm.contrib import graph_executor
 
 from hannah.callbacks.backends import InferenceBackendBase
 from .tracer import QuantizationTracer, RelayConverter
@@ -15,11 +14,6 @@ class TVMBackend(InferenceBackendBase):
 
     def __init__(self, val_batches=1, test_batches=1, val_frequency=1):
         super().__init__(val_batches, test_batches, val_frequency)
-
-        if tvm is None:
-            raise Exception(
-                "No tvm installation found please make sure that hannah-tvm is installed"
-            )
 
         self.torch_model = None
         self.model = None
