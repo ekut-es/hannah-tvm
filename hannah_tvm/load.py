@@ -38,9 +38,11 @@ def _load_onnx(model_path, input_shapes):
 
     type_map = {
         onnx.TensorProto.FLOAT: "float32",
+        onnx.TensorProto.INT64: "int64",
         onnx.TensorProto.INT32: "int32",
         onnx.TensorProto.INT16: "int16",
         onnx.TensorProto.INT8: "int8",
+        onnx.TensorProto.UINT64: "uint64",
         onnx.TensorProto.UINT32: "uint32",
         onnx.TensorProto.UINT16: "uint16",
         onnx.TensorProto.UINT8: "uint8",
@@ -49,14 +51,18 @@ def _load_onnx(model_path, input_shapes):
     shape_dict = {}
     dtype_dict = {}
 
-    input = graph.input[0]
+    initializer_names = [init.name for init in graph.initializer]
     for input in graph.input:
+        if input.name in initializer_names:
+            continue
+
         tensor_type = input.type.tensor_type
         input_shape = [d.dim_value for d in tensor_type.shape.dim]
 
         shape_dict[input.name] = tuple(input_shape)
         dtype_dict[input.name] = type_map[input.type.tensor_type.elem_type]
 
+    print("loading onnx")
     mod, params = relay.frontend.from_onnx(onnx_model, shape_dict, dtype_dict)
 
     input_data = {}
