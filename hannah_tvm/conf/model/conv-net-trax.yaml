@@ -1,2 +1,2 @@
 conv-net-trax:
-  file: models/conv-net-trax.onnx
+  file: ${models_dir:}/conv-net-trax.onnx

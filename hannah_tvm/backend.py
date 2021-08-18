@@ -12,13 +12,14 @@ from .passes.legalize import LegalizeQuantizedTypes
 class TVMBackend(InferenceBackendBase):
     """Inference backend for tvm"""
 
-    def __init__(self, val_batches=1, test_batches=1, val_frequency=1):
+    def __init__(self, val_batches=1, test_batches=1, val_frequency=1, board=None):
         super().__init__(val_batches, test_batches, val_frequency)
 
         self.torch_model = None
         self.model = None
         self.params = None
         self.lib = None
+        self.board_config = board
 
     def prepare(self, model):
         logging.info("Preparing model for target")

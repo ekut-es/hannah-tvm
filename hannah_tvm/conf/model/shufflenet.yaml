@@ -1,2 +1,2 @@
 shufflenet:
-  file: models/shufflenet-3.onnx
+  file:  ${models_dir:}/shufflenet-3.onnx

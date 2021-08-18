@@ -1,2 +1,2 @@
 yolov4:
-  file: models/yolov4.onnx
+  file:  ${models_dir:}/yolov4.onnx

@@ -1,0 +1,8 @@
+defaults:
+  - /board@board: n1sdp
+
+
+_target_: hannah_tvm.backend.TVMBackend
+val_batches: 10
+test_batches: 10
+val_frequency: 10

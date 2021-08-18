@@ -1,2 +1,2 @@
 densenet-121:
-  file: models/densenet-9.onnx
+  file: ${models_dir:}/densenet-9.onnx

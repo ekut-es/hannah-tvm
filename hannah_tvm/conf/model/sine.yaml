@@ -1,2 +1,2 @@
 sine:
-  file: models/sine_model.tflite
+  file:  ${models_dir:}/sine_model.tflite

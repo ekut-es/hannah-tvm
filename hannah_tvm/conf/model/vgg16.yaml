@@ -1,2 +1,2 @@
 vgg16:
-  file: models/vgg16-7.onnx
+  file:  ${models_dir:}/vgg16-7.onnx

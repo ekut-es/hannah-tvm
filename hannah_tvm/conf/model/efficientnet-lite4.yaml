@@ -1,2 +1,2 @@
 efficientnet-lite4:
-  file: models/efficientnet-lite4-11.onnx
+  file:  ${models_dir:}/efficientnet-lite4-11.onnx

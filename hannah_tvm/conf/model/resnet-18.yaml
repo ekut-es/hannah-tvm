@@ -1,2 +1,2 @@
 resnet-18:
-  file: models/resnet18-v2-7.onnx
+  file:  ${models_dir:}/resnet18-v2-7.onnx
