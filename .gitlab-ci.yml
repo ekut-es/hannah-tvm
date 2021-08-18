@@ -26,17 +26,17 @@ sca:
   tags:
     - docker
 
-build_micro:
-  stage: build
-  image: ubuntu:latest
-
-  script:
-    - set -e
-    - poetry run ./scripts/install_micro.sh
-    - poetry run ./scripts/install_zephyr.sh
-  tags:
-    - docker
-  interruptible: true
+#build_micro:
+#  stage: build
+#  image: ubuntu:latest
+#
+#  script:
+#    - set -e
+#    - poetry run ./scripts/install_micro.sh
+#    - poetry run ./scripts/install_zephyr.sh
+#  tags:
+#    - docker
+#  interruptible: true
 
 build_full:
   stage: build
@@ -49,12 +49,12 @@ build_full:
   interruptible: true
 
 
-build_micro_pulp:
-  stage: build
-  image: ubuntu:latest
-  script:
-    - set -e
-    - poetry run ./scripts/install_micro_pulp.sh
-  tags:
-    - docker
-  interruptible: true
+#build_micro_pulp:
+#  stage: build
+#  image: ubuntu:latest
+#  script:
+#    - set -e
+#    - poetry run ./scripts/install_micro_pulp.sh
+#  tags:
+#    - docker
+#  interruptible: true
