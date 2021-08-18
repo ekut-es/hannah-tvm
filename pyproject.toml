@@ -4,6 +4,10 @@ version = "0.1.0"
 description = ""
 authors = ["Christoph Gerum <christoph.gerum@uni-tuebingen.de>"]
 license = "MIT"
+packages = [
+    { include = "hydra_plugins" },
+]
+
 
 [tool.poetry.dependencies]
 python = "^3.7.1"
@@ -27,14 +31,10 @@ pyserial = "^3.5"
 usb = "^0.0.83-alpha.0"
 west = "^0.11.0"
 automate = {path = "external/automate", extras = ["postgres"], develop=true}
-tvm = {path = "external/tvm/python", develop=true}
-
-
 
 [tool.poetry.scripts]
 hannah-tvm-compile = 'hannah_tvm.compile:main'
 hannah-tvm-tune = 'hannah_tvm.tune:main'
-hannah-tvm-bench = 'hannah_tvm.bench:main'
 hannah-tvm-memory = 'hannah_tvm.analysis:memory_main'
 
 [tool.poetry.dev-dependencies]
