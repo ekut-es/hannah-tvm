@@ -1,24 +1,30 @@
 import logging
+from hannah_tvm.experiment_scheduler import BackendExperimentScheduler
 
 import torch
 import tvm
+from tvm.auto_scheduler.measure import prepare_input_map
 import tvm.relay
+import numpy as np
 
 from hannah.callbacks.backends import InferenceBackendBase
 from .tracer import QuantizationTracer, RelayConverter
 from .passes.legalize import LegalizeQuantizedTypes
+from . import pass_instrument
 
 
 class TVMBackend(InferenceBackendBase):
     """Inference backend for tvm"""
 
-    def __init__(self, val_batches=1, test_batches=1, val_frequency=1, board=None):
+    def __init__(self, val_batches=1, test_batches=1, val_frequency=1, board=None, print_after=[], time_passes=False):
         super().__init__(val_batches, test_batches, val_frequency)
 
         self.torch_model = None
         self.model = None
         self.params = None
         self.lib = None
+        self.print_after = print_after
+        self.time_passes = time_passes
         self.board_config = board
 
     def prepare(self, model):
@@ -30,24 +36,41 @@ class TVMBackend(InferenceBackendBase):
         tracer = QuantizationTracer()
 
         model.cpu()
-
         traced_graph = tracer.trace(model.model)
         converter = RelayConverter(torch.fx.GraphModule(model.model, traced_graph))
         mod, params = converter.run(model.example_feature_array)
         mod = tvm.relay.transform.InferType()(mod)
-        mod = LegalizeQuantizedTypes()(mod)
 
-        target = "llvm"
-        with tvm.transform.PassContext(
-            opt_level=3, config={"tir.disable_vectorize": True}
-        ):
-            lib = tvm.relay.build(mod, target=target, params=params)
+        scheduler = BackendExperimentScheduler({'board': self.board_config}, mod, params, {'x': model.example_feature_array.detach().numpy().astype(np.int8)})
+        results = scheduler.run()
 
-        self.model = mod
-        self.params = params
-        self.lib = lib
+        return results
 
-        model.to(device)
+        # target = "llvm"
+        # instruments = []
+        # timing_instrument = None
+
+        # if self.time_passes:
+        #     timing_instrument = tvm.ir.instrument.PassTimingInstrument()
+        #     instruments.append(timing_instrument)
+
+        # if self.print_after:
+        #     instruments.append(pass_instrument.PrintIR(self.print_after))
+
+        # with tvm.transform.PassContext(
+        #     opt_level=3, config={"tir.disable_vectorize": True}, instruments=instruments 
+        # ):
+        #     mod = LegalizeQuantizedTypes()(mod)
+        #     lib = tvm.relay.build(mod, target=target, params=params)
+            
+        #     if timing_instrument:
+        #         logging.info("Pass profiles:\n%s", timing_instrument.render())
+
+        # self.model = mod
+        # self.params = params
+        # self.lib = lib
+
+        # model.to(device)
 
     def run_batch(self, inputs=None):
         if inputs is None:

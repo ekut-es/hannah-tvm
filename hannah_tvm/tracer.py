@@ -555,7 +555,7 @@ class RelayConverter(torch.fx.Interpreter):
         self.tensor_info[node.name] = output_metadata
 
     def _handle_module(self, node, result):
-        module = self.modules[node.target]
+        module = self.modules[node.target] #TODO use self.fetch_attr
         if type(module) in self.module_map:
             self.module_map[type(module)](node, module, result)
         else:

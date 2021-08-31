@@ -4,3 +4,11 @@ n1sdp:
   target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
   opencl: false
   cuda: false
+  rebuild_runtime: false
+
+  tracker: null
+  hardware_params: null
+  micro: null
+  setup: []
+  teardown: []
+

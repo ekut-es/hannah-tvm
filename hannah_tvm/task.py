@@ -11,6 +11,9 @@ import tvm.rpc
 import tvm.rpc.tracker
 import numpy as np
 
+from dataclasses import dataclass
+from typing import Any
+
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -23,6 +26,12 @@ from . import load
 
 logger = logging.getLogger(__name__)
 manager = multiprocessing.Manager()
+
+@dataclass
+class MemoryModelConfig:
+    mod: Any
+    params: Any
+    inputs: Any
 
 
 class TuningTask(multiprocessing.Process):
@@ -52,7 +61,10 @@ class TuningTask(multiprocessing.Process):
     def run(self):
         try:
             self.results["status"] = "running"
-            relay_mod, params, inputs = load.load_model(self.model_config)
+            if isinstance(self.model_config, MemoryModelConfig):
+                relay_mod, params, inputs = self.model_config.mod, self.model_config.params, self.model_config.inputs
+            else:
+                relay_mod, params, inputs = load.load_model(self.model_config)
 
             if str(self.target.kind) == "cuda":
                 if "arch" in self.target.attrs:
@@ -111,14 +123,14 @@ class TuningTask(multiprocessing.Process):
 
             logger.info("Begin tuning...")
             tuner = auto_scheduler.TaskScheduler(
-                tasks, task_weights, callbacks=[measure.PrintPBarInfo(self.results)]
+                tasks, task_weights, # callbacks=[measure.PrintPBarInfo(self.results)]
             )
             tune_option = auto_scheduler.TuningOptions(
-                num_measure_trials=len(tasks) * 1024,
+                num_measure_trials=len(tasks) * 10,
                 builder="local",
                 runner=runner,
                 measure_callbacks=[auto_scheduler.RecordToFile(self.log_file)],
-                verbose=0,
+                verbose=1,
             )
 
             tuner.tune(tune_option)
@@ -182,6 +194,9 @@ class TuningTask(multiprocessing.Process):
             "Mean inference time (std dev): %.2f ms (%.2f ms)"
             % (np.mean(prof_res), np.std(prof_res))
         )
+
+        self.results["latency"] = float(np.mean(prof_res))
+        self.results["latency_std"] = float(np.std(prof_res))
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"

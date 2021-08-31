@@ -19,7 +19,7 @@ from automate import AutomateContext, AutomateConfig
 from . import config
 from . import measure
 from . import load
-from .task import TuningTask
+from .task import MemoryModelConfig, TuningTask
 
 logger = logging.getLogger(__name__)
 
@@ -47,18 +47,7 @@ class ExperimentSchedulerBase:
         self.server = {}
 
     def _extract_tasks(self):
-        for board_name, board_config in self.config.board.items():
-            for model_name, network_config in self.config.model.items():
-                task = TuningTask(
-                    board_name,
-                    model_name,
-                    board_config,
-                    network_config,
-                    self.tracker_port,
-                    tune=self.config.tune,
-                )
-                self.worklist.append(task)
-                self.tasks.append(task)
+        pass
 
     def run(self):
         self._extract_tasks()
@@ -101,7 +90,7 @@ class ExperimentSchedulerBase:
                                     if board_name not in self.running_tasks:
                                         self.running_tasks[board_name] = task
                                         del self.worklist[idx]
-                                        task.start()
+                                        task.run()
                                         break
 
                     for board_name, task in list(self.running_tasks.items()):
@@ -121,6 +110,11 @@ class ExperimentSchedulerBase:
                                 board.unlock()
 
                     time.sleep(1.0)
+        
+        results = []
+        for task in self.tasks:
+            results.append(dict(task.results))
+        return results
 
     def _start_server(self, board_config):
         board_name = board_config.name
@@ -166,3 +160,21 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
                 )
                 self.worklist.append(task)
                 self.tasks.append(task)
+
+
+class BackendExperimentScheduler(ExperimentSchedulerBase):
+    def __init__(self, config, model, params, inputs):
+        super().__init__(config)
+
+
+        self.model = model
+        self.params = params
+        self.inputs = inputs
+
+
+    def _extract_tasks(self):
+        for board_name, board_config in self.config["board"].items():
+            task = TuningTask(board_name, "nas_model", board_config, MemoryModelConfig(self.model, self.params, self.inputs), self.tracker_port, tune=False)
+
+            self.worklist.append(task)
+            self.tasks.append(task)
