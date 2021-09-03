@@ -40,8 +40,9 @@ class TVMBackend(InferenceBackendBase):
         converter = RelayConverter(torch.fx.GraphModule(model.model, traced_graph))
         mod, params = converter.run(model.example_feature_array)
         mod = tvm.relay.transform.InferType()(mod)
+        mod = LegalizeQuantizedTypes()(mod)
 
-        scheduler = BackendExperimentScheduler({'board': self.board_config}, mod, params, {'x': model.example_feature_array.detach().numpy().astype(np.int8)})
+        scheduler = BackendExperimentScheduler({'board': self.board_config, 'n_jobs': 0}, mod, params, {'x': model.example_feature_array.detach().numpy().astype(np.int8)})
         results = scheduler.run()
 
         return results

@@ -16,8 +16,6 @@ from . import config
 from . import measure
 from . import load
 
-# from .compiler import Compiler_Ext, get_compiler_options
-
 logger = logging.getLogger("hannah-tvm-compile")
 
 
@@ -79,7 +77,7 @@ def compile(config):
 
                 # Build and flash the project
                 generated_project.build()
-                # generated_project.flash()
+                generated_project.flash()
 
 
 @hydra.main(config_name="config", config_path="conf")

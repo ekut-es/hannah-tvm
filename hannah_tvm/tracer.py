@@ -119,10 +119,8 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
         )
 
     def visit_call(self, call):
-        # print(call.op)
         new_args = [self.visit(arg) for arg in call.args]
-        # print(new_args)
-        # breakpoint()
+        
         new_attrs = call.attrs
         new_fn = self.visit(call.op)
         new_call = tvm.relay.Call(
@@ -159,7 +157,6 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
             new_attrs = dict(call.attrs)
             new_attrs["dtype"] = self.dtype_map[out_dtype]
             new_call = tvm.relay.cast(*new_args, **new_attrs)
-        # print(new_call)
 
         return new_call
 
@@ -257,10 +254,10 @@ class RelayConverter(torch.fx.Interpreter):
         if use_rescale:
             output = tvm.relay.qnn.op.requantize(
                 output,
-                tvm.relay.const(input_scale),
-                tvm.relay.const(0),
-                tvm.relay.const(output_scale),
-                tvm.relay.const(0),
+                tvm.relay.const(input_scale, dtype='float32'),
+                tvm.relay.const(0, dtype='int32'),
+                tvm.relay.const(output_scale, dtype='float32'),
+                tvm.relay.const(0, dtype='int32'),
                 axis=axis,
                 rounding=rounding,
                 out_dtype=output_dtype,
@@ -562,7 +559,6 @@ class RelayConverter(torch.fx.Interpreter):
             raise Exception(f"Support for module: {module} is not supported")
 
     def _handle_placeholder(self, node, result):
-        print("handle_placeholder", self.input_scale)
         var = relay.var(
             node.name, relay.TensorType(result.shape, dtype=self.input_dtype)
         )
@@ -582,7 +578,6 @@ class RelayConverter(torch.fx.Interpreter):
     def _handle_function(self, node, result):
         target = node.target
 
-        print(node, target.__name__)
         if target.__name__ == "add":
             inputs = list(node.all_input_nodes)
             assert len(inputs) == 2
@@ -645,8 +640,6 @@ class RelayConverter(torch.fx.Interpreter):
 
     def run_node(self, node):
         result = super().run_node(node)
-        print("node:", node)
-        # print(result)
 
         if node.op == "call_module":
             result_metadata = self._handle_module(node, result)

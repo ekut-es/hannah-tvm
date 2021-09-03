@@ -31,6 +31,7 @@ class ExperimentSchedulerBase:
         self.n_jobs = config.get("n_jobs", 4)
         self.running_tasks = {}
 
+
         logger.info("Starting experiment tracker")
         host = "0.0.0.0"
         self.tracker = tvm.rpc.tracker.Tracker(
@@ -55,7 +56,6 @@ class ExperimentSchedulerBase:
         with tqdm(total=len(self.worklist)) as pbar:
             with logging_redirect_tqdm():
                 while self.worklist or self.running_tasks:
-                    self.report()
                     for board_name, server in list(self.server.items()):
                         if not server.is_alive():
                             logger.info(
@@ -69,12 +69,12 @@ class ExperimentSchedulerBase:
                                     "Server process for %s has been terminated during tuning restarting",
                                     board_name,
                                 )
-                                task = self.runing_tasks[board_name]
+                                task = self.running_tasks[board_name]
                                 self._start_server(task.board_config)
 
                     board_summary = self.tracker_conn.summary()
 
-                    if len(self.running_tasks) >= self.n_jobs:
+                    if len(self.running_tasks) >= self.n_jobs and self.n_jobs != 0:
                         pass
                     elif self.worklist:
                         for idx, task in list(enumerate(self.worklist)):
@@ -90,7 +90,10 @@ class ExperimentSchedulerBase:
                                     if board_name not in self.running_tasks:
                                         self.running_tasks[board_name] = task
                                         del self.worklist[idx]
-                                        task.run()
+                                        if self.n_jobs > 0:
+                                            task.start()
+                                        else:
+                                            task.run()
                                         break
 
                     for board_name, task in list(self.running_tasks.items()):
@@ -111,6 +114,8 @@ class ExperimentSchedulerBase:
 
                     time.sleep(1.0)
         
+        self.report()
+
         results = []
         for task in self.tasks:
             results.append(dict(task.results))
@@ -166,7 +171,6 @@ class BackendExperimentScheduler(ExperimentSchedulerBase):
     def __init__(self, config, model, params, inputs):
         super().__init__(config)
 
-
         self.model = model
         self.params = params
         self.inputs = inputs
@@ -174,7 +178,7 @@ class BackendExperimentScheduler(ExperimentSchedulerBase):
 
     def _extract_tasks(self):
         for board_name, board_config in self.config["board"].items():
-            task = TuningTask(board_name, "nas_model", board_config, MemoryModelConfig(self.model, self.params, self.inputs), self.tracker_port, tune=False)
+            task = TuningTask(board_name, "nas_model", board_config, MemoryModelConfig(self.model, self.params, self.inputs), self.tracker_port, tune=True)
 
             self.worklist.append(task)
             self.tasks.append(task)

@@ -30,7 +30,9 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
 
     def visit_constant(self, const):
         if const.data.dtype in self.dtype_map:
-            return const.astype(self.dtype_map[const.data.dtype])
+            new_dtype = self.dtype_map[const.data.dtype]
+            if const.data.dtype != new_dtype:
+                return const.astype(new_dtype)
         return const
 
     def visit_function(self, fn):
@@ -44,13 +46,13 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
 
             # See if we want to replace dtype.
             if dtype in self.dtype_map:
-                dtype = self.dtype_map[dtype]
+                new_dtype = self.dtype_map[dtype]
             else:
-                dtype = var_type.dtype
+                new_dtype = var_type.dtype
 
             # Generate new variable.
             new_param = tvm.relay.expr.var(
-                param.name_hint, shape=var_type.shape, dtype=dtype
+                param.name_hint, shape=var_type.shape, dtype=new_dtype
             )
 
             new_params.append(new_param)
@@ -71,10 +73,7 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
         )
 
     def visit_call(self, call):
-        # print(call.op)
         new_args = [self.visit(arg) for arg in call.args]
-        # print(new_args)
-        # breakpoint()
         new_attrs = call.attrs
         new_fn = self.visit(call.op)
         new_call = tvm.relay.Call(

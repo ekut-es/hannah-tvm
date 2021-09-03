@@ -45,7 +45,7 @@ class Board:
     opencl: bool = True
     cuda: bool = True
     rebuild_runtime: bool = False
-    hardware_params: HardwareParams = HardwareParams()
+    hardware_params: Optional[HardwareParams] = None
     micro: Any = None
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)
@@ -87,3 +87,9 @@ def find_tvm_root():
 
 
 OmegaConf.register_new_resolver("tvm_root", find_tvm_root)
+
+
+OmegaConf.register_new_resolver(
+    "db_dir",
+    lambda: os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database"),
+)

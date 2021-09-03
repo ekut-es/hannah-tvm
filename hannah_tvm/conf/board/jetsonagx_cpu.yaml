@@ -1,4 +1,4 @@
-jetsonagx:
+jetsonagx_cpu:
   name: jetsonagx
   target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
   target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"

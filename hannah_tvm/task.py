@@ -13,6 +13,7 @@ import numpy as np
 
 from dataclasses import dataclass
 from typing import Any
+from pathlib import Path
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -55,6 +56,8 @@ class TuningTask(multiprocessing.Process):
         self.results["status"] = "created"
         self.results["error"] = None
 
+        self.database_file = Path(__file__).parent.resolve() / ".." / "database" / board_key / "database.json"
+  
         name = f"tuning-task-{board_key}-{model_key}"
         super().__init__(name=name)
 
@@ -111,29 +114,41 @@ class TuningTask(multiprocessing.Process):
                 hardware_params=hardware_params,
             )
 
-            for idx, task in enumerate(tasks):
-                logger.info(
-                    "========== Task %d  (workload key: %s) =========="
-                    % (idx, task.workload_key)
-                )
-
             runner = auto_scheduler.RPCRunner(
                 key=self.board_config.name, host="localhost", port=self.tracker_port
             )
 
+
+            database_file = str(self.database_file) if self.database_file.exists() else None
+            logger.info("Loading database %s", str(database_file))
             logger.info("Begin tuning...")
             tuner = auto_scheduler.TaskScheduler(
-                tasks, task_weights, # callbacks=[measure.PrintPBarInfo(self.results)]
+                tasks, 
+                task_weights, 
+                load_log_file=database_file
             )
             tune_option = auto_scheduler.TuningOptions(
-                num_measure_trials=len(tasks) * 10,
+                num_measure_trials=len(tasks) * 1024,
                 builder="local",
                 runner=runner,
                 measure_callbacks=[auto_scheduler.RecordToFile(self.log_file)],
                 verbose=1,
             )
 
-            tuner.tune(tune_option)
+            tuner.tune(tune_option, per_task_early_stopping=64, adapative_training=True)
+
+            mode = "a+"
+            if not self.database_file.exists():
+                self.database_file.parent.mkdir(exist_ok=True, parents=True)
+                mode = "w"
+
+            if Path(self.log_file).exists():
+                logger.info("Saving database: %s", str(self.database_file))
+                with self.database_file.open(mode) as db:
+                    with Path(self.log_file).open("r") as log:
+                        db.write(log.read())
+
+            
 
     def _build_and_upload(self, relay_mod, params):
         logger.info("Compile...")
@@ -177,8 +192,10 @@ class TuningTask(multiprocessing.Process):
     def _evaluate(self, inputs, remote, rlib):
         # Create graph executor
         logger.info("Start evaluation")
-        print(remote)
-        dev = remote.cpu()
+        if str(self.target.kind) == "cuda":
+            dev = remote.cuda()
+        else:
+            dev = remote.cpu()
         module = tvm.contrib.graph_executor.GraphModule(rlib["default"](dev))
         logger.info("Set inputs")
         for name, val in inputs.items():
