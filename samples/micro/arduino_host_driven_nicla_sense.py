@@ -290,7 +290,8 @@ project_options = {
 import tvm.contrib.utils
 
 temp_dir = tvm.contrib.utils.tempdir()
-generated_project_dir = temp_dir / "generated-project"
+# generated_project_dir = temp_dir / "generated-project"
+generated_project_dir = pathlib.Path(".").absolute() / "generated-project"
 generated_project = tvm.micro.generate_project(
     template_project_path, module, generated_project_dir, project_options
 )
