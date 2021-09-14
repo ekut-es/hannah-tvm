@@ -192,8 +192,8 @@ mod, params = relay.frontend.from_tflite(
 #  board but a couple of wirings and configs differ, it's necessary to select the "stm32f746g_disco"
 #  board to generated the right firmware image.
 #
-TARGET = tvm.target.target.micro("stm32f4xx")
-BOARD = "stm32f429i_disc1"  # "nucleo_f746zg" # or "stm32f746g_disco#"
+TARGET = tvm.target.target.micro("nrf52832")
+BOARD = "nicla_sense"  # "nucleo_f746zg" # or "stm32f746g_disco#"
 #
 #  For some boards, Zephyr runs them emulated by default, using QEMU. For example, below is the
 #  TARGET and BOARD used to build a microTVM firmware for the mps2-an521 board. Since that board
@@ -214,16 +214,59 @@ with tvm.transform.PassContext(
 ):
     module = relay.build(mod, target=TARGET, params=params)
 
+c_source_module = module.get_lib().imported_modules[0]
+assert c_source_module.type_key == "c", "tutorial is broken"
+
+c_source_code = c_source_module.get_source()
+first_few_lines = c_source_code.split("\n")[:10]
+assert any(
+    l.startswith("TVM_DLL int32_t tvmgen_default_") for l in first_few_lines
+), f"tutorial is broken: {first_few_lines!r}"
+print("\n".join(first_few_lines))
+
+
+# Compiling the generated code
+# ----------------------------
+#
+# Now we need to incorporate the generated C code into a project that allows us to run inference on the
+# device. The simplest way to do this is to integrate it yourself, using microTVM's standard output format
+# (:doc:`Model Library Format` </dev/model_library_format>`). This is a tarball with a standard layout:
+
+# Get a temporary path where we can store the tarball (since this is running as a tutorial).
+import tempfile
+
+fd, model_library_format_tar_path = tempfile.mkstemp()
+os.close(fd)
+os.unlink(model_library_format_tar_path)
+tvm.micro.export_model_library_format(module, model_library_format_tar_path)
+
+import tarfile
+
+with tarfile.open(model_library_format_tar_path, "r:*") as tar_f:
+    print("\n".join(f" - {m.name}" for m in tar_f.getmembers()))
+
+# Cleanup for tutorial:
+os.unlink(model_library_format_tar_path)
+
+
+# TVM also provides a standard way for embedded platforms to automatically generate a standalone
+# project, compile and flash it to a target, and communicate with it using the standard TVM RPC
+# protocol. The Model Library Format serves as the model input to this process. When embedded
+# platforms provide such an integration, they can be used directly by TVM for both host-driven
+# inference and autotuning . This integration is provided by the
+# `microTVM Project API` <https://github.com/apache/tvm-rfcs/blob/main/rfcs/0008-microtvm-project-api.md>_,
+#
+# Embedded platforms need to provide a Template Project containing a microTVM API Server (typically,
+# this lives in a file ``microtvm_api_server.py`` in the root directory). Let's use the example ``host``
+# project in this tutorial, which simulates the device using a POSIX subprocess and pipes:
 
 import subprocess
 import pathlib
+import tvm
 
-repo_root = pathlib.Path(
-    subprocess.check_output(
-        ["git", "rev-parse", "--show-toplevel"], encoding="utf-8"
-    ).strip()
-)
-# template_project_path = repo_root / "external" / "apps"/ "src" / "runtime" / "crt" / "host"
+repo_root = pathlib.Path(os.path.abspath(tvm.__file__)).parent / ".." / ".."
+
+# template_project_path = repo_root / "src" / "runtime" / "crt" / "host"
 # project_options = {}  # You can use options to provide platform-specific options through TVM.
 
 # Compiling for physical hardware (or an emulated board, like the mps_an521)
@@ -231,11 +274,17 @@ repo_root = pathlib.Path(
 #  For physical hardware, you can try out the Zephyr platform by using a different template project
 #  and options:
 #
+#     template_project_path = repo_root / "apps" / "microtvm" / "zephyr" / "template_project"
+#     project_options = {"project_type": "host_driven", zephyr_board": "nucleo_f746zg"}}
 
-template_project_path = (
-    repo_root / "external" / "tvm" / "apps" / "microtvm" / "zephyr" / "template_project"
-)
-project_options = {"project_type": "host_driven", "zephyr_board": BOARD}
+template_project_path = repo_root / "apps" / "microtvm" / "arduino" / "template_project"
+project_options = {
+    "project_type": "host_driven",
+    "arduino_board": BOARD,
+    "arduino_cli_cmd": "arduino-cli",
+    "verbose": True,
+}
+
 
 # Create a temporary directory
 import tvm.contrib.utils
@@ -247,7 +296,9 @@ generated_project = tvm.micro.generate_project(
 )
 
 # Build and flash the project
+print("Build ...")
 generated_project.build()
+print("Flash ...")
 generated_project.flash()
 
 
