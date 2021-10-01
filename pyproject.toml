@@ -31,6 +31,8 @@ pyserial = "^3.5"
 usb = "^0.0.83-alpha.0"
 west = "^0.11.0"
 automate = {path = "external/automate", extras = ["postgres"], develop=true}
+colorama = "^0.4.4"
+decorator = "^5.1.0"
 
 [tool.poetry.scripts]
 hannah-tvm-compile = 'hannah_tvm.compile:main'
