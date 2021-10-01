@@ -2,9 +2,12 @@
 
 if command -v nvcc;
 then
-    CXX_COMPILER=$(which g++-7)
-    C_COMPILER=$(which gcc-7)
-    USE_CUDA=ON
+    if command -v g++-7;
+    then
+        CXX_COMPILER=$(which g++-7)
+        C_COMPILER=$(which gcc-7)
+        USE_CUDA=ON
+    fi
 else
     CXX_COMPILER=g++
     USE_CUDA=OFF

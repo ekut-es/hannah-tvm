@@ -12,7 +12,7 @@ from omegaconf import OmegaConf
 from hydra.utils import instantiate
 
 try:
-    from hannah.models.factory.tracer import (
+    from hannah_tvm.tracer import (
         QuantizationTracer,
         RelayConverter,
         LegalizeQuantizedTypes,
@@ -39,8 +39,8 @@ except ImportError:
 @dataclass
 class Config:
     bw_b: int = 8
-    bw_f: int = 8
-    bw_w: int = 8
+    bw_f: int = 4
+    bw_w: int = 6
     power_of2: bool = False
     rounding_mode: str = "UPWARD"
 
@@ -145,7 +145,9 @@ def run_test(
     traced_graph = tracer.trace(cell)
 
     converter = RelayConverter(
-        torch.fx.GraphModule(cell, traced_graph), input_scale=1 / 2 ** (input_bits - 1)
+        torch.fx.GraphModule(cell, traced_graph), input_scale=1 / 2 ** (input_bits - 1),
+        accumulator_dtype='int20', 
+        input_dtype='int4'
     )
 
     input = torch.rand(input_shape)
@@ -478,4 +480,4 @@ def test_tracer_model():
 
 
 if __name__ == "__main__":
-    test_tracer_pooling(78)
+    test_tracer(1,20,4)

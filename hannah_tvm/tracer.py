@@ -198,6 +198,8 @@ class RelayConverter(torch.fx.Interpreter):
         self.input_dtype = input_dtype
         self.input_scale = input_scale
 
+        print("Accumulator dtype:", accumulator_dtype)
+
         if relay is None:
             raise Exception(
                 "TVM does not seem to be installed, please make sure that 'import tvm.relay works'"
@@ -461,6 +463,7 @@ class RelayConverter(torch.fx.Interpreter):
                 (quant_bias).detach().numpy().astype("byte")
             )
 
+        
         if quant_weight.dim() == 3:
             conv_out = tvm.relay.nn.conv1d(
                 data,
@@ -494,6 +497,7 @@ class RelayConverter(torch.fx.Interpreter):
                 f"Quantized weights of dimension {quant_weight.dim()} are not supported"
             )
 
+        print("conv_out:", conv_out)
         accumulator_scale = weight_scale * input_scale
 
         if bias is not None:
@@ -670,6 +674,5 @@ class RelayConverter(torch.fx.Interpreter):
         tvm_mod["main"] = function
 
         tvm_mod = tvm.relay.transform.InferType()(tvm_mod)
-        tvm_mod = LegalizeQuantizedTypes()(tvm_mod)
-
+        
         return tvm_mod, self.params

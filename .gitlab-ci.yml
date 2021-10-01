@@ -17,14 +17,14 @@ before_script:
   - poetry config experimental.new-installer false
   - poetry install
 
-sca:
-  stage: build
-  image: ubuntu:latest
-  script:
-    - set -e
-    - echo "$PWD"
-  tags:
-    - docker
+#sca:
+#  stage: build
+#  image: ubuntu:latest
+#  script:
+#    - set -e
+#    - echo "$PWD"
+#  tags:
+#    - docker
 
 #build_micro:
 #  stage: build

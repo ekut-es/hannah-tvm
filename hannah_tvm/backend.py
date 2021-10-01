@@ -42,10 +42,19 @@ class TVMBackend(InferenceBackendBase):
         mod = tvm.relay.transform.InferType()(mod)
         mod = LegalizeQuantizedTypes()(mod)
 
+        mod_txt = mod.astext()
+        with open("model.relay", "w") as f:
+            f.write(mod_txt)
+
+        params_bin = tvm.runtime.save_param_dict(params)
+        with open("params.bin", "wb") as f:
+            f.write(params_bin)
+
+
         scheduler = BackendExperimentScheduler({'board': self.board_config, 'n_jobs': 0}, mod, params, {'x': model.example_feature_array.detach().numpy().astype(np.int8)})
         results = scheduler.run()
 
-        return results
+        #return results
 
         # target = "llvm"
         # instruments = []
@@ -74,6 +83,7 @@ class TVMBackend(InferenceBackendBase):
         # model.to(device)
 
     def run_batch(self, inputs=None):
+        return None
         if inputs is None:
             logging.critical("Backend batch is empty")
             return None

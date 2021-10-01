@@ -178,7 +178,7 @@ class BackendExperimentScheduler(ExperimentSchedulerBase):
 
     def _extract_tasks(self):
         for board_name, board_config in self.config["board"].items():
-            task = TuningTask(board_name, "nas_model", board_config, MemoryModelConfig(self.model, self.params, self.inputs), self.tracker_port, tune=True)
+            task = TuningTask(board_name, "nas_model", board_config, MemoryModelConfig(self.model, self.params, self.inputs), self.tracker_port, tune=False)
 
             self.worklist.append(task)
             self.tasks.append(task)

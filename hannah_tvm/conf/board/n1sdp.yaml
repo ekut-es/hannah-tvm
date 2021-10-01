@@ -1,7 +1,7 @@
 n1sdp:
   name: n1sdp
-  target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
-  target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
+  target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mattr=v8.2a,+dotprod"
+  target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mattr=v8.2a,+dotprod"
   opencl: false
   cuda: false
   rebuild_runtime: false

@@ -9,6 +9,7 @@ import tvm.autotvm as autotvm
 import tvm.relay as relay
 import tvm.rpc
 import tvm.rpc.tracker
+import tvm.contrib.debugger.debug_runtime
 import numpy as np
 
 from dataclasses import dataclass
@@ -85,8 +86,8 @@ class TuningTask(multiprocessing.Process):
             final_time = time.time()
             self.results["tuning_duration"] = final_time - start_time
 
-            remote, rlib = self._build_and_upload(relay_mod, params)
-            self._evaluate(inputs, remote, rlib)
+            remote, rlib, lib = self._build_and_upload(relay_mod, params)
+            self._evaluate(inputs, remote, rlib, lib)
             self.results["status"] = "finished"
         except Exception as e:
             logger.critical(
@@ -119,7 +120,7 @@ class TuningTask(multiprocessing.Process):
             )
 
 
-            database_file = str(self.database_file) if self.database_file.exists() else None
+            database_file = None #database_file = str(self.database_file) if self.database_file.exists() else None
             logger.info("Loading database %s", str(database_file))
             logger.info("Begin tuning...")
             tuner = auto_scheduler.TaskScheduler(
@@ -187,9 +188,9 @@ class TuningTask(multiprocessing.Process):
 
         rlib = remote.load_module(filename)
         logger.info("Upload finished")
-        return remote, rlib
+        return remote, rlib, lib
 
-    def _evaluate(self, inputs, remote, rlib):
+    def _evaluate(self, inputs, remote, rlib, lib):
         # Create graph executor
         logger.info("Start evaluation")
         if str(self.target.kind) == "cuda":
@@ -199,11 +200,10 @@ class TuningTask(multiprocessing.Process):
         module = tvm.contrib.graph_executor.GraphModule(rlib["default"](dev))
         logger.info("Set inputs")
         for name, val in inputs.items():
-            logger.info("  %s", name)
             data_tvm = tvm.nd.array(val)
             module.set_input(name, data_tvm)
 
-        # Evaluate
+        # Evaluate on Graph Executor
         logger.info("Evaluate inference time cost...")
         ftimer = module.module.time_evaluator("run", dev, repeat=10, min_repeat_ms=500)
         prof_res = np.array(ftimer().results) * 1e3  # convert to millisecond
@@ -214,6 +214,17 @@ class TuningTask(multiprocessing.Process):
 
         self.results["latency"] = float(np.mean(prof_res))
         self.results["latency_std"] = float(np.std(prof_res))
+
+        # Use debug Executor to get per operator runtime
+        debug_module = tvm.contrib.debugger.debug_executor.GraphModuleDebug(rlib["debug_create"]("default", dev),
+                                                    [dev],
+                                                    lib.get_graph_json(),
+                                                    None,)
+        for name, val in inputs.items():
+            data_tvm = tvm.nd.array(val)
+            debug_module.set_input(name, data_tvm)
+        debug_module.run()
+
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"

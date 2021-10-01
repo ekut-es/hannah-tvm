@@ -60,9 +60,9 @@ class ServerProcess(multiprocessing.Process):
                     board_connection.run(setup)
 
                 logger.info(
-                    "forwarding remote port %d to local port %i", 9000, tracker_port
+                    "forwarding remote port %d to local port %i", tracker_port, tracker_port
                 )
-                with board_connection.forward_remote(9000, tracker_port):
+                with board_connection.forward_remote(tracker_port, tracker_port):
                     local_port = find_local_port(9091, 90199)
                     logger.info(
                         "forwarding local port %d to remote port %i",
@@ -72,7 +72,7 @@ class ServerProcess(multiprocessing.Process):
                     with board_connection.forward_local(local_port, local_port):
                         logger.info("Starting remote server")
                         promise = board_connection.run(
-                            f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port={local_port} --port-end={local_port+1} --tracker=localhost:9000",
+                            f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port={local_port} --port-end={local_port+1} --tracker=localhost:{tracker_port}",
                             env={"PYTHONPATH": str(python_path)},
                             shell=True,
                             warn=True,
