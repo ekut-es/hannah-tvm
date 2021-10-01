@@ -7,9 +7,14 @@ then
         CXX_COMPILER=$(which g++-7)
         C_COMPILER=$(which gcc-7)
         USE_CUDA=ON
+    else
+       CXX_COMPILER=g++
+       C_COMPILER=gcc
+       USE_CUDA=OFF 
     fi
 else
     CXX_COMPILER=g++
+    C_COMPILER=gcc
     USE_CUDA=OFF
 fi
 
