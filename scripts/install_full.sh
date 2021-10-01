@@ -18,15 +18,18 @@ else
     USE_CUDA=OFF
 fi
 
-pushd external/tvm
-#git apply ../../patches/tvm.patch
-popd
+
 
 echo "Installing tvm"
 mkdir -p external/tvm/build
-cp cmake/cuda_config.cmake external/tvm/build/config.cmake
+if $USE_CUDA == ON ;
+then 
+    cp cmake/cuda_config.cmake external/tvm/build/config.cmake
+else
+    cp cmake/nocuda_config.cmake external/tvm/build/config.cmake
+fi
 pushd external/tvm/build
-cmake --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DUSE_CUDA=$USE_CUDA
+cmake --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER 
 cmake --build .
 popd
 pip install -e external/tvm/python
