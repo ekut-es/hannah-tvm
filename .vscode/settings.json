@@ -4,5 +4,6 @@
         "iostream": "cpp",
         "iterator": "cpp",
         "*.ipp": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }
