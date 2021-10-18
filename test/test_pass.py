@@ -66,8 +66,6 @@ print(test_tree)
 for addr in test_tree.iterate():
     print(addr)
 
-sys.exit(0)
-
 class MemoryAnalyzer:
     def __init__(self, linesize=64):
         self.linesize = 64
