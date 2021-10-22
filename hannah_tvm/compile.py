@@ -7,6 +7,7 @@ import tarfile
 
 import hydra
 import tvm
+from tvm.micro import model_library_format
 import tvm.relay as relay
 import tvm.micro as micro
 import tvm.autotvm as autotvm
@@ -46,20 +47,42 @@ def compile(config):
                 build_cfg = {"tir.disable_vectorize": True}
 
             from . import pass_instrument
-            with tvm.transform.PassContext(opt_level=3, config=build_cfg, instruments=[pass_instrument.PrintIR("all")]):
+
+            with tvm.transform.PassContext(
+                opt_level=3,
+                config=build_cfg,
+                instruments=[pass_instrument.PrintIR("all")],
+            ):
                 module = relay.build(
                     relay_mod, target=target, target_host=target_host, params=params
                 )
+                if board.micro:
+                    target_aot = tvm.target.Target(
+                        board.target + " -link-params=1--executor=aot"
+                    )
+                    module_aot = relay.build(
+                        relay_mod,
+                        target=target_aot,
+                        target_host=target_aot,
+                        params=params,
+                    )
 
             if board.micro:
                 logger.info("Building micro target")
 
-                fd, model_library_format_tar_path = tempfile.mkstemp()
-                os.close(fd)
-                os.unlink(model_library_format_tar_path)
+                model_library_format_tar_path = Path("model_host_driven.tar")
+                model_library_format_aot_path = Path("model_aot.tar")
+                if model_library_format_tar_path.exists():
+                    os.unlink(model_library_format_tar_path)
+
                 tvm.micro.export_model_library_format(
                     module, model_library_format_tar_path
                 )
+
+                tvm.micro.export_model_library_format(
+                    module_aot, model_library_format_aot_path
+                )
+
                 with tarfile.open(model_library_format_tar_path, "r:*") as tar_f:
                     print("\n".join(f" - {m.name}" for m in tar_f.getmembers()))
 

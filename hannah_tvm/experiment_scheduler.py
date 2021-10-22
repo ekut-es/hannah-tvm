@@ -1,7 +1,6 @@
 import logging
-import multiprocessing
 import time
-import traceback
+import contextlib
 
 import tvm
 import tvm.auto_scheduler as auto_scheduler
@@ -19,9 +18,10 @@ from automate import AutomateContext, AutomateConfig
 from . import config
 from . import measure
 from . import load
-from .task import MemoryModelConfig, TuningTask
+from .task import ModelConfig, TuningTask
 
 logger = logging.getLogger(__name__)
+
 
 class ExperimentSchedulerBase:
     def __init__(self, config) -> None:
@@ -30,7 +30,6 @@ class ExperimentSchedulerBase:
         self.worklist = []
         self.n_jobs = config.get("n_jobs", 4)
         self.running_tasks = {}
-
 
         logger.info("Starting experiment tracker")
         host = "0.0.0.0"
@@ -113,7 +112,7 @@ class ExperimentSchedulerBase:
                                 board.unlock()
 
                     time.sleep(1.0)
-        
+
         self.report()
 
         results = []
@@ -151,7 +150,6 @@ class ExperimentSchedulerBase:
 
 
 class TuningExperimentScheduler(ExperimentSchedulerBase):
-
     def _extract_tasks(self):
         for board_name, board_config in self.config.board.items():
             for model_name, network_config in self.config.model.items():
@@ -168,17 +166,38 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
 
 
 class BackendExperimentScheduler(ExperimentSchedulerBase):
-    def __init__(self, config, model, params, inputs):
+    def __init__(self, config, model, params, task_name="backend_task"):
         super().__init__(config)
 
         self.model = model
         self.params = params
-        self.inputs = inputs
+        self.inputs = None
+        self.task_name = task_name
 
+    @contextlib.contextmanager
+    def set_inputs(self, inputs):
+        self.inputs = inputs
+        yield None
+        self.inputs = None
+        return None
+
+    def prepare(self):
+        return True
+
+    def run(self, inputs):
+        with self.set_inputs(inputs):
+            super().run()
 
     def _extract_tasks(self):
         for board_name, board_config in self.config["board"].items():
-            task = TuningTask(board_name, "nas_model", board_config, MemoryModelConfig(self.model, self.params, self.inputs), self.tracker_port, tune=False)
+            task = TuningTask(
+                board_name,
+                self.task_name,
+                board_config,
+                ModelConfig(self.model, self.params, self.inputs),
+                self.tracker_port,
+                tune=False,
+            )
 
             self.worklist.append(task)
             self.tasks.append(task)

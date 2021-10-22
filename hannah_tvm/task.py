@@ -29,8 +29,9 @@ from . import load
 logger = logging.getLogger(__name__)
 manager = multiprocessing.Manager()
 
+
 @dataclass
-class MemoryModelConfig:
+class ModelConfig:
     mod: Any
     params: Any
     inputs: Any
@@ -57,16 +58,26 @@ class TuningTask(multiprocessing.Process):
         self.results["status"] = "created"
         self.results["error"] = None
 
-        self.database_file = Path(__file__).parent.resolve() / ".." / "database" / board_key / "database.json"
-  
+        self.database_file = (
+            Path(__file__).parent.resolve()
+            / ".."
+            / "database"
+            / board_key
+            / "database.json"
+        )
+
         name = f"tuning-task-{board_key}-{model_key}"
         super().__init__(name=name)
 
     def run(self):
         try:
             self.results["status"] = "running"
-            if isinstance(self.model_config, MemoryModelConfig):
-                relay_mod, params, inputs = self.model_config.mod, self.model_config.params, self.model_config.inputs
+            if isinstance(self.model_config, ModelConfig):
+                relay_mod, params, inputs = (
+                    self.model_config.mod,
+                    self.model_config.params,
+                    self.model_config.inputs,
+                )
             else:
                 relay_mod, params, inputs = load.load_model(self.model_config)
 
@@ -119,14 +130,13 @@ class TuningTask(multiprocessing.Process):
                 key=self.board_config.name, host="localhost", port=self.tracker_port
             )
 
-
-            database_file = None #database_file = str(self.database_file) if self.database_file.exists() else None
+            database_file = (
+                None
+            )  # database_file = str(self.database_file) if self.database_file.exists() else None
             logger.info("Loading database %s", str(database_file))
             logger.info("Begin tuning...")
             tuner = auto_scheduler.TaskScheduler(
-                tasks, 
-                task_weights, 
-                load_log_file=database_file
+                tasks, task_weights, load_log_file=database_file
             )
             tune_option = auto_scheduler.TuningOptions(
                 num_measure_trials=len(tasks) * 1024,
@@ -148,8 +158,6 @@ class TuningTask(multiprocessing.Process):
                 with self.database_file.open(mode) as db:
                     with Path(self.log_file).open("r") as log:
                         db.write(log.read())
-
-            
 
     def _build_and_upload(self, relay_mod, params):
         logger.info("Compile...")
@@ -216,15 +224,13 @@ class TuningTask(multiprocessing.Process):
         self.results["latency_std"] = float(np.std(prof_res))
 
         # Use debug Executor to get per operator runtime
-        debug_module = tvm.contrib.debugger.debug_executor.GraphModuleDebug(rlib["debug_create"]("default", dev),
-                                                    [dev],
-                                                    lib.get_graph_json(),
-                                                    None,)
+        debug_module = tvm.contrib.debugger.debug_executor.GraphModuleDebug(
+            rlib["debug_create"]("default", dev), [dev], lib.get_graph_json(), None
+        )
         for name, val in inputs.items():
             data_tvm = tvm.nd.array(val)
             debug_module.set_input(name, data_tvm)
         debug_module.run()
-
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"

@@ -4,6 +4,7 @@ jetsontx2:
   target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -model=jetsontx2"
   opencl: False
   cuda: True
+  rebuild_runtime: false
   hardware_params:
     max_shared_memory_per_block: 65536
 

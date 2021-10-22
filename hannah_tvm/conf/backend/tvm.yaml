@@ -1,5 +1,5 @@
 defaults:
-  - /board@board: n1sdp
+  - /board@board: jetsontx2
 
 
 _target_: hannah_tvm.backend.TVMBackend
@@ -7,7 +7,7 @@ val_batches: 10
 test_batches: 10
 val_frequency: 10
 
-
 # TVM backend specific configs
 print_after: [] # Print IR after these passes use "all" to print after all passes, accepts single name or list of names
 time_passes: false # Print execution time for tvm compiler passes
+tune: false
