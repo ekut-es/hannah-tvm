@@ -49,6 +49,7 @@ class Board:
     micro: Any = None
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)
+    desired_layouts: Optional[Any] = None
 
 
 @dataclass

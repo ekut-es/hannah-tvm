@@ -18,8 +18,8 @@ from pathlib import Path
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
+from omegaconf import OmegaConf
 
-from automate import AutomateContext, AutomateConfig
 
 from . import config
 from . import measure
@@ -80,6 +80,21 @@ class TuningTask(multiprocessing.Process):
                 )
             else:
                 relay_mod, params, inputs = load.load_model(self.model_config)
+
+            if self.board_config.desired_layouts:
+                print(relay_mod)
+                desired_layouts = self.board_config.desired_layouts
+                if OmegaConf.is_config(desired_layouts):
+                    desired_layouts = OmegaConf.to_container(desired_layouts)
+                seq = tvm.transform.Sequential(
+                    [
+                        relay.transform.RemoveUnusedFunctions(),
+                        relay.transform.ConvertLayout(desired_layouts),
+                    ]
+                )
+                with tvm.transform.PassContext(opt_level=3):
+                    relay_mod = seq(relay_mod)
+                print(relay_mod)
 
             if str(self.target.kind) == "cuda":
                 if "arch" in self.target.attrs:

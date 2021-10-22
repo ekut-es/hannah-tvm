@@ -14,3 +14,8 @@ jetsontx2:
 
   teardown:
     - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang
+
+  desired_layouts:
+    nn.conv2d: ["NCHW", "default"]
+    qnn.conv2d: ["NHWC", "default"]
+    nn.conv1d: ["NWC", "default"]
