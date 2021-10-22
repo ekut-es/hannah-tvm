@@ -22,7 +22,7 @@ fi
 
 echo "Installing tvm"
 mkdir -p external/tvm/build
-if $USE_CUDA == ON ;
+if [ $USE_CUDA = "ON" ] ;
 then 
     cp cmake/cuda_config.cmake external/tvm/build/config.cmake
 else

@@ -78,7 +78,8 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
 
     def visit_constant(self, const):
         if const.data.dtype in self.dtype_map:
-            return const.astype(self.dtype_map[const.data.dtype])
+            if const.data.dtype != self.dtype_map[const.data.dtype]:
+                return const.astype(self.dtype_map[const.data.dtype])
         return const
 
     def visit_function(self, fn):
@@ -374,15 +375,32 @@ class RelayConverter(torch.fx.Interpreter):
         accumulator_scale = weight_scale * input_scale
 
         if bias is not None:
-            bias = self._gen_requantize(
-                bias,
-                bias_scale,
-                bias_dtype,
-                accumulator_scale,
-                self.accumulator_dtype,
-                use_rescale=True,
-                axis=0,
-            )
+            if bias_scale >= accumulator_scale:
+                bias = self._gen_requantize(
+                    bias,
+                    bias_scale,
+                    bias_dtype,
+                    accumulator_scale,
+                    self.accumulator_dtype,
+                    use_rescale=True,
+                    axis=0,
+                )
+            elif bias_scale < accumulator_scale:
+                linear_out = self._gen_requantize(
+                    linear_out,
+                    accumulator_scale,
+                    self.accumulator_dtype,
+                    bias_scale,
+                    self.accumulator_dtype,
+                    use_rescale=True,
+                    axis=0,
+                )
+                bias = relay.cast(bias, self.accumulator_dtype)
+                accumulator_scale = bias_scale
+
+                print("linear_out", linear_out)
+                print("bias", bias)
+
             linear_out = tvm.relay.nn.bias_add(linear_out, bias)
 
         if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
@@ -501,15 +519,32 @@ class RelayConverter(torch.fx.Interpreter):
         accumulator_scale = weight_scale * input_scale
 
         if bias is not None:
-            bias = self._gen_requantize(
-                bias,
-                bias_scale,
-                bias_dtype,
-                accumulator_scale,
-                self.accumulator_dtype,
-                use_rescale=True,
-                axis=0,
-            )
+            if bias_scale >= accumulator_scale:
+                bias = self._gen_requantize(
+                    bias,
+                    bias_scale,
+                    bias_dtype,
+                    accumulator_scale,
+                    self.accumulator_dtype,
+                    use_rescale=True,
+                    axis=0,
+                )
+            elif bias_scale < accumulator_scale:
+                conv_out = self._gen_requantize(
+                    conv_out,
+                    accumulator_scale,
+                    self.accumulator_dtype,
+                    bias_scale,
+                    self.accumulator_dtype,
+                    use_rescale=True,
+                    axis=0,
+                )
+                bias = relay.cast(bias, self.accumulator_dtype)
+                accumulator_scale = bias_scale
+
+                print("conv_out", conv_out)
+                print("bias", bias)
+
             conv_out = tvm.relay.nn.bias_add(conv_out, bias)
 
         if (

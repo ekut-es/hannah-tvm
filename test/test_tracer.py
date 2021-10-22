@@ -8,8 +8,11 @@ import torch.nn as nn
 import tvm
 import tvm.contrib.debugger.debug_executor
 
+import numpy as np
+
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
+torch.set_printoptions(precision=10)
 
 try:
     from hannah_tvm.tracer import (
@@ -31,6 +34,7 @@ try:
     from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
     from hannah.models.factory.reduction import ReductionBlockAdd
     from hannah.models.factory.qconfig import get_trax_qat_qconfig
+    from hannah.models.factory.rounding import round_upward
     from hannah.models.factory import factory
 except ImportError:
     pytest.skip("hannah is not available", allow_module_level=True)
@@ -39,7 +43,7 @@ except ImportError:
 @dataclass
 class Config:
     bw_b: int = 8
-    bw_f: int = 4
+    bw_f: int = 8
     bw_w: int = 6
     power_of2: bool = False
     rounding_mode: str = "UPWARD"
@@ -48,10 +52,10 @@ class Config:
         return getattr(self, name, default)
 
 
-class TestCell(nn.Module):
-    def __init__(self, dim=1, act=False, bw_w=8):
+class Cell(nn.Module):
+    def __init__(self, dim=1, act=False, bw_w=8, bw_b=8, bw_f=8):
         super().__init__()
-        self.qconfig = get_trax_qat_qconfig(Config(bw_w=bw_w))
+        self.qconfig = get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f))
         self.activation_post_process = self.qconfig.activation()
         if dim == 1:
             if act:
@@ -59,7 +63,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w)),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -68,7 +72,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w)),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -77,7 +81,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w)),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -86,7 +90,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w)),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -96,7 +100,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config()),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -105,7 +109,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config()),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -114,7 +118,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config()),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -123,7 +127,7 @@ class TestCell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config()),
+                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                     padding=1,
                     bias=True,
                 )
@@ -147,7 +151,7 @@ def run_test(
     converter = RelayConverter(
         torch.fx.GraphModule(cell, traced_graph), input_scale=1 / 2 ** (input_bits - 1),
         accumulator_dtype='int20', 
-        input_dtype='int4'
+        input_dtype=f'int{input_bits}'
     )
 
     input = torch.rand(input_shape)
@@ -188,50 +192,49 @@ def run_test(
     mse = ((output_torch.detach().numpy() - tvm_output) ** 2).mean()
     max_se = ((output_torch.detach().numpy() - tvm_output) ** 2).max()
 
-    print(output_torch)
-    print(tvm_output)
-    print(tvm_output / output_scale)
+    print("Torch output:\n", output_torch)
+    print("TVM output:\n", tvm_output)
 
+    print("INT tvm output: \n", tvm_output / output_scale)
+    print("INT torch output:\n", output_torch/output_scale)
     print("MSE:   ", mse)
     print("MAX_SE:", max_se)
 
     if approximate:
-        assert mse <= output_scale
-        assert max_se <= output_scale
+        np.testing.assert_allclose(tvm_output, output_torch.cpu().detach().numpy(), atol=output_scale, verbose=True)
     else:
-        assert mse == 0.0
-        assert max_se == 0.0
-
+        np.testing.assert_allclose(tvm_output, output_torch.cpu().detach().numpy(), atol=output_scale, verbose=True)
+        #np.testing.assert_equal(tvm_output, output_torch.cpu().detach().numpy())
 
 @pytest.mark.parametrize(
-    "dim,act,bw_w",
+    "dim,act,bw_w,bw_f,bw_b",
     [
-        (1, False, 2),
-        (1, True, 2),
-        (2, False, 2),
-        (2, True, 2),
-        (1, False, 3),
-        (1, True, 3),
-        (2, False, 3),
-        (2, True, 3),
-        (1, False, 4),
-        (1, True, 4),
-        (2, False, 4),
-        (2, True, 4),
-        (1, False, 6),
-        (1, True, 6),
-        (2, False, 6),
-        (2, True, 6),
-        (1, False, 8),
-        (1, True, 8),
-        (2, False, 8),
-        (2, True, 8),
+        (1, False, 2,4,8),
+        (1, True, 2,4,8),
+        (2, False, 2,4,8),
+        (2, True, 2,4,8),
+        (1, False, 3,4,8),
+        (1, True, 3,4,8),
+        (2, False, 3,4,8),
+        (2, True, 3,4,8),
+        (1, False, 4,4,8),
+        (1, True, 4,4,8),
+        (2, False, 4,4,8),
+        (2, True, 4,4,8),
+        (1, False, 6,4,8),
+        (1, True, 6,4,8),
+        (2, False, 6,4,8),
+        (2, True, 6,4,8),
+        (1, False, 8,4,8),
+        (1, True, 8,4,8),
+        (2, False, 8,4,8),
+        (2, True, 8,4,8),
     ],
 )
-def test_tracer(dim, act, bw_w):
-    cell = TestCell(dim=dim, act=act, bw_w=bw_w)
-    input_bits = 8
-    output_bits = 8
+def test_tracer(dim, act, bw_w, bw_f, bw_b):
+    cell = Cell(dim=dim, act=act, bw_w=bw_w, bw_f=bw_f, bw_b=bw_b)
+    input_bits = bw_f
+    output_bits = bw_f
 
     if dim == 1:
         input_shape = (1, 8, 32)
@@ -241,7 +244,7 @@ def test_tracer(dim, act, bw_w):
     run_test(cell, input_shape, act, input_bits, output_bits, "int8")
 
 
-class TestCellReduction(nn.Module):
+class CellReduction(nn.Module):
     def __init__(self, dim=1, act=False, bw_w=8, bw_b=8, bw_f=8):
         super().__init__()
         self.qconfig = get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f))
@@ -249,7 +252,7 @@ class TestCellReduction(nn.Module):
         if dim == 1:
             conv = Conv1d(
                 8,
-                8,
+                4,
                 3,
                 qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
                 padding=1,
@@ -259,10 +262,10 @@ class TestCellReduction(nn.Module):
 
             conv2 = Conv1d(
                 8,
-                8,
-                3,
+                4,
+                1,
                 qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
-                padding=1,
+                padding=0,
                 bias=False,
             )
         elif dim == 2:
@@ -305,7 +308,7 @@ class TestCellReduction(nn.Module):
     ],
 )
 def test_tracer_reduction(dim, act, bw_w, bw_b, bw_f):
-    cell = TestCellReduction(dim=dim, act=act, bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+    cell = CellReduction(dim=dim, act=act, bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
     if dim == 1:
         input_shape = (1, 8, 32)
     elif dim == 2:
@@ -316,43 +319,42 @@ def test_tracer_reduction(dim, act, bw_w, bw_b, bw_f):
     )
 
 
-class TestCellLinear(nn.Module):
-    def __init__(self, act=False):
+class CellLinear(nn.Module):
+    def __init__(self, act=False, bias=False, bw_f=8, bw_w=6, bw_b=8):
         super().__init__()
-        self.qconfig = get_trax_qat_qconfig(Config())
+        self.qconfig = get_trax_qat_qconfig(Config(bw_f=bw_f, bw_b=bw_b, bw_w=bw_w))
         self.activation_post_process = self.qconfig.activation()
         if act:
             self.linear = LinearReLU(
                 128,
                 32,
-                bias=False,
-                qconfig=get_trax_qat_qconfig(Config()),
+                bias=bias,
+                qconfig=get_trax_qat_qconfig(Config(bw_f=bw_f, bw_b=bw_b, bw_w=bw_w)),
                 out_quant=True,
             )
         else:
             self.linear = Linear(
                 128,
                 32,
-                bias=False,
-                qconfig=get_trax_qat_qconfig(Config()),
+                bias=bias,
+                qconfig=get_trax_qat_qconfig(Config(bw_f=bw_f, bw_b=bw_b, bw_w=bw_w)),
                 out_quant=True,
             )
 
     def forward(self, x):
         x = self.activation_post_process(x)
         x = self.linear(x)
-        x = self.activation_post_process(x)
         return x
 
 
-def test_tracer_linear(act=False):
-    cell = TestCellLinear()
+def test_tracer_linear(act=False, bias=False, bw_w=6, bw_b=8, bw_f=8):
+    cell = CellLinear(act=act, bw_w=bw_w, bw_f=bw_f, bw_b=bw_b)
     input_shape = (1, 128)
-    act = True
-    run_test(cell, input_shape, act, 8, 8, "int8")
+    act = act
+    run_test(cell, input_shape, act, bw_f, bw_f, "int8")
 
 
-class TestCellPooling(nn.Module):
+class CellPooling(nn.Module):
     def __init__(self, length=5, act=False):
         super().__init__()
         self.qconfig = get_trax_qat_qconfig(Config())
@@ -369,7 +371,7 @@ class TestCellPooling(nn.Module):
 
 @pytest.mark.parametrize("length", [5, 8, 17, 33])
 def test_tracer_pooling(length):
-    cell = TestCellPooling(length=length)
+    cell = CellPooling(length=length)
     input_shape = (1, 64, length)
     act = False
     input_bits = 8
@@ -380,7 +382,7 @@ def test_tracer_pooling(length):
     )
 
 
-class TestCellSimple(nn.Module):
+class CellSimple(nn.Module):
     def __init__(self, dim=1, act=True):
         super().__init__()
         self.qconfig = get_trax_qat_qconfig(Config())
@@ -402,7 +404,7 @@ class TestCellSimple(nn.Module):
 
 
 def test_tracer_simple():
-    cell = TestCellSimple()
+    cell = CellSimple()
     input_shape = (1, 8, 8)
     act = False
     input_bits = 8
@@ -411,6 +413,7 @@ def test_tracer_simple():
     run_test(cell, input_shape, act, input_bits, output_bits, out_dtype)
 
 
+@pytest.mark.skip
 def test_tracer_model():
     input_shape = (1, 101, 40)
     input_bits = 8
@@ -480,4 +483,7 @@ def test_tracer_model():
 
 
 if __name__ == "__main__":
-    test_tracer(1,20,4)
+    test_tracer(1,False,4,4,8)
+    #test_tracer_linear()
+    while True:
+        test_tracer_reduction(1, True, 8, 6, 6)

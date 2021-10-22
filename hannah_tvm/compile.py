@@ -45,7 +45,8 @@ def compile(config):
             if str(target.kind) == "c":
                 build_cfg = {"tir.disable_vectorize": True}
 
-            with tvm.transform.PassContext(opt_level=3, config=build_cfg):
+            from . import pass_instrument
+            with tvm.transform.PassContext(opt_level=3, config=build_cfg, instruments=[pass_instrument.PrintIR("all")]):
                 module = relay.build(
                     relay_mod, target=target, target_host=target_host, params=params
                 )

@@ -44,12 +44,11 @@ class ServerProcess(multiprocessing.Process):
         automate_config = AutomateConfig()
         automate_context = AutomateContext(automate_config)
 
-        board = automate_context.board(name)
+        board = automate_context.board(name)    
         python_path = str(board.rundir / "tvm" / "python")
         tracker_port = self.tracker_port
 
         try:
-
             with board.connect() as board_connection:
 
                 if self.board_config.rebuild_runtime:
