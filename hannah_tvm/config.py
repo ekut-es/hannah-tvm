@@ -62,7 +62,7 @@ class Model:
 class Config:
     board: Dict[str, Board] = MISSING
     model: Dict[str, Model] = MISSING
-    tune: bool = True
+    tuner: Optional[str] = None
 
 
 cs = ConfigStore.instance()

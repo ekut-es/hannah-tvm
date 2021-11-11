@@ -6,8 +6,8 @@ defaults:
       - jetsonagx_cpu
       - n1sdp
   - model:
-      #- densenet-121
       - conv-net-trax
+      - densenet-121
       - efficientnet-lite4
       - mobilenet-v2
       - resnet-18
@@ -17,5 +17,10 @@ defaults:
       - squeezenet-1.1
       - vgg16
       - vgg19
+      - tinyml_ad01
+      - tinyml_ic01
+      - tinyml_kws01
+      - tinyml_vww01
 
-tune: true
+
+tuner: null

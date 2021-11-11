@@ -12,6 +12,7 @@ import numpy as np
 
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
+
 torch.set_printoptions(precision=10)
 
 try:
@@ -63,7 +64,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -72,7 +75,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -81,7 +86,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -90,7 +97,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -100,7 +109,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -109,7 +120,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -118,7 +131,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -127,7 +142,9 @@ class Cell(nn.Module):
                     8,
                     8,
                     3,
-                    qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)),
+                    qconfig=get_trax_qat_qconfig(
+                        Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
+                    ),
                     padding=1,
                     bias=True,
                 )
@@ -135,7 +152,7 @@ class Cell(nn.Module):
     def forward(self, x):
         x = self.activation_post_process(x)
         x = self.conv(x)
-        x = self.conv2(x)
+        # x = self.conv2(x)
         return x
 
 
@@ -149,9 +166,10 @@ def run_test(
     traced_graph = tracer.trace(cell)
 
     converter = RelayConverter(
-        torch.fx.GraphModule(cell, traced_graph), input_scale=1 / 2 ** (input_bits - 1),
-        accumulator_dtype='int20', 
-        input_dtype=f'int{input_bits}'
+        torch.fx.GraphModule(cell, traced_graph),
+        input_scale=1 / 2 ** (input_bits - 1),
+        accumulator_dtype="int20",
+        input_dtype=f"int{input_bits}",
     )
 
     input = torch.rand(input_shape)
@@ -196,39 +214,50 @@ def run_test(
     print("TVM output:\n", tvm_output)
 
     print("INT tvm output: \n", tvm_output / output_scale)
-    print("INT torch output:\n", output_torch/output_scale)
+    print("INT torch output:\n", output_torch / output_scale)
     print("MSE:   ", mse)
     print("MAX_SE:", max_se)
 
     if approximate:
-        np.testing.assert_allclose(tvm_output, output_torch.cpu().detach().numpy(), atol=output_scale, verbose=True)
+        np.testing.assert_allclose(
+            tvm_output,
+            output_torch.cpu().detach().numpy(),
+            atol=output_scale,
+            verbose=True,
+        )
     else:
-        np.testing.assert_allclose(tvm_output, output_torch.cpu().detach().numpy(), atol=output_scale, verbose=True)
-        #np.testing.assert_equal(tvm_output, output_torch.cpu().detach().numpy())
+        np.testing.assert_allclose(
+            tvm_output,
+            output_torch.cpu().detach().numpy(),
+            atol=output_scale,
+            verbose=True,
+        )
+        # np.testing.assert_equal(tvm_output, output_torch.cpu().detach().numpy())
+
 
 @pytest.mark.parametrize(
     "dim,act,bw_w,bw_f,bw_b",
     [
-        (1, False, 2,4,8),
-        (1, True, 2,4,8),
-        (2, False, 2,4,8),
-        (2, True, 2,4,8),
-        (1, False, 3,4,8),
-        (1, True, 3,4,8),
-        (2, False, 3,4,8),
-        (2, True, 3,4,8),
-        (1, False, 4,4,8),
-        (1, True, 4,4,8),
-        (2, False, 4,4,8),
-        (2, True, 4,4,8),
-        (1, False, 6,4,8),
-        (1, True, 6,4,8),
-        (2, False, 6,4,8),
-        (2, True, 6,4,8),
-        (1, False, 8,4,8),
-        (1, True, 8,4,8),
-        (2, False, 8,4,8),
-        (2, True, 8,4,8),
+        (1, False, 2, 4, 8),
+        (1, True, 2, 4, 8),
+        (2, False, 2, 4, 8),
+        (2, True, 2, 4, 8),
+        (1, False, 3, 4, 8),
+        (1, True, 3, 4, 8),
+        (2, False, 3, 4, 8),
+        (2, True, 3, 4, 8),
+        (1, False, 4, 4, 8),
+        (1, True, 4, 4, 8),
+        (2, False, 4, 4, 8),
+        (2, True, 4, 4, 8),
+        (1, False, 6, 4, 8),
+        (1, True, 6, 4, 8),
+        (2, False, 6, 4, 8),
+        (2, True, 6, 4, 8),
+        (1, False, 8, 4, 8),
+        (1, True, 8, 4, 8),
+        (2, False, 8, 4, 8),
+        (2, True, 8, 4, 8),
     ],
 )
 def test_tracer(dim, act, bw_w, bw_f, bw_b):
@@ -483,7 +512,7 @@ def test_tracer_model():
 
 
 if __name__ == "__main__":
-    test_tracer(1,False,4,4,8)
-    #test_tracer_linear()
-    while True:
-        test_tracer_reduction(1, True, 8, 6, 6)
+    test_tracer(1, True, 8, 6, 8)
+    # test_tracer_linear()
+    # while True:
+    #    test_tracer_reduction(1, True, 8, 6, 6)

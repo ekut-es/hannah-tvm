@@ -44,7 +44,7 @@ class ServerProcess(multiprocessing.Process):
         automate_config = AutomateConfig()
         automate_context = AutomateContext(automate_config)
 
-        board = automate_context.board(name)    
+        board = automate_context.board(name)
         python_path = str(board.rundir / "tvm" / "python")
         tracker_port = self.tracker_port
 
@@ -59,7 +59,9 @@ class ServerProcess(multiprocessing.Process):
                     board_connection.run(setup)
 
                 logger.info(
-                    "forwarding remote port %d to local port %i", tracker_port, tracker_port
+                    "forwarding remote port %d to local port %i",
+                    tracker_port,
+                    tracker_port,
                 )
                 with board_connection.forward_remote(tracker_port, tracker_port):
                     local_port = find_local_port(9091, 90199)
@@ -111,10 +113,12 @@ class ServerProcess(multiprocessing.Process):
     def _build_runtime(self, connection, board):
         with connection.cd(board.rundir):
             connection.run("rm -rf tvm")
-            connection.run(
-                "git clone https://github.com/apache/tvm.git --depth 1 --recursive"
-            )
+            connection.run("git clone https://github.com/apache/tvm.git")
             with connection.cd("tvm"):
+                # connection.run(
+                #     "git checkout d5dd8c019e342e849a9bc716d53bcae3fdbe9f9d"
+                # )
+                connection.run("git submodule update --init --recursive")
                 connection.run("cp cmake/config.cmake .")
                 if self.board_config.opencl:
                     connection.run(
@@ -140,28 +144,3 @@ class ServerProcess(multiprocessing.Process):
                 time.sleep(0.5)
             except Exception as e:
                 print(str(e))
-
-
-class PrintPBarInfo(tvm.auto_scheduler.task_scheduler.TaskSchedulerCallback):
-    """The callback that prints a table of current progress."""
-
-    def __init__(self, results):
-        self.results = results
-
-    def post_tune(self, task_scheduler: tvm.auto_scheduler.TaskScheduler, task_id):
-
-        # overall info
-        if all(cost < 1e9 for cost in task_scheduler.best_costs):
-            total_latency_str = "%.3f" % (task_scheduler.cur_score.value * 1e3)
-        else:
-            total_latency_str = "-"
-
-        logger.info(
-            "Estimated total latency: %s ms\tTrials: %d\tUsed time : %.0f s\tNext ID: %d\t"
-            % (
-                total_latency_str,
-                task_scheduler.ct,
-                time.time() - task_scheduler.tic,
-                task_id,
-            )
-        )

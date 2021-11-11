@@ -2,7 +2,7 @@ jetsonagx_cpu:
   name: jetsonagx
   target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
   target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
-  opencl: True
+  opencl: false
   cuda: True
   setup:
     - sudo nvpmodel -m 0

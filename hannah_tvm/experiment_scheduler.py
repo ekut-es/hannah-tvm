@@ -20,6 +20,7 @@ from . import measure
 from . import load
 from .task import ModelConfig, TuningTask
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,8 +29,14 @@ class ExperimentSchedulerBase:
         self.config = config
         self.tasks = []
         self.worklist = []
-        self.n_jobs = config.get("n_jobs", 4)
+        if "n_jobs" in config:
+            self.n_jobs = config.get("n_jobs")
+        else:
+            self.n_jobs = 0
         self.running_tasks = {}
+        logger.info("Experiment Scheduler:")
+        logger.info(" Number of parallel jobs: %d", self.n_jobs)
+        logger.info(" Number of tasks: %d", len(self.tasks))
 
         logger.info("Starting experiment tracker")
         host = "0.0.0.0"
@@ -137,7 +144,19 @@ class ExperimentSchedulerBase:
         for task in self.tasks:
             results.append(task.results)
 
-        logging.info("Results:\n" + tabulate.tabulate(results))
+        headers = [
+            "board",
+            "model",
+            "tuning_duration",
+            "status",
+            "latency",
+            "latency_stdev",
+        ]
+        results_filtered = [
+            {k: v for k, v in res.items() if k in headers} for res in results
+        ]
+
+        logging.info("Results:\n" + tabulate.tabulate(results_filtered, headers="keys"))
 
     def finish(self):
         if self.tracker is not None:
@@ -159,13 +178,13 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
                     board_config,
                     network_config,
                     self.tracker_port,
-                    tune=self.config.tune,
+                    tuner=self.config.tuner,
                 )
                 self.worklist.append(task)
                 self.tasks.append(task)
 
 
-class BackendExperimentScheduler(ExperimentSchedulerBase):
+class BackendScheduler(ExperimentSchedulerBase):
     def __init__(self, config, model, params, task_name="backend_task"):
         super().__init__(config)
 

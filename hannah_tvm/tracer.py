@@ -19,6 +19,14 @@ except ModuleNotFoundError:
 logger = logging.getLogger("__name__")
 
 
+def legalize_var_name(s):
+    s = s.replace(".", "_")
+
+    print("name", s)
+
+    return s
+
+
 @dataclass
 class TensorMetadata:
     shape: List[int]
@@ -86,6 +94,7 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
         new_params = []
         binds = {}
         for param in fn.params:
+            binds = legalize_var_name(param)
             # Get the parameter's type annotation.
             var_type = param.type_annotation
             if isinstance(var_type, tvm.ir.TensorType):
@@ -121,7 +130,7 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
 
     def visit_call(self, call):
         new_args = [self.visit(arg) for arg in call.args]
-        
+
         new_attrs = call.attrs
         new_fn = self.visit(call.op)
         new_call = tvm.relay.Call(
@@ -199,7 +208,7 @@ class RelayConverter(torch.fx.Interpreter):
         self.input_dtype = input_dtype
         self.input_scale = input_scale
 
-        print("Accumulator dtype:", accumulator_dtype)
+        # print("Accumulator dtype:", accumulator_dtype)
 
         if relay is None:
             raise Exception(
@@ -257,10 +266,10 @@ class RelayConverter(torch.fx.Interpreter):
         if use_rescale:
             output = tvm.relay.qnn.op.requantize(
                 output,
-                tvm.relay.const(input_scale, dtype='float32'),
-                tvm.relay.const(0, dtype='int32'),
-                tvm.relay.const(output_scale, dtype='float32'),
-                tvm.relay.const(0, dtype='int32'),
+                tvm.relay.const(input_scale, dtype="float32"),
+                tvm.relay.const(0, dtype="int32"),
+                tvm.relay.const(output_scale, dtype="float32"),
+                tvm.relay.const(0, dtype="int32"),
                 axis=axis,
                 rounding=rounding,
                 out_dtype=output_dtype,
@@ -347,22 +356,22 @@ class RelayConverter(torch.fx.Interpreter):
         weight_dtype = f"int{module.weight_fake_quant.bits}"
         weight_scale = module.weight_fake_quant.quantization_function.scale
 
-        weight_name = f"{node.name}.weight"
+        weight_name = legalize_var_name(f"{node.name}.weight")
         weight = tvm.relay.Var(
             weight_name, tvm.relay.TensorType(quant_weight.shape, dtype=weight_dtype)
         )
         self.params[weight_name] = tvm.nd.array(
-            (quant_weight).detach().numpy().astype("byte")
+            (quant_weight).detach().numpy().astype("byte"), dtype=weight_dtype
         )
         if bias is not None:
             bias_dtype = f"int{module.bias_fake_quant.bits}"
             bias_scale = module.bias_fake_quant.quantization_function.scale
-            bias_name = f"{node.name}.bias"
+            bias_name = legalize_var_name(f"{node.name}.bias")
             bias = tvm.relay.Var(
                 bias_name, tvm.relay.TensorType(quant_bias.shape, dtype=bias_dtype)
             )
             self.params[bias_name] = tvm.nd.array(
-                (quant_bias).detach().numpy().astype("byte")
+                (quant_bias).detach().numpy().astype("byte"), dtype=bias_dtype
             )
 
         inputs = list(node.all_input_nodes)
@@ -397,9 +406,6 @@ class RelayConverter(torch.fx.Interpreter):
                 )
                 bias = relay.cast(bias, self.accumulator_dtype)
                 accumulator_scale = bias_scale
-
-                print("linear_out", linear_out)
-                print("bias", bias)
 
             linear_out = tvm.relay.nn.bias_add(linear_out, bias)
 
@@ -463,25 +469,24 @@ class RelayConverter(torch.fx.Interpreter):
         input_dtype = input_info.relay_dtype
         input_scale = input_info.scale
 
-        weight_name = f"{node.name}.weight"
+        weight_name = legalize_var_name(f"{node.name}.weight")
         weight = tvm.relay.Var(
             weight_name, tvm.relay.TensorType(quant_weight.shape, dtype=weight_dtype)
         )
         self.params[weight_name] = tvm.nd.array(
-            (quant_weight).detach().numpy().astype("byte")
+            (quant_weight).detach().numpy().astype("byte"), dtype="weight_dtype"
         )
         if bias is not None:
             bias_dtype = f"int{module.bias_fake_quant.bits}"
             bias_scale = module.bias_fake_quant.quantization_function.scale
-            bias_name = f"{node.name}.bias"
+            bias_name = legalize_var_name(f"{node.name}.bias")
             bias = tvm.relay.Var(
                 bias_name, tvm.relay.TensorType(quant_bias.shape, dtype=bias_dtype)
             )
             self.params[bias_name] = tvm.nd.array(
-                (quant_bias).detach().numpy().astype("byte")
+                (quant_bias).detach().numpy().astype("byte"), dtype=bias_dtype
             )
 
-        
         if quant_weight.dim() == 3:
             conv_out = tvm.relay.nn.conv1d(
                 data,
@@ -515,7 +520,7 @@ class RelayConverter(torch.fx.Interpreter):
                 f"Quantized weights of dimension {quant_weight.dim()} are not supported"
             )
 
-        print("conv_out:", conv_out)
+        # print("conv_out:", conv_out)
         accumulator_scale = weight_scale * input_scale
 
         if bias is not None:
@@ -542,8 +547,8 @@ class RelayConverter(torch.fx.Interpreter):
                 bias = relay.cast(bias, self.accumulator_dtype)
                 accumulator_scale = bias_scale
 
-                print("conv_out", conv_out)
-                print("bias", bias)
+                # print("conv_out", conv_out)
+                # print("bias", bias)
 
             conv_out = tvm.relay.nn.bias_add(conv_out, bias)
 
@@ -591,7 +596,7 @@ class RelayConverter(torch.fx.Interpreter):
         self.tensor_info[node.name] = output_metadata
 
     def _handle_module(self, node, result):
-        module = self.modules[node.target] #TODO use self.fetch_attr
+        module = self.modules[node.target]  # TODO use self.fetch_attr
         if type(module) in self.module_map:
             self.module_map[type(module)](node, module, result)
         else:
@@ -709,5 +714,5 @@ class RelayConverter(torch.fx.Interpreter):
         tvm_mod["main"] = function
 
         tvm_mod = tvm.relay.transform.InferType()(tvm_mod)
-        
+
         return tvm_mod, self.params

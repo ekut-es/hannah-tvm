@@ -1,6 +1,6 @@
 import logging
 import copy
-from hannah_tvm.experiment_scheduler import BackendExperimentScheduler
+from hannah_tvm.experiment_scheduler import BackendScheduler
 
 import torch
 import tvm
@@ -12,6 +12,28 @@ from hannah.callbacks.backends import InferenceBackendBase
 from .tracer import QuantizationTracer, RelayConverter
 from .passes.legalize import LegalizeQuantizedTypes
 from . import pass_instrument
+
+
+def build_relay(model, dummy_input):
+    tracer = QuantizationTracer()
+
+    traced_graph = tracer.trace(model)
+    converter = RelayConverter(torch.fx.GraphModule(model, traced_graph))
+    mod, params = converter.run(dummy_input)
+
+    return mod, params
+
+
+def export_relay(model, dummy_input, model_file="model.relay", param_file="params.bin"):
+    mod, params = build_relay(model, dummy_input)
+
+    mod_txt = mod.astext()
+    with open("model.relay", "w") as f:
+        f.write(mod_txt)
+
+    params_bin = tvm.runtime.save_param_dict(params)
+    with open("params.bin", "wb") as f:
+        f.write(params_bin)
 
 
 class TVMBackend(InferenceBackendBase):
@@ -58,28 +80,20 @@ class TVMBackend(InferenceBackendBase):
 
         device = model.device
 
-        tracer = QuantizationTracer()
+        mod, params = build_relay(model.model, model.example_feature_array)
 
-        traced_graph = tracer.trace(model.model)
-        converter = RelayConverter(torch.fx.GraphModule(model.model, traced_graph))
-        mod, params = converter.run(model.example_feature_array)
         mod = tvm.relay.transform.InferType()(mod)
         mod = LegalizeQuantizedTypes()(mod)
 
-        mod_txt = mod.astext()
-        with open("model.relay", "w") as f:
-            f.write(mod_txt)
-
-        params_bin = tvm.runtime.save_param_dict(params)
-        with open("params.bin", "wb") as f:
-            f.write(params_bin)
-
-        scheduler = BackendExperimentScheduler(
+        scheduler = BackendScheduler(
             {"board": self.board_config, "n_jobs": 0},
             mod,
             params,
             {"x": model.example_feature_array.detach().numpy().astype(np.int8)},
         )
+
+    def characterize(self, model):
+        self.prepare(model)
 
     def run_batch(self, inputs=None):
         if inputs is None:
