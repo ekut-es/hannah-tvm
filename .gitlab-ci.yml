@@ -44,6 +44,7 @@ build_full:
   script:
     - set -e
     - poetry run ./scripts/install_full.sh
+    - poetry run py.test test
   tags:
     - docker
   interruptible: true
