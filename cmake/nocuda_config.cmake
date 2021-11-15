@@ -68,7 +68,7 @@ set(USE_AOCL OFF)
 # - ON: enable OpenCL with cmake's auto search
 # - OFF: disable OpenCL
 # - /path/to/opencl-sdk: use specific path to opencl-sdk
-set(USE_OPENCL ON)
+set(USE_OPENCL OFF)
 
 # Whether enable Metal runtime
 set(USE_METAL OFF)

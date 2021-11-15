@@ -68,7 +68,7 @@ set(USE_AOCL OFF)
 # - ON: enable OpenCL with cmake's auto search
 # - OFF: disable OpenCL
 # - /path/to/opencl-sdk: use specific path to opencl-sdk
-set(USE_OPENCL ON)
+set(USE_OPENCL OFF)
 
 # Whether enable Metal runtime
 set(USE_METAL OFF)
@@ -116,7 +116,7 @@ set(USE_MICRO_STANDALONE_RUNTIME OFF)
 # - OFF: disable llvm, note this will disable CPU codegen
 #        which is needed for most cases
 # - /path/to/llvm-config: enable specific LLVM when multiple llvm-dev is available.
-set(USE_LLVM ON)
+set(USE_LLVM /usr/bin/llvm-config-11)
 
 #---------------------------------------------
 # Contrib libraries
