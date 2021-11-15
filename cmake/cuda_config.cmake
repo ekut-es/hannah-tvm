@@ -277,4 +277,4 @@ set(USE_TARGET_ONNX ON)
 # - ON: enable PAPI support. Will search PKG_CONFIG_PATH for a papi.pc
 # - OFF: disable PAPI support.
 # - /path/to/folder/containing/: Path to folder containing papi.pc.
-set(USE_PAPI ON)
+set(USE_PAPI OFF)
