@@ -2,9 +2,10 @@
 
 To get the basic installation use:
 
-1. `poetry shell`
-2. `poetry install`
-3. checkout submodules: `git submodule update --init --recursive`
+1. Install `git-lfs` on ubuntu `apt install git-lfs`
+2. `poetry shell`
+3. `poetry install`
+4. checkout submodules: `git submodule update --init --recursive`
 
 For the tvm installation there are the following installation options.
 
@@ -33,7 +34,7 @@ For pulp targets no zephyr support is needed at the moment.
 
 ## Full installation
 
-The full installation uses the host provided llvm backend and activates cuda and opencl if available.
+The full installation uses the host provided llvm backend and activates cuda and llvm backends if available.
 
 ```
 ./scripts/install_full.sh
@@ -42,6 +43,6 @@ The full installation uses the host provided llvm backend and activates cuda and
 
 # Common error reasons
 
-1. Pythonpath not set when using automate runner
+1. Pythonpath not set when using automate runner on schrank boards
 
   Add `AcceptEnv LANG LC_* PYTHONPATH` to `/etc/ssh/sshd_config` and restart server

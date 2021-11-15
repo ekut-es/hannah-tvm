@@ -361,7 +361,7 @@ class RelayConverter(torch.fx.Interpreter):
             weight_name, tvm.relay.TensorType(quant_weight.shape, dtype=weight_dtype)
         )
         self.params[weight_name] = tvm.nd.array(
-            (quant_weight).detach().numpy().astype("byte"), dtype=weight_dtype
+            (quant_weight).detach().numpy().astype("byte")
         )
         if bias is not None:
             bias_dtype = f"int{module.bias_fake_quant.bits}"
@@ -371,7 +371,7 @@ class RelayConverter(torch.fx.Interpreter):
                 bias_name, tvm.relay.TensorType(quant_bias.shape, dtype=bias_dtype)
             )
             self.params[bias_name] = tvm.nd.array(
-                (quant_bias).detach().numpy().astype("byte"), dtype=bias_dtype
+                (quant_bias).detach().numpy().astype("byte")
             )
 
         inputs = list(node.all_input_nodes)
@@ -474,7 +474,7 @@ class RelayConverter(torch.fx.Interpreter):
             weight_name, tvm.relay.TensorType(quant_weight.shape, dtype=weight_dtype)
         )
         self.params[weight_name] = tvm.nd.array(
-            (quant_weight).detach().numpy().astype("byte"), dtype="weight_dtype"
+            (quant_weight).detach().numpy().astype("byte")
         )
         if bias is not None:
             bias_dtype = f"int{module.bias_fake_quant.bits}"
@@ -484,7 +484,7 @@ class RelayConverter(torch.fx.Interpreter):
                 bias_name, tvm.relay.TensorType(quant_bias.shape, dtype=bias_dtype)
             )
             self.params[bias_name] = tvm.nd.array(
-                (quant_bias).detach().numpy().astype("byte"), dtype=bias_dtype
+                (quant_bias).detach().numpy().astype("byte")
             )
 
         if quant_weight.dim() == 3:
