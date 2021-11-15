@@ -68,7 +68,7 @@ set(USE_AOCL OFF)
 # - ON: enable OpenCL with cmake's auto search
 # - OFF: disable OpenCL
 # - /path/to/opencl-sdk: use specific path to opencl-sdk
-set(USE_OPENCL ON)
+set(USE_OPENCL OFF)
 
 # Whether enable Metal runtime
 set(USE_METAL OFF)
@@ -277,4 +277,4 @@ set(USE_TARGET_ONNX ON)
 # - ON: enable PAPI support. Will search PKG_CONFIG_PATH for a papi.pc
 # - OFF: disable PAPI support.
 # - /path/to/folder/containing/: Path to folder containing papi.pc.
-set(USE_PAPI ON)
+set(USE_PAPI OFF)
