@@ -3,9 +3,9 @@
 To get the basic installation use:
 
 1. Install `git-lfs` on ubuntu `apt install git-lfs`
-2. `poetry shell`
+2. checkout submodules: `git submodule update --init --recursive`
 3. `poetry install`
-4. checkout submodules: `git submodule update --init --recursive`
+4. `poetry shell`
 
 For the tvm installation there are the following installation options.
 
