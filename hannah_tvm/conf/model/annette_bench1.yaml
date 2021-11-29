@@ -1,0 +1,2 @@
+annette_bench1:
+  file:  ${models_dir:}/annette_bench1.pb
