@@ -8,6 +8,12 @@ import torch
 import tvm
 import tvm.relay as relay
 import numpy as np
+import tensorflow as tf
+import tvm.relay.testing.tf as tf_testing
+try:
+    tf_compat_v1 = tf.compat.v1
+except ImportError:
+    tf_compat_v1 = tf
 
 from hydra.utils import to_absolute_path
 
@@ -141,6 +147,38 @@ def _load_tflite(model_path, input_shapes):
     return mod, params, inputs
 
 
+def _load_tensorflow(model_path, input_shapes):
+
+    with tf_compat_v1.gfile.GFile(model_path, "rb") as f:
+        graph_def = tf_compat_v1.GraphDef()
+        graph_def.ParseFromString(f.read())
+        tf.import_graph_def(graph_def, name="")
+        
+        graph_def = tf_testing.ProcessGraphDefParam(graph_def)
+
+        node_names = [n.name for n in graph_def.node]
+
+        with tf_compat_v1.Session() as sess:
+            graph_def = tf_testing.AddShapesToGraphDef(sess, node_names[-1])
+
+        all_placeholders = [placeholder for op in tf_compat_v1.get_default_graph().get_operations() if op.type=='Placeholder' for placeholder in op.values()]
+
+    shapes = {}
+    types = {}
+
+    for input in all_placeholders:
+        shapes[input.op.name] = tuple(input.shape)
+        types[input.op.name] = input.dtype.as_numpy_dtype
+
+    mod, params = relay.frontend.from_tensorflow(graph_def, shape=shapes) # layout="NCHW"
+
+    inputs = {}
+    for input in all_placeholders:
+        inputs[input.op.name] = np.random.uniform(size=shapes[input.op.name]).astype(types[input.op.name])
+
+    return mod, params, inputs
+
+
 def load_model(model):
     model_path = Path(to_absolute_path(model.file))
     input_shapes = model.input_shapes
@@ -151,5 +189,7 @@ def load_model(model):
         return _load_torch(model_path, input_shapes)
     elif model_path.suffix == ".tflite":
         return _load_tflite(model_path, input_shapes)
+    elif model_path.suffix == ".pb":
+        return _load_tensorflow(model_path, input_shapes)
     else:
         raise Exception(f"File format not supported {model_path.suffix}")
