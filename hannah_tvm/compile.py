@@ -39,18 +39,13 @@ def compile(config):
                 config=build_cfg,
                 instruments=[pass_instrument.PrintIR("all")],
             ):
-                module = relay.build(
-                    relay_mod, target=target, target_host=target_host, params=params
-                )
+                module = relay.build(relay_mod, target=target, params=params)
                 if board.micro:
                     target_aot = tvm.target.Target(
                         board.target + " -link-params=1--executor=aot"
                     )
                     module_aot = relay.build(
-                        relay_mod,
-                        target=target_aot,
-                        target_host=target_aot,
-                        params=params,
+                        relay_mod, target=target_aot, params=params
                     )
 
             if board.micro:
