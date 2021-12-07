@@ -87,24 +87,10 @@ class TuningTask(multiprocessing.Process):
                 if OmegaConf.is_config(desired_layouts):
                     desired_layouts = OmegaConf.to_container(desired_layouts)
                 seq = tvm.transform.Sequential(
-                    [
-                        relay.transform.RemoveUnusedFunctions(),
-                        relay.transform.ConvertLayout(desired_layouts),
-                    ]
+                    [relay.transform.ConvertLayout(desired_layouts)]
                 )
                 with tvm.transform.PassContext(opt_level=3):
                     relay_mod = seq(relay_mod)
-
-            if str(self.target.kind) == "cuda":
-                if "arch" in self.target.attrs:
-                    logger.info(
-                        "Setting cuda target arch %s", self.target.attrs["arch"]
-                    )
-                    autotvm.measure.measure_methods.set_cuda_target_arch(
-                        self.target.attrs["arch"]
-                    )
-                else:
-                    logger.warning("CUDA target has no architecture attribute")
 
             if self.tuner == "auto_scheduler":
                 start_time = time.time()
