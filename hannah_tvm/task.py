@@ -50,8 +50,9 @@ class TuningTask(multiprocessing.Process):
         self.tuner = tuner
         self.log_file = f"{self.tuner}_{board_key}_{model_key}.json"
 
-        self.target = tvm.target.Target(self.board_config.target)
-        self.target_host = tvm.target.Target(self.board_config.target_host)
+        self.target = tvm.target.Target(
+            self.board_config.target, host=self.board_config.target_host
+        )
         self.results = manager.dict()
 
         self.results["board"] = board_key
@@ -87,24 +88,10 @@ class TuningTask(multiprocessing.Process):
                 if OmegaConf.is_config(desired_layouts):
                     desired_layouts = OmegaConf.to_container(desired_layouts)
                 seq = tvm.transform.Sequential(
-                    [
-                        relay.transform.RemoveUnusedFunctions(),
-                        relay.transform.ConvertLayout(desired_layouts),
-                    ]
+                    [relay.transform.ConvertLayout(desired_layouts)]
                 )
                 with tvm.transform.PassContext(opt_level=3):
                     relay_mod = seq(relay_mod)
-
-            if str(self.target.kind) == "cuda":
-                if "arch" in self.target.attrs:
-                    logger.info(
-                        "Setting cuda target arch %s", self.target.attrs["arch"]
-                    )
-                    autotvm.measure.measure_methods.set_cuda_target_arch(
-                        self.target.attrs["arch"]
-                    )
-                else:
-                    logger.warning("CUDA target has no architecture attribute")
 
             if self.tuner == "auto_scheduler":
                 start_time = time.time()
@@ -133,6 +120,7 @@ class TuningTask(multiprocessing.Process):
             self.results["error"] = e
 
     def _run_autotuner(self, relay_mod, params):
+        logger.info("Running autotuner")
 
         early_stopping = 800
 
@@ -148,11 +136,7 @@ class TuningTask(multiprocessing.Process):
         )
 
         tasks = autotvm.task.extract_from_program(
-            relay_mod["main"],
-            target=self.target,
-            target_host=self.target_host,
-            params=params,
-            ops=None,
+            relay_mod["main"], target=self.target, params=params, ops=None
         )
 
         for num, tsk in enumerate(tasks):
@@ -185,11 +169,7 @@ class TuningTask(multiprocessing.Process):
 
         logger.info("Extracting tasks ...")
         tasks, task_weights = auto_scheduler.extract_tasks(
-            relay_mod["main"],
-            params,
-            self.target,
-            self.target_host,
-            hardware_params=hardware_params,
+            relay_mod["main"], params, self.target, hardware_params=hardware_params
         )
 
         runner = auto_scheduler.RPCRunner(
@@ -233,28 +213,26 @@ class TuningTask(multiprocessing.Process):
                     opt_level=3, config={"relay.backend.use_auto_scheduler": True}
                 ):
                     lib = relay.build_module.build(
-                        relay_mod,
-                        target=self.target,
-                        target_host=self.target_host,
-                        params=params,
+                        relay_mod, target=self.target, params=params
                     )
         elif self.tuner == "autotvm":
-            with autotvm.apply_history_best(self.log_file):
+            if Path(self.log_file).exists():
+                with autotvm.apply_history_best(self.log_file):
+                    with tvm.transform.PassContext(opt_level=3):
+                        lib = relay.build_module.build(
+                            relay_mod, target=self.target, params=params
+                        )
+            else:
+                logger.warning("Could not find tuner logs in: %s", self.log_file)
                 with tvm.transform.PassContext(opt_level=3):
                     lib = relay.build_module.build(
-                        relay_mod,
-                        target=self.target,
-                        target_host=self.target_host,
-                        params=params,
+                        relay_mod, target=self.target, params=params
                     )
 
         else:
             with tvm.transform.PassContext(opt_level=3):
                 lib = relay.build_module.build(
-                    relay_mod,
-                    target=self.target,
-                    target_host=self.target_host,
-                    params=params,
+                    relay_mod, target=self.target, params=params
                 )
 
         # Export library
