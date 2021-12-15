@@ -17,8 +17,6 @@ from dataclasses import dataclass
 from typing import Any
 from pathlib import Path
 
-from tqdm import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
 from omegaconf import OmegaConf
 
 
@@ -49,7 +47,6 @@ class TuningTask(multiprocessing.Process):
         self.tracker_port = tracker_port
         self.tuner = tuner
         self.log_file = f"{self.tuner}_{board_key}_{model_key}.json"
-
         self.target = tvm.target.Target(
             self.board_config.target, host=self.board_config.target_host
         )
@@ -164,7 +161,7 @@ class TuningTask(multiprocessing.Process):
     def _run_autoscheduler(self, relay_mod, params):
 
         hardware_params = self.board_config.get("hardware_params", None)
-        if hardware_params:
+        if hardware_params is not None:
             hardware_params = auto_scheduler.HardwareParams(**hardware_params)
 
         logger.info("Extracting tasks ...")
@@ -285,6 +282,8 @@ class TuningTask(multiprocessing.Process):
             data_tvm = tvm.nd.array(val)
             debug_module.set_input(name, data_tvm)
         debug_profile = debug_module.profile()
+
+        logger.info("Profile information: %s", str(debug_profile))
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"
