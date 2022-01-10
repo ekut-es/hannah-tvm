@@ -48,7 +48,10 @@ build_full:
   tags:
     - docker
   interruptible: true
-
+  cache:
+    key: tvm-full
+    paths:
+      - external/tvm/build
 
 #build_micro_pulp:
 #  stage: build
