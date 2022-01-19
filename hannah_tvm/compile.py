@@ -41,12 +41,15 @@ def compile(config):
             ):
                 module = relay.build(relay_mod, target=target, params=params)
                 if board.micro:
-                    target_aot = tvm.target.Target(
-                        board.target + " -link-params=1--executor=aot"
-                    )
-                    module_aot = relay.build(
-                        relay_mod, target=target_aot, params=params
-                    )
+                    if target.kind.name == "c":
+                        target_aot = tvm.target.Target(
+                           board.target + " -link-params=1 --executor=aot"
+                        )
+
+                        module_aot = relay.build(
+                            relay_mod, target=target_aot, params=params
+                        )
+
 
             if board.micro:
                 logger.info("Building micro target")
@@ -60,9 +63,10 @@ def compile(config):
                     module, model_library_format_tar_path
                 )
 
-                tvm.micro.export_model_library_format(
-                    module_aot, model_library_format_aot_path
-                )
+                if target.kind.name == "c":
+                    tvm.micro.export_model_library_format(
+                        module_aot, model_library_format_aot_path
+                    )
 
                 with tarfile.open(model_library_format_tar_path, "r:*") as tar_f:
                     print("\n".join(f" - {m.name}" for m in tar_f.getmembers()))

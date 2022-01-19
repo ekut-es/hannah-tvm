@@ -1,11 +1,11 @@
 gvsoc_llvm:
   name: gvsoc_llvm
-  target: "llvm -mtriple=riscv32  -runtime=c -system-lib=1"
+  target: "llvm -mtriple=riscv32 -mattr=+m,+c,+xpulpv -keys=pulp -runtime=c -system-lib=1"
+  target_host: null
   opencl: false
   cuda: false
   micro:
     template_dir: ${template_dir:}/pulp/
     project_options:
       project_type: host_driven
-      board: gvsoc_pulpissimo
-      compiler_prefix: riscv32-unknown-elf-
+      compiler: clang
