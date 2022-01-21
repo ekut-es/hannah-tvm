@@ -17,8 +17,6 @@ from dataclasses import dataclass
 from typing import Any
 from pathlib import Path
 
-from tqdm import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
 from omegaconf import OmegaConf
 
 
@@ -28,7 +26,6 @@ from . import load
 
 
 logger = logging.getLogger(__name__)
-manager = multiprocessing.Manager()
 
 
 @dataclass
@@ -40,20 +37,23 @@ class ModelConfig:
 
 class TuningTask(multiprocessing.Process):
     def __init__(
-        self, board_key, model_key, board_config, model_config, tracker_port, tuner=None
+        self,
+        board_key,
+        model_key,
+        board_config,
+        model_config,
+        task_connector,
+        tuner=None,
     ):
+        self._task_connector = task_connector
         self.board_key = board_key
         self.model_key = model_key
         self.board_config = board_config
         self.model_config = model_config
-        self.tracker_port = tracker_port
         self.tuner = tuner
         self.log_file = f"{self.tuner}_{board_key}_{model_key}.json"
 
-        self.target = tvm.target.Target(
-            self.board_config.target, host=self.board_config.target_host
-        )
-        self.results = manager.dict()
+        self.results = {}
 
         self.results["board"] = board_key
         self.results["model"] = model_key
@@ -73,6 +73,7 @@ class TuningTask(multiprocessing.Process):
 
     def run(self):
         try:
+            self._task_connector.setup()
             self.results["status"] = "running"
             if isinstance(self.model_config, ModelConfig):
                 relay_mod, params, inputs = (
@@ -103,11 +104,14 @@ class TuningTask(multiprocessing.Process):
                 self._run_autotuner(relay_mod, params)
                 final_time = time.time()
                 self.results["tuning_duration"] = final_time - start_time
+            elif self.tuner:
+                raise Exception(f"Unknown tuner {self.tuner}")
             else:
                 self.results["tuning_duration"] = 0.0
 
-            remote, rlib, lib = self._build_and_upload(relay_mod, params)
-            self._evaluate(inputs, remote, rlib, lib)
+            lib = self._build(relay_mod, params)
+            remote_handle = self._task_connector.upload(lib)
+            self._evaluate(inputs, remote_handle)
             self.results["status"] = "finished"
         except Exception as e:
             logger.critical(
@@ -118,25 +122,24 @@ class TuningTask(multiprocessing.Process):
 
             self.results["status"] = "failed"
             self.results["error"] = e
+        finally:
+            self._task_connector.teardown()
 
     def _run_autotuner(self, relay_mod, params):
         logger.info("Running autotuner")
 
         early_stopping = 800
 
-        measure_option = autotvm.measure_option(
-            builder=autotvm.LocalBuilder(build_func="default"),
-            runner=autotvm.RPCRunner(
-                self.board_config.name,
-                host="localhost",
-                port=self.tracker_port,
-                number=5,
-                timeout=10,
-            ),
-        )
+        builder = self._task_connector.builder("autotvm")
+        runner = self._task_connector.runner("autotvm")
+
+        measure_option = autotvm.measure_option(builder=builder, runner=runner)
 
         tasks = autotvm.task.extract_from_program(
-            relay_mod["main"], target=self.target, params=params, ops=None
+            relay_mod["main"],
+            target=self._task_connector.target(),
+            params=params,
+            ops=None,
         )
 
         for num, tsk in enumerate(tasks):
@@ -164,17 +167,19 @@ class TuningTask(multiprocessing.Process):
     def _run_autoscheduler(self, relay_mod, params):
 
         hardware_params = self.board_config.get("hardware_params", None)
-        if hardware_params:
+        if hardware_params is not None:
             hardware_params = auto_scheduler.HardwareParams(**hardware_params)
 
         logger.info("Extracting tasks ...")
         tasks, task_weights = auto_scheduler.extract_tasks(
-            relay_mod["main"], params, self.target, hardware_params=hardware_params
+            relay_mod["main"],
+            params,
+            self._task_connector.target(),
+            hardware_params=hardware_params,
         )
 
-        runner = auto_scheduler.RPCRunner(
-            key=self.board_config.name, host="localhost", port=self.tracker_port
-        )
+        runner = self._task_connector.runner("auto_scheduler")
+        builder = self._task_connector.builder("auto_scheduler")
 
         database_file = (
             None
@@ -186,7 +191,7 @@ class TuningTask(multiprocessing.Process):
         )
         tune_option = auto_scheduler.TuningOptions(
             num_measure_trials=len(tasks) * 1024,
-            builder="local",
+            builder=builder,
             runner=runner,
             measure_callbacks=[auto_scheduler.RecordToFile(self.log_file)],
             verbose=1,
@@ -205,7 +210,7 @@ class TuningTask(multiprocessing.Process):
                 with Path(self.log_file).open("r") as log:
                     db.write(log.read())
 
-    def _build_and_upload(self, relay_mod, params):
+    def _build(self, relay_mod, params):
         logger.info("Compile...")
         if self.tuner == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.log_file):
@@ -213,62 +218,38 @@ class TuningTask(multiprocessing.Process):
                     opt_level=3, config={"relay.backend.use_auto_scheduler": True}
                 ):
                     lib = relay.build_module.build(
-                        relay_mod, target=self.target, params=params
+                        relay_mod, target=self._task_connector.target(), params=params
                     )
         elif self.tuner == "autotvm":
             if Path(self.log_file).exists():
                 with autotvm.apply_history_best(self.log_file):
                     with tvm.transform.PassContext(opt_level=3):
                         lib = relay.build_module.build(
-                            relay_mod, target=self.target, params=params
+                            relay_mod,
+                            target=self._task_connector.target(),
+                            params=params,
                         )
             else:
                 logger.warning("Could not find tuner logs in: %s", self.log_file)
                 with tvm.transform.PassContext(opt_level=3):
                     lib = relay.build_module.build(
-                        relay_mod, target=self.target, params=params
+                        relay_mod, target=self._task_connector.target(), params=params
                     )
 
         else:
             with tvm.transform.PassContext(opt_level=3):
                 lib = relay.build_module.build(
-                    relay_mod, target=self.target, params=params
+                    relay_mod, target=self._task_connector.target(), params=params
                 )
 
-        # Export library
-        tmp = tvm.contrib.utils.tempdir()
-        filename = "net.tar"
-        lib.export_library(tmp.relpath(filename))
+        return lib
 
-        # Upload module to device
-        logger.info("Upload...")
-        remote = auto_scheduler.utils.request_remote(
-            self.board_config.name, "localhost", self.tracker_port, timeout=10000
-        )
-
-        remote.upload(tmp.relpath(filename))
-
-        rlib = remote.load_module(filename)
-        logger.info("Upload finished")
-        return remote, rlib, lib
-
-    def _evaluate(self, inputs, remote, rlib, lib):
+    def _evaluate(self, inputs, remote_handle):
         # Create graph executor
         logger.info("Start evaluation")
-        if str(self.target.kind) == "cuda":
-            dev = remote.cuda()
-        else:
-            dev = remote.cpu()
-        module = tvm.contrib.graph_executor.GraphModule(rlib["default"](dev))
-        logger.info("Set inputs")
-        for name, val in inputs.items():
-            data_tvm = tvm.nd.array(val)
-            module.set_input(name, data_tvm)
 
-        # Evaluate on Graph Executor
-        logger.info("Evaluate inference time cost...")
-        ftimer = module.module.time_evaluator("run", dev, repeat=10, min_repeat_ms=500)
-        prof_res = np.array(ftimer().results) * 1e6  # convert to microsecond
+        prof_res = self._task_connector.measure(remote_handle, inputs)
+
         logger.info(
             "Mean inference time (std dev): %.2f us (%.2f us)"
             % (np.mean(prof_res), np.std(prof_res))
@@ -277,14 +258,10 @@ class TuningTask(multiprocessing.Process):
         self.results["latency"] = float(np.mean(prof_res))
         self.results["latency_stdev"] = float(np.std(prof_res))
 
-        # Use debug Executor to get per operator runtime
-        debug_module = tvm.contrib.debugger.debug_executor.GraphModuleDebug(
-            rlib["debug_create"]("default", dev), [dev], lib.get_graph_json(), None
-        )
-        for name, val in inputs.items():
-            data_tvm = tvm.nd.array(val)
-            debug_module.set_input(name, data_tvm)
-        debug_profile = debug_module.profile()
+        debug_profile = self._task_connector.profile(remote_handle, inputs)
+
+        if debug_profile is not None:
+            logger.info("Profile information: %s", str(debug_profile))
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"
