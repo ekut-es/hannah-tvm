@@ -1,7 +1,6 @@
 import logging
 import hydra
 
-
 from .experiment_scheduler import TuningExperimentScheduler
 
 logger = logging.getLogger(__name__)
