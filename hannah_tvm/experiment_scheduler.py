@@ -23,7 +23,7 @@ from . import config
 from . import measure
 from . import load
 from .task import ModelConfig, TuningTask
-from .connectors import AutomateBoardConnector
+from .connectors import AutomateBoardConnector, MicroTVMBoardConnector
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,10 @@ class ExperimentSchedulerBase(ABC):
 
     def _init_connectors(self):
         for board_name, board_config in self.config.board.items():
-            connector = AutomateBoardConnector(board_config)
+            if board_config.micro:
+                connector = MicroTVMBoardConnector(board_config)
+            else:
+                connector = AutomateBoardConnector(board_config)
             connector.setup()
             self.board_connectors[board_config.name] = connector
 

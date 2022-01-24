@@ -4,7 +4,7 @@ PULP_APP = test
 PULP_CFLAGS = -O3 -g -I${TVM_HOME}/include -I${TVM_HOME}/3rdparty/dlpack/include
 
 MODEL_SRC = $(wildcard build/codegen/host/lib/*.c)
-MODEL_OBJ =  $(wildcard build/codegen/host/lib/*.o)
+MODEL_OBJ = $(wildcard build/codegen/host/lib/*.o) $(wildcard build/model/*.o)
 
 TESTFILE ?= test.c
 

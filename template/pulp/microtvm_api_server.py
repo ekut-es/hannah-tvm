@@ -14,7 +14,7 @@ except:
 
 HERE = pathlib.Path(__file__).parent
 MODEL = "model.tar"
-IS_TEMPLATE = not os.path.exists(HERE / MODEL)
+IS_TEMPLATE = HERE.parent.name == "template"
 
 PROJECT_OPTIONS=[
     server.ProjectOption(
@@ -25,8 +25,8 @@ PROJECT_OPTIONS=[
         type="str"
     ),
     server.ProjectOption(
-        "compiler", 
-        help="Compile with gcc or clang", 
+        "compiler",
+        help="Compile with gcc or clang",
         choices=("gcc", "clang"),
         optional=["build"],
         type="str"
@@ -52,7 +52,6 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
                 runner(graph, f)
 
         shutil.copy(__file__, project_dir)
-        shutil.copy(model_library_format_path, project_dir / MODEL)
 
         shutil.copy(HERE / "Makefile", project_dir)
         shutil.copy(HERE / "runner.h", project_dir)
@@ -70,7 +69,8 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
     def flash(self, options: dict):
         if IS_TEMPLATE:
             return
-        subprocess.run(["make", "run", "-s"], timeout=30, cwd=HERE)
+        with open(HERE / "cycles.txt", "wb") as out:
+            subprocess.run(["make", "run", "-s"], timeout=30, cwd=HERE, stdout=out)
 
     def write_transport(self, data: bytes, timeout_sec: float):
         return super().write_transport(data, timeout_sec)

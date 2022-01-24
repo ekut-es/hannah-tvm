@@ -48,7 +48,7 @@ def runner(graph, file):
             exit(1)
 
         file.write("#define dtype%i %s" % (i, ctype))
-        file.write("\n%s data%i[%s];\n" % (ctype, i, "][".join(str(x) for x in shape)))
+        file.write("\n%s data%i%s;\n" % (ctype, i, "".join("[" + str(x) + "]" for x in shape)))
         file.write("int64_t shape%i[] = { %s };\n"
                    % (i, ", ".join(str(x) for x in shape)))
         file.write("DLTensor tensor%i = { data%i, %s, %i, %s, shape%i, NULL, 0 };\n"
