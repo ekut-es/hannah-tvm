@@ -1,8 +1,8 @@
 
 import tvm
-from tvm import relay, topi
+from tvm import relay
 import json
-import sys
+import re
 
 
 def runner(graph, file):
@@ -20,39 +20,25 @@ def runner(graph, file):
             continue
         dltypes = t
 
-    device = "{ kDLCPU, 0 }"
     for i, (shape, dltype) in enumerate(zip(shapes, dltypes)):
-        if dltype == "float32":
-            ctype = "float"
-            dldatatype = "{ kDLFloat, 32, 1 }"
-        elif dltype == "int32":
-            ctype = "int32_t"
-            dldatatype = "{ kDLInt, 32, 1 }"
-        elif dltype == "int16":
-            ctype = "int16_t"
-            dldatatype = "{ kDLInt, 16, 1 }"
-        elif dltype == "int8":
-            ctype = "int8_t"
-            dldatatype = "{ kDLInt, 8, 1 }"
-        elif dltype == "uint32":
-            ctype = "uint32_t"
-            dldatatype = "{ kDLUInt, 32, 1 }"
-        elif dltype == "uint16":
-            ctype = "uint16_t"
-            dldatatype = "{ kDLUInt, 16, 1 }"
-        elif dltype == "uint8":
-            ctype = "uint8_t"
-            dldatatype = "{ kDLUInt, 8, 1 }"
+        match = re.match(r"(float|u?int)(\d+)", dltype)
+        if match:
+            if match.group(1) == "float":
+                ctype = "float"
+                kDL = "kDLFloat"
+            else:
+                ctype = dltype + "_t"
+                kDL = "kDLUInt" if dltype[0] == "u" else "kDLInt"
+            dldatatype = f"{{ {kDL}, {match.group(2)}, 1 }}"
         else:
             print("can not handle this type")
             exit(1)
 
-        file.write("#define dtype%i %s" % (i, ctype))
-        file.write("\n%s data%i%s;\n" % (ctype, i, "".join("[" + str(x) + "]" for x in shape)))
-        file.write("int64_t shape%i[] = { %s };\n"
-                   % (i, ", ".join(str(x) for x in shape)))
-        file.write("DLTensor tensor%i = { data%i, %s, %i, %s, shape%i, NULL, 0 };\n"
-                   % (i, i, device, len(shape), dldatatype, i))
+        file.write(f"#define dtype{i} {ctype}\n")
+        file.write(f"{ctype} data{i}{''.join(f'[{x}]' for x in shape)};\n")
+        file.write(f"int64_t shape{i}[] = {{ {', '.join(map(str, shape))} }};\n")
+        data_pointer = f"&data{i}" if len(shape) == 0 else f"data{i}"
+        file.write(f"DLTensor tensor{i} = {{ { data_pointer }, {{ kDLCPU, 0 }}, {len(shape)}, {dldatatype}, shape{i}, NULL, 0 }};\n")
 
     for i, node in enumerate(graph["nodes"]):
         if node["op"] == "tvm_op":
@@ -60,21 +46,17 @@ def runner(graph, file):
             num_outputs = int(node["attrs"]["num_outputs"])
             args = [graph["node_row_ptr"][n] + j for n, j, _ in inputs]
             args += [graph["node_row_ptr"][i] + j for j in range(num_outputs)]
-            args = ", ".join("{ .v_handle = &tensor%i }" % arg for arg in args)
-            file.write("\nTVMValue args%i[] = { %s };\n" % (i, args))
-            file.write("int types%i[] = { %s };\n"
-                       % (i, (", kTVMDLTensorHandle" * (len(inputs) + num_outputs))[2:] ))
-            file.write("int %s(TVMValue* args, int* type_codes, int num_args);\n"
-                       % node["attrs"]["func_name"])
+            args_str = ", ".join(f"{{ .v_handle = &tensor{arg} }}" for arg in args)
+            file.write(f"\nTVMValue args{i}[] = {{ {args_str} }};\n")
+            file.write(f"int types{i}[] = {{ {', '.join(['kTVMDLTensorHandle'] * len(args))} }};\n")
+            file.write(f"int {node['attrs']['func_name']}(TVMValue* args, int* type_codes, int num_args);\n")
 
     file.write("\nint run() {\n")
     file.write("\tint error = 0;\n")
     for i, node in enumerate(graph["nodes"]):
         if node["op"] == "tvm_op":
             attrs = node["attrs"]
-            file.write("\terror = %s(args%i, types%i, %i);\n"
-                       % (attrs["func_name"], i, i,
-                          int(attrs["num_inputs"]) + int(attrs["num_outputs"])))
+            file.write(f"\terror = {attrs['func_name']}(args{i}, types{i}, {int(attrs['num_inputs']) + int(attrs['num_outputs'])});\n")
             file.write("\tif(error) return error;\n")
     file.write("\treturn 0;\n")
     file.write("}\n")

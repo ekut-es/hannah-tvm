@@ -33,39 +33,32 @@ class PulpRunner(Runner):
             f.write("#include \"../runner.h\"\n")
             f.write("#include \"tvm/runtime/c_runtime_api.h\"\n")
             f.write("int default_function(TVMValue* args, int* type_codes, int num_args);\n")
+
             for i, (shape, type) in enumerate(arg_info):
-                if type == "float32":
-                    ctype = "float"
-                    dldatatype = "{ kDLFloat, 32, 1 }"
-                elif type == "int32":
-                    ctype = "int32_t"
-                    dldatatype = "{ kDLInt, 32, 1 }"
-                elif type == "int16":
-                    ctype = "int16_t"
-                    dldatatype = "{ kDLInt, 16, 1 }"
-                elif type == "int8":
-                    ctype = "int8_t"
-                    dldatatype = "{ kDLInt, 8, 1 }"
-                elif type == "uint32":
-                    ctype = "uint32_t"
-                    dldatatype = "{ kDLUInt, 32, 1 }"
-                elif type == "uint16":
-                    ctype = "uint16_t"
-                    dldatatype = "{ kDLUInt, 16, 1 }"
-                elif type == "uint8":
-                    ctype = "uint8_t"
-                    dldatatype = "{ kDLUInt, 8, 1 }"
+                match = re.match(r"(float|u?int)(\d+)", type)
+                if match:
+                    if match.group(1) == "float":
+                        ctype = "float"
+                        kDL = "kDLFloat"
+                    else:
+                        ctype = type + "_t"
+                        kDL = "kDLUInt" if type[0] == "u" else "kDLInt"
+                    dldatatype = f"{{ {kDL}, {match.group(2)}, 1 }}"
                 else:
                     print("can not handle type: ", type)
                     exit(1)
 
-                f.write("%s data%i%s;\n" % (ctype, i, "".join("[" + str(dim) + "]" for dim in shape)))
-                f.write("int64_t shape%i[] = { %s };\n" % (i, ", ".join(str(dim) for dim in shape)))
-                f.write("DLTensor tensor%i = { data%i, { kDLCPU, 0 }, %i, %s, shape%i, NULL, 0 };\n"
-                        % (i, i, len(shape), dldatatype, i))
-            f.write("TVMValue args[] = { %s };\n" % ", ".join("{ .v_handle = &tensor%i }" % i for i in range(len(arg_info))))
-            f.write("int types[] = { %s };\n" % ((", kTVMDLTensorHandle" * (len(arg_info)))[2:] ))
-            f.write("int run(){return default_function(args, types, %i);}\n" % len(arg_info))
+                f.write(f"{ctype} data{i}{''.join(f'[{dim}]'for dim in shape)};\n")
+                f.write(f"int64_t shape{i}[] = {{ {', '.join(map(str, shape))} }};\n")
+                f.write(f"DLTensor tensor{i} = {{ data{i}, {{ kDLCPU, 0 }}, {len(shape)}, {dldatatype}, shape{i}, NULL, 0 }};\n")
+
+            args = ", ".join(f"{{ .v_handle = &tensor{i} }}" for i in range(len(arg_info)))
+            f.write(f"TVMValue args[] = {{ {args} }};\n")
+
+            types = ", ".join(["kTVMDLTensorHandle"] * len(arg_info))
+            f.write(f"int types[] = {{ {types} }};\n")
+
+            f.write(f"int run(){{ return default_function(args, types, {len(arg_info)}); }}\n")
             f.flush()
             f.close()
 
