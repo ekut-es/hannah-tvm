@@ -20,6 +20,6 @@ defaults:
       - tinyml_ic01
       - tinyml_kws01
       - tinyml_vww01
-
-
-tuner: null
+  - tuner:
+      - autotvm
+      - auto_scheduler

@@ -1,17 +1,11 @@
 import logging
 import time
 import contextlib
-import multiprocessing
+import multiprocessing as mp
 
 from abc import ABC, abstractmethod
 
-import tvm
-import tvm.auto_scheduler as auto_scheduler
-import tvm.autotvm as autotvm
-import tvm.relay as relay
 
-
-import tvm.rpc
 import tvm.rpc.tracker
 import numpy as np
 import tabulate
@@ -20,8 +14,6 @@ from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from . import config
-from . import measure
-from . import load
 from .task import ModelConfig, TuningTask
 from .connectors import AutomateBoardConnector
 
@@ -42,6 +34,8 @@ class ExperimentSchedulerBase(ABC):
         logger.info(" Number of tasks: %d", len(self.tasks))
 
         self.board_connectors = {}
+        self.mp_context = mp.get_context("spawn")
+        self.db_lock = self.mp_context.Lock()
 
     def _init_connectors(self):
         for board_name, board_config in self.config.board.items():
@@ -79,6 +73,8 @@ class ExperimentSchedulerBase(ABC):
 
                     time.sleep(1.0)
 
+                    self.report()
+
         self.report()
 
         results = []
@@ -98,17 +94,21 @@ class ExperimentSchedulerBase(ABC):
                         self.running_tasks[board_name] = task
                         del self.worklist[idx]
                         if self.n_jobs > 0:
-                            task.start()
+                            process = self.mp_context.Process(
+                                target=task.run, kwargs={"lock": self.db_lock}
+                            )
+                            task.process = process
+                            process.start()
                         else:
-                            task.run()
+                            task.run(lock=self.db_lock)
                         break
         return
 
     def _restart_connections(self):
         for board_name, connector in self.board_connectors.items():
             if not connector.is_alive():
-                logger.info("Connection to %s is no longer alive", board_name)
                 if board_name in self.running_tasks:
+                    logger.info("Connection to %s is no longer alive", board_name)
                     logger.critical(
                         "Server process for %s has been terminated during tuning restarting",
                         board_name,
@@ -146,18 +146,19 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
     def _extract_tasks(self):
         for board_name, board_config in self.config.board.items():
             for model_name, model_config in self.config.model.items():
-                task = TuningTask(
-                    board_name,
-                    model_name,
-                    board_config,
-                    model_config=model_config,
-                    task_connector=self.board_connectors[
-                        board_config.name
-                    ].task_connector(),
-                    tuner=self.config.tuner,
-                )
-                self.worklist.append(task)
-                self.tasks.append(task)
+                for tuner in self.config.tuner.values():
+                    task = TuningTask(
+                        board_name,
+                        model_name,
+                        board_config,
+                        model_config=model_config,
+                        task_connector=self.board_connectors[
+                            board_config.name
+                        ].task_connector(),
+                        tuner=tuner,
+                    )
+                    self.worklist.append(task)
+                    self.tasks.append(task)
 
 
 class BackendScheduler(ExperimentSchedulerBase):

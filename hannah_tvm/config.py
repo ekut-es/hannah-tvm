@@ -59,10 +59,16 @@ class Model:
 
 
 @dataclass
+class TunerConfig:
+    name: str = MISSING
+
+
+@dataclass
 class Config:
     board: Dict[str, Board] = MISSING
     model: Dict[str, Model] = MISSING
-    tuner: Optional[str] = None
+    tuner: Optional[Dict[str, TunerConfig]] = None
+    n_jobs: int = 0
 
 
 cs = ConfigStore.instance()

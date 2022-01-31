@@ -19,9 +19,10 @@ from pathlib import Path
 
 from omegaconf import OmegaConf
 
+from hannah_tvm.dataset import PerformanceDataset
+
 
 from . import config
-from . import measure
 from . import load
 
 
@@ -35,7 +36,7 @@ class ModelConfig:
     inputs: Any
 
 
-class TuningTask(multiprocessing.Process):
+class TuningTask:
     def __init__(
         self,
         board_key,
@@ -50,8 +51,8 @@ class TuningTask(multiprocessing.Process):
         self.model_key = model_key
         self.board_config = board_config
         self.model_config = model_config
-        self.tuner = tuner
-        self.log_file = f"{self.tuner}_{board_key}_{model_key}.json"
+        self.tuner_config = tuner
+        self.tuner_log_file = f"{board_key}_{model_key}.json"
 
         self.results = {}
 
@@ -69,11 +70,17 @@ class TuningTask(multiprocessing.Process):
         )
 
         name = f"tuning-task-{board_key}-{model_key}"
-        super().__init__(name=name)
+        ## Handle to child Process running this task if task is run in a different process
+        self.process = None
+        self.dataset = None
 
-    def run(self):
+    def run(self, lock: multiprocessing.Lock = None) -> None:
         try:
             self._task_connector.setup()
+
+            target = self._task_connector.target()
+            self.dataset = PerformanceDataset(self.board_config.name, target.kind, lock)
+
             self.results["status"] = "running"
             if isinstance(self.model_config, ModelConfig):
                 relay_mod, params, inputs = (
@@ -94,18 +101,22 @@ class TuningTask(multiprocessing.Process):
                 with tvm.transform.PassContext(opt_level=3):
                     relay_mod = seq(relay_mod)
 
-            if self.tuner == "auto_scheduler":
+            self.dataset.add_program(self.model_key, relay_mod)
+
+            return
+
+            if self.tuner_config.name == "auto_scheduler":
                 start_time = time.time()
                 self._run_autoscheduler(relay_mod, params)
                 final_time = time.time()
                 self.results["tuning_duration"] = final_time - start_time
-            elif self.tuner == "autotvm":
+            elif self.tuner_config.name == "autotvm":
                 start_time = time.time()
                 self._run_autotuner(relay_mod, params)
                 final_time = time.time()
                 self.results["tuning_duration"] = final_time - start_time
-            elif self.tuner:
-                raise Exception(f"Unknown tuner {self.tuner}")
+            elif self.tuner_config.name:
+                raise Exception(f"Unknown tuner {self.tuner_config.name}")
             else:
                 self.results["tuning_duration"] = 0.0
 
@@ -146,7 +157,7 @@ class TuningTask(multiprocessing.Process):
             prefix = f"Task {tsk.name} ({num+1}/{len(tasks)})"
             tuner_obj = autotvm.tuner.XGBTuner(tsk, loss_type="rank")
 
-            tmp_log_file = self.log_file + ".tmp"
+            tmp_log_file = self.tuner_log_file + ".tmp"
             if os.path.exists(tmp_log_file):
                 os.remove(tmp_log_file)
 
@@ -161,7 +172,7 @@ class TuningTask(multiprocessing.Process):
                 ],
             )
 
-            autotvm.record.pick_best(tmp_log_file, self.log_file)
+            autotvm.record.pick_best(tmp_log_file, self.tuner_log_file)
             os.remove(tmp_log_file)
 
     def _run_autoscheduler(self, relay_mod, params):
@@ -181,9 +192,8 @@ class TuningTask(multiprocessing.Process):
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")
 
-        database_file = (
-            None
-        )  # database_file = str(self.database_file) if self.database_file.exists() else None
+        database_file = str(self.database_file) if self.database_file.exists() else None
+
         logger.info("Loading database %s", str(database_file))
         logger.info("Begin tuning...")
         tuner = auto_scheduler.TaskScheduler(
@@ -193,7 +203,7 @@ class TuningTask(multiprocessing.Process):
             num_measure_trials=len(tasks) * 1024,
             builder=builder,
             runner=runner,
-            measure_callbacks=[auto_scheduler.RecordToFile(self.log_file)],
+            measure_callbacks=[auto_scheduler.RecordToFile(self.tuner_log_file)],
             verbose=1,
         )
 
@@ -204,25 +214,25 @@ class TuningTask(multiprocessing.Process):
             self.database_file.parent.mkdir(exist_ok=True, parents=True)
             mode = "w"
 
-        if Path(self.log_file).exists():
+        if Path(self.tuner_log_file).exists():
             logger.info("Saving database: %s", str(self.database_file))
             with self.database_file.open(mode) as db:
-                with Path(self.log_file).open("r") as log:
+                with Path(self.tuner_log_file).open("r") as log:
                     db.write(log.read())
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
-        if self.tuner == "auto_scheduler":
-            with auto_scheduler.ApplyHistoryBest(self.log_file):
+        if self.tuner_config.name == "auto_scheduler":
+            with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
                 with tvm.transform.PassContext(
                     opt_level=3, config={"relay.backend.use_auto_scheduler": True}
                 ):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
                     )
-        elif self.tuner == "autotvm":
-            if Path(self.log_file).exists():
-                with autotvm.apply_history_best(self.log_file):
+        elif self.tuner_config.name == "autotvm":
+            if Path(self.tuner_log_file).exists():
+                with autotvm.apply_history_best(self.tuner_log_file):
                     with tvm.transform.PassContext(opt_level=3):
                         lib = relay.build_module.build(
                             relay_mod,
@@ -230,7 +240,7 @@ class TuningTask(multiprocessing.Process):
                             params=params,
                         )
             else:
-                logger.warning("Could not find tuner logs in: %s", self.log_file)
+                logger.warning("Could not find tuner logs in: %s", self.tuner_log_file)
                 with tvm.transform.PassContext(opt_level=3):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
@@ -266,3 +276,9 @@ class TuningTask(multiprocessing.Process):
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"
         return s
+
+    def is_alive(self):
+        if self.process:
+            return self.process.is_alive()
+
+        return False
