@@ -4,9 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["Christoph Gerum <christoph.gerum@uni-tuebingen.de>"]
 license = "MIT"
-packages = [
-    { include = "hydra_plugins" },
-]
 
 
 [tool.poetry.dependencies]
