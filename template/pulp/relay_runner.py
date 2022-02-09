@@ -3,11 +3,13 @@ import tvm
 from tvm import relay
 import json
 import re
+from math import prod
 
 
-def runner(graph, file):
+def runner(graph, params, file):
 
     file.write("#include \"../runner.h\"\n#include \"tvm/runtime/c_runtime_api.h\"\n\n")
+    file.write("int _lookup_linked_param(TVMValue *args, int *type_codes, int num_args, void *ret_value, int *ret_tcode, void *resource_handle);\n\n")
 
     shapes = None
     for s in graph["attrs"]["shape"]:
@@ -19,14 +21,32 @@ def runner(graph, file):
         if isinstance(t, str):
             continue
         dltypes = t
+    storage_ids = None
+    for ids in graph["attrs"]["storage_id"]:
+        if isinstance(ids, str):
+            continue
+        storage_ids = ids
 
+    param_ids = set()
+
+    for i, node in enumerate(graph["nodes"]):
+        if node["name"] in params:
+            idx = graph["node_row_ptr"][i]
+            param_ids.add(storage_ids[idx])
+
+    storage_sizes = {}
+    define_tensors = ""
+    lookup = "\tTVMValue storage_id; int lookup_arg_type = kTVMArgInt, lookup_ret_type;\n"
     for i, (shape, dltype) in enumerate(zip(shapes, dltypes)):
         match = re.match(r"(float|u?int)(\d+)", dltype)
         if match:
-            if match.group(1) == "float":
+            if dltype == "float32":
                 ctype = "float"
                 kDL = "kDLFloat"
-            else:
+            elif dltype == "float64":
+                ctype = "double"
+                kDL = "kDLFloat"
+            elif match.group(1) != "float":
                 ctype = dltype + "_t"
                 kDL = "kDLUInt" if dltype[0] == "u" else "kDLInt"
             dldatatype = f"{{ {kDL}, {match.group(2)}, 1 }}"
@@ -34,30 +54,53 @@ def runner(graph, file):
             print("can not handle this type")
             exit(1)
 
-        file.write(f"#define dtype{i} {ctype}\n")
-        file.write(f"{ctype} data{i}{''.join(f'[{x}]' for x in shape)};\n")
-        file.write(f"int64_t shape{i}[] = {{ {', '.join(map(str, shape))} }};\n")
-        data_pointer = f"&data{i}" if len(shape) == 0 else f"data{i}"
-        file.write(f"DLTensor tensor{i} = {{ { data_pointer }, {{ kDLCPU, 0 }}, {len(shape)}, {dldatatype}, shape{i}, NULL, 0 }};\n")
+        storage_id = storage_ids[i]
+        if storage_id in param_ids:
+            lookup += f"\tstorage_id.v_int64 = { storage_id };\n"
+            lookup += f"\t_lookup_linked_param(&storage_id, &lookup_arg_type, 1, &tensor{i}.data, &lookup_ret_type, NULL);\n"
+            data_pointer = "NULL"
+        else:
+            size = (int(match.group(2)) + 7) // 8 * prod(shape)
+            old_size = storage_sizes.get(storage_id, 0)
+            if size > old_size:
+                storage_sizes[storage_id] = size
 
+            data_pointer = f"data{storage_id}"
+
+        shape_str = ", ".join(map(str, shape))
+        define_tensors += f"int64_t shape{i}[] = {{ {shape_str} }};\n"
+        define_tensors += f"DLTensor tensor{i} = {{ { data_pointer }, {{ kDLCPU, 0 }}, {len(shape)}, {dldatatype}, shape{i}, NULL, 0 }};\n\n"
+
+    for storage_id, size in storage_sizes.items():
+        file.write(f"char data{storage_id}[{size}];\n\n")
+
+    file.write(define_tensors)
+
+    call_ops = "\tint error = 0;\n"
     for i, node in enumerate(graph["nodes"]):
         if node["op"] == "tvm_op":
+            func_name = node["attrs"]["func_name"]
             inputs = node["inputs"]
+            num_inputs = int(node["attrs"]["num_inputs"])
             num_outputs = int(node["attrs"]["num_outputs"])
+            num_args = num_inputs + num_outputs
+
             args = [graph["node_row_ptr"][n] + j for n, j, _ in inputs]
             args += [graph["node_row_ptr"][i] + j for j in range(num_outputs)]
             args_str = ", ".join(f"{{ .v_handle = &tensor{arg} }}" for arg in args)
             file.write(f"\nTVMValue args{i}[] = {{ {args_str} }};\n")
-            file.write(f"int types{i}[] = {{ {', '.join(['kTVMDLTensorHandle'] * len(args))} }};\n")
-            file.write(f"int {node['attrs']['func_name']}(TVMValue* args, int* type_codes, int num_args);\n")
+
+            types = ", ".join(["kTVMDLTensorHandle"] * len(args))
+            file.write(f"int types{i}[] = {{ {types} }};\n")
+
+            file.write(f"int {func_name}(TVMValue* args, int* type_codes, int num_args);\n")
+
+            call_ops += f"\terror = {func_name}(args{i}, types{i}, {num_args});\n"
+            call_ops += "\tif(error) return error;\n"
 
     file.write("\nint run() {\n")
-    file.write("\tint error = 0;\n")
-    for i, node in enumerate(graph["nodes"]):
-        if node["op"] == "tvm_op":
-            attrs = node["attrs"]
-            file.write(f"\terror = {attrs['func_name']}(args{i}, types{i}, {int(attrs['num_inputs']) + int(attrs['num_outputs'])});\n")
-            file.write("\tif(error) return error;\n")
+    file.write(lookup)
+    file.write(call_ops)
     file.write("\treturn 0;\n")
     file.write("}\n")
 

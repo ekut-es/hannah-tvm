@@ -7,6 +7,7 @@ import json
 import shutil
 import os
 import subprocess
+from  tvm.relay import load_param_dict
 try:
     from relay_runner import runner
 except:
@@ -48,8 +49,10 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
         with tarfile.open(model_library_format_path) as tar:
             tar.extractall(project_dir / "build")
             graph = json.load(tar.extractfile("./executor-config/graph/graph.json"))
+            param_bytes = bytearray(tar.extractfile("./parameters/default.params").read())
+            params = load_param_dict(param_bytes)
             with open(project_dir / "build" / "runner.c", "w") as f:
-                runner(graph, f)
+                runner(graph, params, f)
 
         shutil.copy(__file__, project_dir)
 
