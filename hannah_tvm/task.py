@@ -37,6 +37,8 @@ class ModelConfig:
 
 
 class TuningTask:
+    """Represents a full network tuning task"""
+
     def __init__(
         self,
         board_key,

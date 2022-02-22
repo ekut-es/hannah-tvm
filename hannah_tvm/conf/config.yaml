@@ -23,3 +23,4 @@ defaults:
   - tuner:
       - autotvm
       - auto_scheduler
+  - override hydra/job_logging: silent

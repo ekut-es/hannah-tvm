@@ -19,6 +19,9 @@ _automate_context = None
 
 
 def automate_context():
+    if not automate_available:
+        raise Exception("automate module is not available")
+
     global _automate_context
     if _automate_context is None:
         automate_config = AutomateConfig()
