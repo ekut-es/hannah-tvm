@@ -14,7 +14,7 @@ from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from . import config
-from .task import ModelConfig, TuningTask
+from .task import ModelConfig, TaskStatus, TuningTask
 from .connectors import AutomateBoardConnector
 
 
@@ -45,7 +45,7 @@ class ExperimentSchedulerBase(ABC):
 
     @abstractmethod
     def _extract_tasks(self):
-        pass
+        ...
 
     def run(self):
         self._init_connectors()
@@ -98,7 +98,7 @@ class ExperimentSchedulerBase(ABC):
                                 target=task.run, kwargs={"lock": self.db_lock}
                             )
                             task.process = process
-                            process.start()
+                            results = process.start()
                         else:
                             task.run(lock=self.db_lock)
                         break
@@ -118,13 +118,18 @@ class ExperimentSchedulerBase(ABC):
     def report(self):
         results = []
         for task in self.tasks:
-            results.append(task.results)
+            task_results = task.results
+
+            task_results["status"] = TaskStatus(task.status.value).display_name
+            task_results["progress"] = f"{task.progress.value * 100}%"
+            results.append(task_results)
 
         headers = [
             "board",
             "model",
             "tuning_duration",
             "status",
+            "progress",
             "latency",
             "latency_stdev",
         ]
@@ -156,6 +161,8 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
                             board_config.name
                         ].task_connector(),
                         tuner=tuner,
+                        status=self.mp_context.Value("i", TaskStatus.CREATED.value),
+                        progress=self.mp_context.Value("d", 0.0),
                     )
                     self.worklist.append(task)
                     self.tasks.append(task)
@@ -192,6 +199,8 @@ class BackendScheduler(ExperimentSchedulerBase):
                 board_config,
                 ModelConfig(self.model, self.params, self.inputs),
                 tune=False,
+                status=self.mp_context.Value("i", TaskStatus.CREATED.value),
+                progress=self.mp_context.Value("d", 0.0),
             )
 
             self.worklist.append(task)
