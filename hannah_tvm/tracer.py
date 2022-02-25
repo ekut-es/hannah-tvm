@@ -94,7 +94,6 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
         new_params = []
         binds = {}
         for param in fn.params:
-            binds = legalize_var_name(param)
             # Get the parameter's type annotation.
             var_type = param.type_annotation
             if isinstance(var_type, tvm.ir.TensorType):

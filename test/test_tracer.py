@@ -266,9 +266,9 @@ def test_tracer(dim, act, bw_w, bw_f, bw_b):
     output_bits = bw_f
 
     if dim == 1:
-        input_shape = (1, 8, 32)
+        input_shape = (1, 8, 8)
     elif dim == 2:
-        input_shape = (1, 8, 32, 32)
+        input_shape = (1, 8, 8, 8)
 
     run_test(cell, input_shape, act, input_bits, output_bits, "int8")
 

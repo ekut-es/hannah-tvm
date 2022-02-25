@@ -105,8 +105,6 @@ class TuningTask:
 
             self.dataset.add_program(self.model_key, relay_mod)
 
-            return
-
             if self.tuner_config.name == "auto_scheduler":
                 start_time = time.time()
                 self._run_autoscheduler(relay_mod, params)
