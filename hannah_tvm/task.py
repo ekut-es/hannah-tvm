@@ -1,32 +1,42 @@
 import logging
-import multiprocessing
+import multiprocessing as mp
+import os
 import time
 import traceback
-import os
+import enum
+import warnings
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
+import numpy as np
 import tvm
 import tvm.auto_scheduler as auto_scheduler
 import tvm.autotvm as autotvm
+import tvm.contrib.debugger.debug_runtime
 import tvm.relay as relay
 import tvm.rpc
 import tvm.rpc.tracker
-import tvm.contrib.debugger.debug_runtime
-import numpy as np
-
-from dataclasses import dataclass
-from typing import Any
-from pathlib import Path
-
+from hannah_tvm.dataset import PerformanceDataset
+from hannah_tvm.tuner.autotvm.callbacks import (
+    progress_callback as autotvm_progress_callback,
+)
 from omegaconf import OmegaConf
 
-from hannah_tvm.dataset import PerformanceDataset
-
-
-from . import config
-from . import load
-
+from . import config, load
 
 logger = logging.getLogger(__name__)
+
+
+class TaskStatus(enum.IntEnum):
+    CREATED = 1
+    RUNNING = 2
+    FINISHED = 3
+    FAILED = 4
+
+    @property
+    def display_name(self):
+        return self.name.lower()
 
 
 @dataclass
@@ -46,6 +56,8 @@ class TuningTask:
         board_config,
         model_config,
         task_connector,
+        status: mp.Value,
+        progress: mp.Value,
         tuner=None,
     ):
         self._task_connector = task_connector
@@ -60,7 +72,6 @@ class TuningTask:
 
         self.results["board"] = board_key
         self.results["model"] = model_key
-        self.results["status"] = "created"
         self.results["error"] = None
 
         self.database_file = (
@@ -72,18 +83,24 @@ class TuningTask:
         )
 
         name = f"tuning-task-{board_key}-{model_key}"
-        ## Handle to child Process running this task if task is run in a different process
+        # Handle to child Process running this task if task is run in a different process
         self.process = None
         self.dataset = None
 
-    def run(self, lock: multiprocessing.Lock = None) -> None:
+        # Current status implemented as multiprocessing.value for sharing between running tasks
+        self.status = status
+        self.progress = progress
+
+    def run(self, lock: mp.Lock = None, status: mp.Value = None) -> None:
+        if status is not None:
+            self.status = status
         try:
             self._task_connector.setup()
 
             target = self._task_connector.target()
             self.dataset = PerformanceDataset(self.board_config.name, target.kind, lock)
 
-            self.results["status"] = "running"
+            self.status.value = TaskStatus.RUNNING.value
             if isinstance(self.model_config, ModelConfig):
                 relay_mod, params, inputs = (
                     self.model_config.mod,
@@ -123,7 +140,8 @@ class TuningTask:
             lib = self._build(relay_mod, params)
             remote_handle = self._task_connector.upload(lib)
             self._evaluate(inputs, remote_handle)
-            self.results["status"] = "finished"
+            self.status.value = TaskStatus.FINISHED.value
+
         except Exception as e:
             logger.critical(
                 "Tuning model %s on board %s failed", self.model_key, self.board_key
@@ -131,7 +149,7 @@ class TuningTask:
             logger.critical(str(e))
             traceback.print_tb(e.__traceback__)
 
-            self.results["status"] = "failed"
+            self.status.value = TaskStatus.FAILED.value
             self.results["error"] = e
         finally:
             self._task_connector.teardown()
@@ -146,6 +164,7 @@ class TuningTask:
 
         measure_option = autotvm.measure_option(builder=builder, runner=runner)
 
+        logger.info("Extracting tuning tasks")
         tasks = autotvm.task.extract_from_program(
             relay_mod["main"],
             target=self._task_connector.target(),
@@ -153,7 +172,10 @@ class TuningTask:
             ops=None,
         )
 
+        logger.info("Extracted %d tasks", len(tasks))
+
         for num, tsk in enumerate(tasks):
+            self.progress.value = num / len(tasks)
             prefix = f"Task {tsk.name} ({num+1}/{len(tasks)})"
             tuner_obj = autotvm.tuner.XGBTuner(tsk, loss_type="rank")
 
@@ -162,13 +184,16 @@ class TuningTask:
                 os.remove(tmp_log_file)
 
             tsk_trial = min(1024, len(tsk.config_space))
+            step_progress = 1 / (len(tasks) * tsk_trial)
+
             tuner_obj.tune(
                 n_trial=tsk_trial,
                 early_stopping=early_stopping,
                 measure_option=measure_option,
                 callbacks=[
-                    autotvm.callback.progress_bar(tsk_trial, prefix=prefix),
+                    autotvm_progress_callback(step_progress, self.progress),
                     autotvm.callback.log_to_file(tmp_log_file),
+                    autotvm.callback.progress_bar(tsk_trial),
                 ],
             )
 

@@ -26,7 +26,6 @@ tflite = "^2.4.0"
 pyserial = "^3.5"
 usb = "^0.0.83-alpha.0"
 west = "^0.11.0"
-automate = {path = "external/automate", extras = ["postgres"], develop=true}
 colorama = "^0.4.4"
 decorator = "^5.1.0"
 tqdm = "^4.62.3"
@@ -34,6 +33,12 @@ torch = "1.10.1"
 networkx = "^2.6.3"
 matplotlib = "^3.4.3"
 tensorflow = "^2.7.0"
+
+pyserial = "^3.5"
+usb = "^0.0.83-alpha.0"
+west = "^0.11.0"
+automate = {path = "external/automate", extras = ["postgres"], develop=true, optional=true}
+
 
 [tool.poetry.scripts]
 hannah-tvm-compile = 'hannah_tvm.compile:main'
