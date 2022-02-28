@@ -29,8 +29,8 @@ else
     cp cmake/nocuda_config.cmake external/tvm/build/config.cmake
 fi
 pushd external/tvm/build
-cmake --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER 
-cmake --build .
+cmake3 --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER 
+cmake3 --build .
 popd
 pip install -e external/tvm/python
 

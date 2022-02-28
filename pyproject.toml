@@ -42,6 +42,9 @@ hannah-tvm-compile = 'hannah_tvm.compile:main'
 hannah-tvm-tune = 'hannah_tvm.tune:main'
 hannah-tvm-memory = 'hannah_tvm.analysis:memory_main'
 
+[tool.poetry.extras]
+automate = ["automate"]
+
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.0"
 black = "^21.4b0"
