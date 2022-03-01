@@ -61,6 +61,7 @@ class Model:
 @dataclass
 class TunerConfig:
     name: str = MISSING
+    task_budget: int = 4
 
 
 @dataclass

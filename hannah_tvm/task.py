@@ -183,7 +183,7 @@ class TuningTask:
             if os.path.exists(tmp_log_file):
                 os.remove(tmp_log_file)
 
-            tsk_trial = min(1024, len(tsk.config_space))
+            tsk_trial = min(self.tuner_config.task_budget, len(tsk.config_space))
             step_progress = 1 / (len(tasks) * tsk_trial)
 
             tuner_obj.tune(
@@ -219,31 +219,37 @@ class TuningTask:
 
         database_file = str(self.database_file) if self.database_file.exists() else None
 
-        logger.info("Loading database %s", str(database_file))
+        logger.info("Loading     %s", str(database_file))
         logger.info("Begin tuning...")
-        tuner = auto_scheduler.TaskScheduler(
-            tasks, task_weights, load_log_file=database_file
-        )
-        tune_option = auto_scheduler.TuningOptions(
-            num_measure_trials=len(tasks) * 1024,
-            builder=builder,
-            runner=runner,
-            measure_callbacks=[auto_scheduler.RecordToFile(self.tuner_log_file)],
-            verbose=1,
-        )
 
-        tuner.tune(tune_option, per_task_early_stopping=64, adapative_training=True)
+        for num, task in enumerate(tasks):
+            self.progress.value = num / len(tasks)
+            tuner = auto_scheduler.TaskScheduler(
+                [task], task_weights=None, load_log_file=database_file
+            )
 
-        mode = "a+"
-        if not self.database_file.exists():
-            self.database_file.parent.mkdir(exist_ok=True, parents=True)
-            mode = "w"
+            tune_option = auto_scheduler.TuningOptions(
+                num_measure_trials=self.tuner_config.task_budget,
+                builder=builder,
+                runner=runner,
+                measure_callbacks=[auto_scheduler.RecordToFile(self.tuner_log_file)],
+                verbose=1,
+            )
 
-        if Path(self.tuner_log_file).exists():
-            logger.info("Saving database: %s", str(self.database_file))
-            with self.database_file.open(mode) as db:
-                with Path(self.tuner_log_file).open("r") as log:
-                    db.write(log.read())
+            tuner.tune(tune_option, per_task_early_stopping=64, adapative_training=True)
+
+            mode = "a+"
+            if not self.database_file.exists():
+                self.database_file.parent.mkdir(exist_ok=True, parents=True)
+                mode = "w"
+
+            if Path(self.tuner_log_file).exists():
+                logger.info("Saving database: %s", str(self.database_file))
+                with self.database_file.open(mode) as db:
+                    with Path(self.tuner_log_file).open("r") as log:
+                        db.write(log.read())
+
+        self.progress.value = 1.0
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
