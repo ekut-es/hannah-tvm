@@ -66,21 +66,13 @@ class TuningTask:
         self.board_config = board_config
         self.model_config = model_config
         self.tuner_config = tuner
-        self.tuner_log_file = f"{board_key}_{model_key}.json"
+        self.tuner_log_file = f"{board_key}_{model_key}_{self.tuner_config.name}.json"
 
         self.results = {}
 
         self.results["board"] = board_key
         self.results["model"] = model_key
         self.results["error"] = None
-
-        self.database_file = (
-            Path(__file__).parent.resolve()
-            / ".."
-            / "database"
-            / board_key
-            / "database.json"
-        )
 
         name = f"tuning-task-{board_key}-{model_key}"
         # Handle to child Process running this task if task is run in a different process
@@ -115,7 +107,12 @@ class TuningTask:
                 if OmegaConf.is_config(desired_layouts):
                     desired_layouts = OmegaConf.to_container(desired_layouts)
                 seq = tvm.transform.Sequential(
-                    [relay.transform.ConvertLayout(desired_layouts)]
+                    [
+                        relay.transform.InferType(),
+                        relay.transform.DynamicToStatic(),
+                        relay.transform.ConvertLayout(desired_layouts),
+                        relay.transform.InferType(),
+                    ]
                 )
                 with tvm.transform.PassContext(opt_level=3):
                     relay_mod = seq(relay_mod)
@@ -217,16 +214,11 @@ class TuningTask:
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")
 
-        database_file = str(self.database_file) if self.database_file.exists() else None
-
-        logger.info("Loading     %s", str(database_file))
         logger.info("Begin tuning...")
 
         for num, task in enumerate(tasks):
             self.progress.value = num / len(tasks)
-            tuner = auto_scheduler.TaskScheduler(
-                [task], task_weights=None, load_log_file=database_file
-            )
+            tuner = auto_scheduler.TaskScheduler([task], task_weights=None)
 
             tune_option = auto_scheduler.TuningOptions(
                 num_measure_trials=self.tuner_config.task_budget,
@@ -237,17 +229,6 @@ class TuningTask:
             )
 
             tuner.tune(tune_option, per_task_early_stopping=64, adapative_training=True)
-
-            mode = "a+"
-            if not self.database_file.exists():
-                self.database_file.parent.mkdir(exist_ok=True, parents=True)
-                mode = "w"
-
-            if Path(self.tuner_log_file).exists():
-                logger.info("Saving database: %s", str(self.database_file))
-                with self.database_file.open(mode) as db:
-                    with Path(self.tuner_log_file).open("r") as log:
-                        db.write(log.read())
 
         self.progress.value = 1.0
 

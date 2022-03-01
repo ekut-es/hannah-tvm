@@ -73,7 +73,7 @@ class ExperimentSchedulerBase(ABC):
 
                     time.sleep(1.0)
 
-                    self.report(filter="running")
+                    self.report()
 
         self.report()
 

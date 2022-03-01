@@ -35,6 +35,7 @@ pyserial = "^3.5"
 usb = "^0.0.83-alpha.0"
 west = "^0.11.0"
 automate = {path = "external/automate", extras = ["postgres"], develop=true, optional=true}
+onnxoptimizer = "^0.2.6"
 
 
 [tool.poetry.scripts]

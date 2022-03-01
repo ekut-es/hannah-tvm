@@ -10,6 +10,7 @@ import tvm.relay as relay
 import numpy as np
 import tensorflow as tf
 import tvm.relay.testing.tf as tf_testing
+
 try:
     tf_compat_v1 = tf.compat.v1
 except ImportError:
@@ -31,6 +32,7 @@ def _load_onnx(model_path, input_shapes):
     try:
         import onnx
         import onnx.version_converter
+        import onnxoptimizer
     except:
         logger.error("Could not import onnx")
         sys.exit(-1)
@@ -38,7 +40,8 @@ def _load_onnx(model_path, input_shapes):
     onnx_model = onnx.load(model_path)
     onnx.checker.check_model(onnx_model)
     inferred_model = onnx.shape_inference.infer_shapes(onnx_model)
-    # inferred_model = onnx.version_converter.convert_version(inferred_model, 11)
+    inferred_model = onnx.version_converter.convert_version(inferred_model, 11)
+    inferred_model = onnxoptimizer.optimize(inferred_model, fixed_point=True)
 
     graph = inferred_model.graph
 
@@ -153,7 +156,7 @@ def _load_tensorflow(model_path, input_shapes):
         graph_def = tf_compat_v1.GraphDef()
         graph_def.ParseFromString(f.read())
         tf.import_graph_def(graph_def, name="")
-        
+
         graph_def = tf_testing.ProcessGraphDefParam(graph_def)
 
         node_names = [n.name for n in graph_def.node]
@@ -161,7 +164,12 @@ def _load_tensorflow(model_path, input_shapes):
         with tf_compat_v1.Session() as sess:
             graph_def = tf_testing.AddShapesToGraphDef(sess, node_names[-1])
 
-        all_placeholders = [placeholder for op in tf_compat_v1.get_default_graph().get_operations() if op.type=='Placeholder' for placeholder in op.values()]
+        all_placeholders = [
+            placeholder
+            for op in tf_compat_v1.get_default_graph().get_operations()
+            if op.type == "Placeholder"
+            for placeholder in op.values()
+        ]
 
     shapes = {}
     types = {}
@@ -170,11 +178,15 @@ def _load_tensorflow(model_path, input_shapes):
         shapes[input.op.name] = tuple(input.shape)
         types[input.op.name] = input.dtype.as_numpy_dtype
 
-    mod, params = relay.frontend.from_tensorflow(graph_def, shape=shapes) # layout="NCHW"
+    mod, params = relay.frontend.from_tensorflow(
+        graph_def, shape=shapes
+    )  # layout="NCHW"
 
     inputs = {}
     for input in all_placeholders:
-        inputs[input.op.name] = np.random.uniform(size=shapes[input.op.name]).astype(types[input.op.name])
+        inputs[input.op.name] = np.random.uniform(size=shapes[input.op.name]).astype(
+            types[input.op.name]
+        )
 
     return mod, params, inputs
 
