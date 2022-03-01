@@ -73,7 +73,7 @@ class ExperimentSchedulerBase(ABC):
 
                     time.sleep(1.0)
 
-                    self.report()
+                    self.report(filter="running")
 
         self.report()
 
@@ -115,18 +115,21 @@ class ExperimentSchedulerBase(ABC):
                     )
                     connector.reset()
 
-    def report(self):
+    def report(self, filter="all"):
         results = []
         for task in self.tasks:
             task_results = task.results
 
             task_results["status"] = TaskStatus(task.status.value).display_name
             task_results["progress"] = f"{task.progress.value * 100}%"
-            results.append(task_results)
+            task_results["tuner"] = task.tuner_config.name
+            if filter == "all" or task.status == filter:
+                results.append(task_results)
 
         headers = [
             "board",
             "model",
+            "tuner",
             "tuning_duration",
             "status",
             "progress",
@@ -136,8 +139,10 @@ class ExperimentSchedulerBase(ABC):
         results_filtered = [
             {k: v for k, v in res.items() if k in headers} for res in results
         ]
-
-        logging.info("Results:\n" + tabulate.tabulate(results_filtered, headers="keys"))
+        if results:
+            logging.info(
+                "Results:\n" + tabulate.tabulate(results_filtered, headers="keys")
+            )
 
     def finish(self):
         for connector in self.board_connectors.values():
