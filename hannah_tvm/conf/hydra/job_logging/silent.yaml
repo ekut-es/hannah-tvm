@@ -19,4 +19,6 @@ root:
 loggers:
   automate:
     level: WARNING
+  te_compiler:
+    level: WARNING
 disable_existing_loggers: false

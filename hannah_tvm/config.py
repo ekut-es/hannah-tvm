@@ -69,7 +69,6 @@ class Config:
     board: Dict[str, Board] = MISSING
     model: Dict[str, Model] = MISSING
     tuner: Optional[Dict[str, TunerConfig]] = None
-    n_jobs: int = 8
 
 
 cs = ConfigStore.instance()

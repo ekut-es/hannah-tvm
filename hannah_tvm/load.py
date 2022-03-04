@@ -39,11 +39,11 @@ def _load_onnx(model_path, input_shapes):
 
     onnx_model = onnx.load(model_path)
     onnx.checker.check_model(onnx_model)
-    inferred_model = onnx.shape_inference.infer_shapes(onnx_model)
-    inferred_model = onnx.version_converter.convert_version(inferred_model, 11)
-    inferred_model = onnxoptimizer.optimize(inferred_model, fixed_point=True)
+    # onnx_model = onnx.version_converter.convert_version(onnx_model, 11)
+    onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
+    onnx_model = onnxoptimizer.optimize(onnx_model, fixed_point=True)
 
-    graph = inferred_model.graph
+    graph = onnx_model.graph
 
     type_map = {
         onnx.TensorProto.FLOAT: "float32",

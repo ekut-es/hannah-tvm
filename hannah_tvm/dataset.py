@@ -8,16 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class PerformanceDataset:
-    def __init__(self, board: str, target: str, lock: Lock) -> None:
+    def __init__(self, board: str, target: str) -> None:
         self.board = str(board)
         self.target = str(target)
-        self._lock = lock
         self._base_dir = self.database_file = (
             pathlib.Path(__file__).parent.resolve() / ".." / "dataset"
         )
-
-    def lock(self):
-        return self._lock
 
     def _build_hash_path(self, hash: str, category: str, suffix: str):
         num_splits = 3
@@ -46,9 +42,8 @@ class PerformanceDataset:
         network_path = network_path.with_suffix(".relay.txt")
         network_path.parent.mkdir(exist_ok=True, parents=True)
 
-        with self.lock():
-            with network_path.open("wb") as out_file:
-                out_file.write(relay_txt)
+        with network_path.open("wb") as out_file:
+            out_file.write(relay_txt)
 
     def add_measurement(self, board):
         logger.info("Adding relay program")

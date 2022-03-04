@@ -1,7 +1,6 @@
 import logging
 import time
 import contextlib
-import multiprocessing as mp
 
 from abc import ABC, abstractmethod
 
@@ -26,16 +25,10 @@ class ExperimentSchedulerBase(ABC):
         self.config = config
         self.tasks = []
         self.worklist = []
-        self.n_jobs = config.get("n_jobs", 0)
 
         self.running_tasks = {}
-        logger.info("Experiment Scheduler:")
-        logger.info(" Number of parallel jobs: %d", self.n_jobs)
-        logger.info(" Number of tasks: %d", len(self.tasks))
 
         self.board_connectors = {}
-        self.mp_context = mp.get_context("spawn")
-        self.db_lock = self.mp_context.Lock()
 
     def _init_connectors(self):
         for board_name, board_config in self.config.board.items():
@@ -71,10 +64,6 @@ class ExperimentSchedulerBase(ABC):
                             if not has_pending_tasks:
                                 board_connector.teardown()
 
-                    time.sleep(1.0)
-
-                    self.report()
-
         self.report()
 
         results = []
@@ -83,9 +72,7 @@ class ExperimentSchedulerBase(ABC):
         return results
 
     def _start_tasks(self):
-        if len(self.running_tasks) >= self.n_jobs and self.n_jobs != 0:
-            return
-        elif self.worklist:
+        if self.worklist:
             for idx, task in list(enumerate(self.worklist)):
                 board_name = task.board_config.name
 
@@ -93,15 +80,7 @@ class ExperimentSchedulerBase(ABC):
                     if board_name not in self.running_tasks:
                         self.running_tasks[board_name] = task
                         del self.worklist[idx]
-                        if self.n_jobs > 0:
-                            process = self.mp_context.Process(
-                                target=task.run, kwargs={"lock": self.db_lock}
-                            )
-                            task.process = process
-                            results = process.start()
-                        else:
-                            task.run(lock=self.db_lock)
-                        break
+                        task.run()
         return
 
     def _restart_connections(self):
@@ -120,8 +99,7 @@ class ExperimentSchedulerBase(ABC):
         for task in self.tasks:
             task_results = task.results
 
-            task_results["status"] = TaskStatus(task.status.value).display_name
-            task_results["progress"] = f"{task.progress.value * 100}%"
+            task_results["status"] = task.status.display_name
             task_results["tuner"] = task.tuner_config.name
             if filter == "all" or task.status == filter:
                 results.append(task_results)
@@ -147,6 +125,7 @@ class ExperimentSchedulerBase(ABC):
     def finish(self):
         for connector in self.board_connectors.values():
             connector.teardown()
+        self.board_connectors = []
 
     def __del__(self):
         self.finish()
@@ -166,8 +145,6 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
                             board_config.name
                         ].task_connector(),
                         tuner=tuner,
-                        status=self.mp_context.Value("i", TaskStatus.CREATED.value),
-                        progress=self.mp_context.Value("d", 0.0),
                     )
                     self.worklist.append(task)
                     self.tasks.append(task)
@@ -204,8 +181,6 @@ class BackendScheduler(ExperimentSchedulerBase):
                 board_config,
                 ModelConfig(self.model, self.params, self.inputs),
                 tune=False,
-                status=self.mp_context.Value("i", TaskStatus.CREATED.value),
-                progress=self.mp_context.Value("d", 0.0),
             )
 
             self.worklist.append(task)
