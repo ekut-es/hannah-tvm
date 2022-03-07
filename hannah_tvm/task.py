@@ -4,7 +4,7 @@ import os
 import time
 import traceback
 import enum
-import warnings
+import tqdm
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -72,7 +72,7 @@ class TuningTask:
         self.results["model"] = model_key
         self.results["error"] = None
 
-        name = f"tuning-task-{board_key}-{model_key}"
+        self.name = f"tuning-task-{board_key}-{model_key}"
         # Handle to child Process running this task if task is run in a different process
         self.process = None
         self.dataset = None
@@ -165,7 +165,7 @@ class TuningTask:
 
         logger.info("Extracted %d tasks", len(tasks))
 
-        for num, tsk in enumerate(tasks):
+        for num, tsk in tqdm.tqdm(enumerate(tasks), desc=self.name):
             prefix = f"Task {tsk.name} ({num+1}/{len(tasks)})"
             tuner_obj = autotvm.tuner.XGBTuner(tsk, loss_type="rank")
 
@@ -181,7 +181,7 @@ class TuningTask:
                 measure_option=measure_option,
                 callbacks=[
                     autotvm.callback.log_to_file(tmp_log_file),
-                    autotvm.callback.progress_bar(tsk_trial),
+                    # autotvm.callback.progress_bar(tsk_trial),
                 ],
             )
 
@@ -189,7 +189,6 @@ class TuningTask:
             os.remove(tmp_log_file)
 
     def _run_autoscheduler(self, relay_mod, params):
-
         hardware_params = self.board_config.get("hardware_params", None)
         if hardware_params is not None:
             hardware_params = auto_scheduler.HardwareParams(**hardware_params)
@@ -207,7 +206,7 @@ class TuningTask:
 
         logger.info("Begin tuning...")
 
-        for num, task in enumerate(tasks):
+        for num, task in tqdm.tqdm(enumerate(tasks)):
             tuner = auto_scheduler.TaskScheduler([task], task_weights=None)
 
             tune_option = auto_scheduler.TuningOptions(
@@ -215,7 +214,7 @@ class TuningTask:
                 builder=builder,
                 runner=runner,
                 measure_callbacks=[auto_scheduler.RecordToFile(self.tuner_log_file)],
-                verbose=1,
+                verbose=0,
             )
 
             tuner.tune(tune_option, per_task_early_stopping=64, adapative_training=True)

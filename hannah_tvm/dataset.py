@@ -45,5 +45,7 @@ class PerformanceDataset:
         with network_path.open("wb") as out_file:
             out_file.write(relay_txt)
 
-    def add_measurement(self, board):
-        logger.info("Adding relay program")
+    def add_measurement(self, network_name, profile_results, debug_results):
+        logger.info("Adding Measurement result")
+        result_path = self._base_dir / "network_results" / self.board / network_name
+        result_path.parent.mkdir(exist_ok=True, parents=True)

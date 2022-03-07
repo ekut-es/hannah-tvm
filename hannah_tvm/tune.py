@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(config_name="config", config_path="conf")
 def main(config):
+    logging.captureWarnings(True)
     logger.info(OmegaConf.to_yaml(config))
 
     scheduler = TuningExperimentScheduler(config)

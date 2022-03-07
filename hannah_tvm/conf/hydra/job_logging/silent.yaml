@@ -1,6 +1,8 @@
 version: 1
 formatters:
   simple:
+    format: '[%(levelname)s] - %(message)s'
+  verbose:
     format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
 handlers:
   console:
@@ -9,7 +11,7 @@ handlers:
     stream: ext://sys.stdout
   file:
     class: logging.FileHandler
-    formatter: simple
+    formatter: verbose
     filename: ${hydra.job.name}.log
 root:
   level: INFO
