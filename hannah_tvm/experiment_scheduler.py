@@ -135,19 +135,19 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
     def _extract_tasks(self):
         for board_name, board_config in self.config.board.items():
             for model_name, model_config in self.config.model.items():
-                for tuner in self.config.tuner.values():
-                    task = TuningTask(
-                        board_name,
-                        model_name,
-                        board_config,
-                        model_config=model_config,
-                        task_connector=self.board_connectors[
-                            board_config.name
-                        ].task_connector(),
-                        tuner=tuner,
-                    )
-                    self.worklist.append(task)
-                    self.tasks.append(task)
+
+                task = TuningTask(
+                    board_name,
+                    model_name,
+                    board_config,
+                    model_config=model_config,
+                    task_connector=self.board_connectors[
+                        board_config.name
+                    ].task_connector(),
+                    tuner=self.config.tuner,
+                )
+                self.worklist.append(task)
+                self.tasks.append(task)
 
 
 class BackendScheduler(ExperimentSchedulerBase):
@@ -180,7 +180,7 @@ class BackendScheduler(ExperimentSchedulerBase):
                 self.task_name,
                 board_config,
                 ModelConfig(self.model, self.params, self.inputs),
-                tune=False,
+                tuner=tuner,
             )
 
             self.worklist.append(task)

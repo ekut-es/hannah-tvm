@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import tvm
 import tvm.auto_scheduler as auto_scheduler
+from tvm.auto_scheduler import search_policy
 import tvm.autotvm as autotvm
 import tvm.contrib.debugger.debug_runtime
 import tvm.relay as relay
@@ -21,6 +22,9 @@ from hannah_tvm.dataset import PerformanceDataset
 from hannah_tvm.tuner.autotvm.callbacks import (
     progress_callback as autotvm_progress_callback,
 )
+
+from tvm.contrib.relay_viz import RelayVisualizer, TermPlotter, TermVizParser
+
 from omegaconf import OmegaConf
 
 from . import config, load
@@ -111,22 +115,32 @@ class TuningTask:
                 with tvm.transform.PassContext(opt_level=3):
                     relay_mod = seq(relay_mod)
 
+            visualizer = RelayVisualizer(
+                relay_mod, params, TermPlotter(), TermVizParser()
+            )
+            visualizer.render()
+
             self.dataset.add_program(self.model_key, relay_mod)
 
-            if self.tuner_config.name == "auto_scheduler":
-                start_time = time.time()
-                self._run_autoscheduler(relay_mod, params)
-                final_time = time.time()
-                self.results["tuning_duration"] = final_time - start_time
-            elif self.tuner_config.name == "autotvm":
-                start_time = time.time()
-                self._run_autotuner(relay_mod, params)
-                final_time = time.time()
-                self.results["tuning_duration"] = final_time - start_time
-            elif self.tuner_config.name:
-                raise Exception(f"Unknown tuner {self.tuner_config.name}")
-            else:
-                self.results["tuning_duration"] = 0.0
+            if self.tuner_config is not None:
+                logger.info("Starting tuning with config:")
+                for k, v in self.tuner_config.items():
+                    logger.info("  %s, %s", str(k), str(v))
+
+                if self.tuner_config.name == "auto_scheduler":
+                    start_time = time.time()
+                    self._run_autoscheduler(relay_mod, params)
+                    final_time = time.time()
+                    self.results["tuning_duration"] = final_time - start_time
+                elif self.tuner_config.name == "autotvm":
+                    start_time = time.time()
+                    self._run_autotuner(relay_mod, params)
+                    final_time = time.time()
+                    self.results["tuning_duration"] = final_time - start_time
+                elif self.tuner_config.name:
+                    raise Exception(f"Unknown tuner {self.tuner_config.name}")
+                else:
+                    self.results["tuning_duration"] = 0.0
 
             lib = self._build(relay_mod, params)
             remote_handle = self._task_connector.upload(lib)
@@ -165,9 +179,21 @@ class TuningTask:
 
         logger.info("Extracted %d tasks", len(tasks))
 
+        logger.info("Begin tuning:")
+        logger.info("  per task budget: %d", self.tuner_config.task_budget)
+
         for num, tsk in tqdm.tqdm(enumerate(tasks), desc=self.name):
             prefix = f"Task {tsk.name} ({num+1}/{len(tasks)})"
-            tuner_obj = autotvm.tuner.XGBTuner(tsk, loss_type="rank")
+            if self.tuner_config.mode == "xgb":
+                tuner_obj = autotvm.tuner.XGBTuner(tsk, loss_type="reg")
+            elif self.tuner_config.mode == "xgb_rank":
+                tuner_obj = autotvm.tuner.XGBTuner(tsk, loss_type="rank")
+            elif self.tuner_config.mode == "random":
+                tuner_obj = autotvm.tuner.RandomTuner(tsk)
+            else:
+                raise Exception(
+                    "Tuner mode: %s is unknown for autotvm", self.tuner_config.mode
+                )
 
             tmp_log_file = self.tuner_log_file + ".tmp"
             if os.path.exists(tmp_log_file):
@@ -181,7 +207,7 @@ class TuningTask:
                 measure_option=measure_option,
                 callbacks=[
                     autotvm.callback.log_to_file(tmp_log_file),
-                    # autotvm.callback.progress_bar(tsk_trial),
+                    autotvm.callback.progress_bar(tsk_trial),
                 ],
             )
 
@@ -204,20 +230,44 @@ class TuningTask:
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")
 
-        logger.info("Begin tuning...")
+        if self.tuner_config.mode == "xgb":
+            search_policy = "sketch.xgb"
+        elif self.tuner_config.mode == "random":
+            search_policy = "sketch.random"
 
-        for num, task in tqdm.tqdm(enumerate(tasks)):
-            tuner = auto_scheduler.TaskScheduler([task], task_weights=None)
-
+        if self.tuner_config.equal_task_budget:
+            for num, task in enumerate(tasks):
+                tuner = auto_scheduler.TaskScheduler([task], task_weights=None)
+                tune_option = auto_scheduler.TuningOptions(
+                    num_measure_trials=self.tuner_config.task_budget,
+                    builder=builder,
+                    runner=runner,
+                    measure_callbacks=[
+                        auto_scheduler.RecordToFile(self.tuner_log_file)
+                    ],
+                    verbose=1,
+                )
+                tuner.tune(
+                    tune_option,
+                    per_task_early_stopping=64,
+                    adapative_training=True,
+                    search_policy=search_policy,
+                )
+        else:
+            tuner = auto_scheduler.TaskScheduler(tasks, task_weights=None)
             tune_option = auto_scheduler.TuningOptions(
                 num_measure_trials=self.tuner_config.task_budget,
                 builder=builder,
                 runner=runner,
                 measure_callbacks=[auto_scheduler.RecordToFile(self.tuner_log_file)],
-                verbose=0,
+                verbose=1,
             )
-
-            tuner.tune(tune_option, per_task_early_stopping=64, adapative_training=True)
+            tuner.tune(
+                tune_option,
+                per_task_early_stopping=64,
+                adapative_training=True,
+                search_policy=search_policy,
+            )
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")

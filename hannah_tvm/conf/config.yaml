@@ -20,7 +20,5 @@ defaults:
       - tinyml_ic01
       - tinyml_kws01
       - tinyml_vww01
-  - tuner:
-      - autotvm
-      - auto_scheduler
+  - tuner: autotvm
   - override hydra/job_logging: silent

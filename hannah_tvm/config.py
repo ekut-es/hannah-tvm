@@ -62,13 +62,15 @@ class Model:
 class TunerConfig:
     name: str = MISSING
     task_budget: int = 4
+    mode: str = "xgb"
+    equal_task_budget: bool = False  # Run same amount of tuning for each task (only used for auto_scheduler/meta_scheduler)
 
 
 @dataclass
 class Config:
     board: Dict[str, Board] = MISSING
     model: Dict[str, Model] = MISSING
-    tuner: Optional[Dict[str, TunerConfig]] = None
+    tuner: Optional[TunerConfig] = None
 
 
 cs = ConfigStore.instance()
