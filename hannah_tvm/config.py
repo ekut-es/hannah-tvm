@@ -1,8 +1,8 @@
 import importlib
 import os
-
+import socket
 from dataclasses import dataclass, field
-from typing import Any, Optional, List, Dict
+from typing import Any, Dict, List, Optional
 
 import hydra
 from hydra.core.config_store import ConfigStore
@@ -102,3 +102,6 @@ OmegaConf.register_new_resolver(
     "db_dir",
     lambda: os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database"),
 )
+
+
+OmegaConf.register_new_resolver("hostname", lambda: socket.hostname())
