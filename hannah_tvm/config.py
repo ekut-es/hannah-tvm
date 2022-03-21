@@ -50,12 +50,13 @@ class Board:
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)
     desired_layouts: Optional[Any] = None
+    connector: str = "default"
 
 
 @dataclass
 class Model:
     file: str = MISSING
-    input_shapes: Any = None
+    input_shapes: Any = None  # Input shapes for models from sources that do not encode input shapes e.g. PyTorch/TorchScript
 
 
 @dataclass
@@ -104,4 +105,4 @@ OmegaConf.register_new_resolver(
 )
 
 
-OmegaConf.register_new_resolver("hostname", lambda: socket.hostname())
+OmegaConf.register_new_resolver("hostname", lambda: socket.gethostname())

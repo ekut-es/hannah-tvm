@@ -14,7 +14,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 from . import config
 from .task import ModelConfig, TaskStatus, TuningTask
-from .connectors import AutomateBoardConnector
+from .connectors import AutomateBoardConnector, LocalBoardConnector
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,23 @@ class ExperimentSchedulerBase(ABC):
 
     def _init_connectors(self):
         for board_name, board_config in self.config.board.items():
-            connector = AutomateBoardConnector(board_config)
+            if board_config.connector == "local":
+                connector = LocalBoardConnector(board_config)
+            elif board_config.connector == "micro" or (
+                board_config.connector == "default" and board_config.micro
+            ):
+                raise Exception(
+                    "Tuning on micro targets is not supported at the moment"
+                )
+            elif (
+                board_config.connector == "automate"
+                or board_config.connector == "default"
+            ):
+                connector = AutomateBoardConnector(board_config)
+            else:
+                raise Exception(
+                    "Unknown setting for board_connector on board: ", board_config.name
+                )
             connector.setup()
             self.board_connectors[board_config.name] = connector
 

@@ -1,2 +1,5 @@
 local_cpu:
   name: ${hostname:}
+  target: "llvm"
+  target_host: "llvm"
+  connector: local

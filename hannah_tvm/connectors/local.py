@@ -1,5 +1,14 @@
-from tvm import autotvm, auto_scheduler
-from .core import BoardConnector, TaskConnector, BuildArtifactHandle
+import logging
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
+import tvm
+from tvm import auto_scheduler, autotvm
+
+from .core import BoardConnector, BuildArtifactHandle, TaskConnector
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -8,7 +17,7 @@ class LocalBuildArtifactHandle(BuildArtifactHandle):
 
 
 class LocalTaskConnector(TaskConnector):
-    def __init__(self, board_config, tracker_port):
+    def __init__(self, board_config):
         self._board_config = board_config
         self._target = None
         self.auto_scheduler_ctx = None
@@ -44,22 +53,12 @@ class LocalTaskConnector(TaskConnector):
         lib.export_library(tmp.relpath(filename))
 
         # Upload module to device
-        logger.info("Upload...")
-        remote = auto_scheduler.utils.request_remote(
-            self._board_config.name, "localhost", self._tracker_port, timeout=10000
-        )
-
-        remote.upload(tmp.relpath(filename))
-
-        rlib = remote.load_module(filename)
-        logger.info("Upload finished")
-        return AutomateBuildArtifactHandle(remote, rlib, lib)
+        return LocalBuildArtifactHandle(lib)
 
     def measure(self, remote_handle, inputs):
-        dev = self._remote_dev(remote_handle.remote)
-        rlib = remote_handle.rlib
+        dev = self._remote_dev()
         lib = remote_handle.lib
-        module = tvm.contrib.graph_executor.GraphModule(rlib["default"](dev))
+        module = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
         logger.info("Set inputs")
         for name, val in inputs.items():
             data_tvm = tvm.nd.array(val)
@@ -73,12 +72,11 @@ class LocalTaskConnector(TaskConnector):
         return prof_res
 
     def profile(self, remote_handle, inputs):
-        dev = self._remote_dev(remote_handle.remote)
+        dev = self._remote_dev()
         # Use debug Executor to get per operator runtime
-        rlib = remote_handle.rlib
         lib = remote_handle.lib
         debug_module = tvm.contrib.debugger.debug_executor.GraphModuleDebug(
-            rlib["debug_create"]("default", dev), [dev], lib.get_graph_json(), None
+            lib["debug_create"]("default", dev), [dev], lib.get_graph_json(), None
         )
         for name, val in inputs.items():
             data_tvm = tvm.nd.array(val)
@@ -91,30 +89,24 @@ class LocalTaskConnector(TaskConnector):
         if self.auto_scheduler_ctx is not None:
             self.auto_scheduler_ctx = None
 
-    def _remote_dev(self, remote):
+    def _remote_dev(self):
         target = self.target()
         if str(target.kind) == "cuda":
-            dev = remote.cuda()
+            dev = tvm.cuda()
         else:
-            dev = remote.cpu()
+            dev = tvm.cpu()
         return dev
 
 
-class AutomateBoardConnector(BoardConnector):
+class LocalBoardConnector(BoardConnector):
     def __init__(self, board_config):
         self._board_config = board_config
-
-        self._tracker_port: Union[int, None] = None
-        self._tracker_conn = None
-        self._tracker = None
-
-        self._server_process: Union[AutomateServer, None] = None
 
     def setup(self):
         pass
 
     def task_connector(self):
-        pass
+        return LocalTaskConnector(self._board_config)
 
     def is_alive(self):
         return True
