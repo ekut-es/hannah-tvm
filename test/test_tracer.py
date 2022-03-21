@@ -1,42 +1,39 @@
-import pytest
-
 from dataclasses import dataclass
 
+import numpy as np
+import pytest
 import torch
 import torch.nn as nn
-
 import tvm
 import tvm.contrib.debugger.debug_executor
-
-import numpy as np
-
-from omegaconf import OmegaConf
 from hydra.utils import instantiate
+from omegaconf import OmegaConf
 
 torch.set_printoptions(precision=10)
 
 try:
-    from hannah_tvm.tracer import (
-        QuantizationTracer,
-        RelayConverter,
-        LegalizeQuantizedTypes,
-    )
+    from hannah.models.factory import factory
+    from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
     from hannah.models.factory.qat import (
+        Conv1d,
+        Conv2d,
         ConvBn1d,
         ConvBn2d,
         ConvBnReLU1d,
         ConvBnReLU2d,
         ConvReLU1d,
         ConvReLU2d,
-        Conv1d,
-        Conv2d,
         Linear,
     )
-    from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
-    from hannah.models.factory.reduction import ReductionBlockAdd
     from hannah.models.factory.qconfig import get_trax_qat_qconfig
+    from hannah.models.factory.reduction import ReductionBlockAdd
     from hannah.models.factory.rounding import round_upward
-    from hannah.models.factory import factory
+
+    from hannah_tvm.tracer import (
+        LegalizeQuantizedTypes,
+        QuantizationTracer,
+        RelayConverter,
+    )
 except ImportError:
     pytest.skip("hannah is not available", allow_module_level=True)
 
@@ -157,7 +154,14 @@ class Cell(nn.Module):
 
 
 def run_test(
-    cell, input_shape, act, input_bits, output_bits, out_dtype, approximate=False
+    cell,
+    input_shape,
+    act,
+    input_bits,
+    output_bits,
+    out_dtype,
+    approximate=False,
+    target="llvm",
 ):
     print(cell)
     cell.eval()
@@ -183,11 +187,16 @@ def run_test(
 
     mod = tvm.relay.transform.InferType()(mod)
     print(mod)
-    # print(params)
 
-    target = "llvm"
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = tvm.relay.build(mod, target=target, params=params)
+
+    if target == "c":
+        test_so_path = "test.so"
+        lib.export_library(test_so_path, cc="gcc", options=["-std=c11"])
+        loaded_mod = tvm.runtime.load_module(test_so_path)
+
+        lib = loaded_mod
 
     input = cell.activation_post_process(input)
     output_torch = cell(input)
@@ -236,31 +245,51 @@ def run_test(
 
 
 @pytest.mark.parametrize(
-    "dim,act,bw_w,bw_f,bw_b",
+    "dim,act,bw_w,bw_f,bw_b,target",
     [
-        (1, False, 2, 4, 8),
-        (1, True, 2, 4, 8),
-        (2, False, 2, 4, 8),
-        (2, True, 2, 4, 8),
-        (1, False, 3, 4, 8),
-        (1, True, 3, 4, 8),
-        (2, False, 3, 4, 8),
-        (2, True, 3, 4, 8),
-        (1, False, 4, 4, 8),
-        (1, True, 4, 4, 8),
-        (2, False, 4, 4, 8),
-        (2, True, 4, 4, 8),
-        (1, False, 6, 4, 8),
-        (1, True, 6, 4, 8),
-        (2, False, 6, 4, 8),
-        (2, True, 6, 4, 8),
-        (1, False, 8, 4, 8),
-        (1, True, 8, 4, 8),
-        (2, False, 8, 4, 8),
-        (2, True, 8, 4, 8),
+        (1, False, 2, 4, 8, "llvm"),
+        (1, True, 2, 4, 8, "llvm"),
+        (2, False, 2, 4, 8, "llvm"),
+        (2, True, 2, 4, 8, "llvm"),
+        (1, False, 3, 4, 8, "llvm"),
+        (1, True, 3, 4, 8, "llvm"),
+        (2, False, 3, 4, 8, "llvm"),
+        (2, True, 3, 4, 8, "llvm"),
+        (1, False, 4, 4, 8, "llvm"),
+        (1, True, 4, 4, 8, "llvm"),
+        (2, False, 4, 4, 8, "llvm"),
+        (2, True, 4, 4, 8, "llvm"),
+        (1, False, 6, 4, 8, "llvm"),
+        (1, True, 6, 4, 8, "llvm"),
+        (2, False, 6, 4, 8, "llvm"),
+        (2, True, 6, 4, 8, "llvm"),
+        (1, False, 8, 4, 8, "llvm"),
+        (1, True, 8, 4, 8, "c"),
+        (2, False, 8, 4, 8, "c"),
+        (2, True, 8, 4, 8, "c"),
+        (1, False, 2, 4, 8, "c"),
+        (1, True, 2, 4, 8, "c"),
+        (2, False, 2, 4, 8, "c"),
+        (2, True, 2, 4, 8, "c"),
+        (1, False, 3, 4, 8, "c"),
+        (1, True, 3, 4, 8, "c"),
+        (2, False, 3, 4, 8, "c"),
+        (2, True, 3, 4, 8, "c"),
+        (1, False, 4, 4, 8, "c"),
+        (1, True, 4, 4, 8, "c"),
+        (2, False, 4, 4, 8, "c"),
+        (2, True, 4, 4, 8, "c"),
+        (1, False, 6, 4, 8, "c"),
+        (1, True, 6, 4, 8, "c"),
+        (2, False, 6, 4, 8, "c"),
+        (2, True, 6, 4, 8, "c"),
+        (1, False, 8, 4, 8, "c"),
+        (1, True, 8, 4, 8, "c"),
+        (2, False, 8, 4, 8, "c"),
+        (2, True, 8, 4, 8, "c"),
     ],
 )
-def test_tracer(dim, act, bw_w, bw_f, bw_b):
+def test_tracer(dim, act, bw_w, bw_f, bw_b, target):
     cell = Cell(dim=dim, act=act, bw_w=bw_w, bw_f=bw_f, bw_b=bw_b)
     input_bits = bw_f
     output_bits = bw_f
@@ -270,7 +299,7 @@ def test_tracer(dim, act, bw_w, bw_f, bw_b):
     elif dim == 2:
         input_shape = (1, 8, 8, 8)
 
-    run_test(cell, input_shape, act, input_bits, output_bits, "int8")
+    run_test(cell, input_shape, act, input_bits, output_bits, "int8", target=target)
 
 
 class CellReduction(nn.Module):

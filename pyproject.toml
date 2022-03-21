@@ -53,7 +53,11 @@ black = "^21.4b0"
 pre-commit = "^2.12.1"
 pytest = "^6.2.5"
 maturin = "^0.12.11"
+isort = "^5.10.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
