@@ -1,17 +1,15 @@
+import copy
 import logging
 import math
-import copy
-
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import torch.fx
-
-from hannah.models.factory import qat, qconfig, pooling
+from hannah.models.factory import pooling, qat, qconfig
 
 try:
-    import tvm.relay as relay
     import tvm
+    import tvm.relay as relay
 except ModuleNotFoundError:
     relay = None
     tvm = None
@@ -46,7 +44,7 @@ def parse_dtype(dtype: str):
     if dtype.startswith("int"):
         type = "int"
         bits = int(dtype[3:])
-    elif dtype.startswith("float"):
+    elif dtype.startswith("uint"):
         type = "uint"
         bits = int(dtype[4:])
     elif dtype.startswith("float"):
@@ -55,6 +53,16 @@ def parse_dtype(dtype: str):
     else:
         raise Exception(f"Unhandled dtype: {dtype}")
     return type, bits
+
+
+def get_integer_range(dtype) -> Optional[Tuple[int, int]]:
+    type, bits = parse_dtype(dtype)
+    if type == "int":
+        return -2 ** (bits - 1), --2 ** (bits - 1) - 1
+    elif type == "uint":
+        return 0, 2 ** (bits - 1)
+    else:
+        return None
 
 
 @tvm.relay.transform.function_pass(opt_level=0)
@@ -136,6 +144,7 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
             new_fn, new_args, new_attrs, call.type_args, call.span
         )
 
+        out_dtype = None
         if call.op.name == "nn.conv1d":
             out_dtype = call.attrs.out_dtype
             new_attrs = dict(call.attrs)
@@ -166,6 +175,11 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
             new_attrs = dict(call.attrs)
             new_attrs["dtype"] = self.dtype_map[out_dtype]
             new_call = tvm.relay.cast(*new_args, **new_attrs)
+
+        if out_dtype is not None:
+            range = get_integer_range(out_dtype)
+            if range is not None:
+                new_call = tvm.relay.clip(new_call, range[0], range[1])
 
         return new_call
 
@@ -207,8 +221,6 @@ class RelayConverter(torch.fx.Interpreter):
         self.input_dtype = input_dtype
         self.input_scale = input_scale
 
-        # print("Accumulator dtype:", accumulator_dtype)
-
         if relay is None:
             raise Exception(
                 "TVM does not seem to be installed, please make sure that 'import tvm.relay works'"
@@ -236,7 +248,7 @@ class RelayConverter(torch.fx.Interpreter):
             qat.ConvReLU2d: self._handle_qat_conv,
             qat.Linear: self._handle_qat_linear,
             qat.LinearReLU: self._handle_qat_linear,
-            qconfig.STEQuantize: self._handle_identity,
+            qconfig.STEQuantize: self._handle_requantize,
             torch.nn.ReLU: self._handle_relu,
             torch.nn.Dropout: self._handle_identity,
             torch.nn.Flatten: self._handle_flatten,
@@ -408,7 +420,7 @@ class RelayConverter(torch.fx.Interpreter):
 
             linear_out = tvm.relay.nn.bias_add(linear_out, bias)
 
-        if isinstance(module, qat.ConvBnReLU1d) or isinstance(module, qat.ConvBnReLU2d):
+        if isinstance(module, qat.LinearReLU):
             linear_out = tvm.relay.nn.relu(linear_out)
 
         if hasattr(module.activation_post_process, "bits") and module.out_quant:
@@ -592,6 +604,41 @@ class RelayConverter(torch.fx.Interpreter):
         relu = tvm.relay.nn.relu(data)
         self.outputs[node.name] = relu
         output_metadata = copy.deepcopy(self.tensor_info[inputs[0].name])
+        self.tensor_info[node.name] = output_metadata
+
+    def _handle_requantize(self, node, module, result):
+        inputs = list(node.all_input_nodes)
+        assert len(inputs) == 1
+        input = self.outputs[inputs[0].name]
+        input_info = self.tensor_info[inputs[0].name]
+
+        input_scale = input_info.scale
+        input_dtype = input_info.relay_dtype
+
+        if isinstance(module, qat.Identity):
+            requantize_mod = module.activation_post_process
+        else:
+            requantize_mod = module
+
+        output_scale = requantize_mod.scale
+        output_dtype = requantize_mod.dtype
+        output_bits = requantize_mod.bits
+
+        output_metadata = copy.deepcopy(self.tensor_info[inputs[0].name])
+        output_metadata.bits = output_bits
+        output_metadata.dtype = output_dtype
+        output_metadata.scale = output_scale
+
+        requantize = self._gen_requantize(
+            input,
+            input_scale,
+            input_dtype,
+            output_metadata.scale,
+            output_metadata.relay_dtype,
+            use_rescale=True,
+            rounding="UPWARD",
+        )
+        self.outputs[node.name] = requantize
         self.tensor_info[node.name] = output_metadata
 
     def _handle_module(self, node, result):

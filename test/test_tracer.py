@@ -23,7 +23,9 @@ try:
         ConvBnReLU2d,
         ConvReLU1d,
         ConvReLU2d,
+        Identity,
         Linear,
+        LinearReLU,
     )
     from hannah.models.factory.qconfig import get_trax_qat_qconfig
     from hannah.models.factory.reduction import ReductionBlockAdd
@@ -203,7 +205,8 @@ def run_test(
         lib = loaded_mod
 
     input = cell.activation_post_process(input)
-    output_torch = cell(input)
+    with torch.no_grad():
+        output_torch = cell(input)
 
     input_ndarray = (input * 2 ** (input_bits - 1)).detach().numpy().astype("byte")
 
@@ -349,10 +352,14 @@ class CellReduction(nn.Module):
                 bias=False,
             )
         self.red = ReductionBlockAdd(conv, conv2)
+        self.downcast = Identity(
+            qconfig=get_trax_qat_qconfig(Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f))
+        )
 
     def forward(self, x):
         x = self.activation_post_process(x)
         x = self.red(x)
+        x = self.downcast(x)
         return x
 
 
@@ -376,9 +383,7 @@ def test_tracer_reduction(dim, act, bw_w, bw_b, bw_f):
     elif dim == 2:
         input_shape = (1, 8, 32, 32)
 
-    run_test(
-        cell, input_shape, act, bw_f, bw_w - 1 + bw_f - 1 + 1, "int32", approximate=True
-    )
+    run_test(cell, input_shape, act, bw_f, bw_f, "int8", approximate=True)
 
 
 class CellLinear(nn.Module):
@@ -409,11 +414,24 @@ class CellLinear(nn.Module):
         return x
 
 
-def test_tracer_linear(act=False, bias=False, bw_w=6, bw_b=8, bw_f=8):
+@pytest.mark.parametrize(
+    "act,bias,bw_w,bw_b,bw_f,target",
+    [
+        (False, False, 4, 4, 4, "c"),
+        (False, True, 7, 3, 4, "c"),
+        (True, False, 2, 7, 8, "c"),
+        (True, True, 8, 6, 6, "c"),
+        (False, False, 3, 4, 4, "llvm"),
+        (False, True, 7, 3, 5, "llvm"),
+        (True, False, 2, 7, 8, "llvm"),
+        (True, True, 8, 2, 6, "llvm"),
+    ],
+)
+def test_tracer_linear(act, bias, bw_w, bw_b, bw_f, target):
     cell = CellLinear(act=act, bw_w=bw_w, bw_f=bw_f, bw_b=bw_b)
     input_shape = (1, 128)
     act = act
-    run_test(cell, input_shape, act, bw_f, bw_f, "int8")
+    run_test(cell, input_shape, act, bw_f, bw_f, "int8", target)
 
 
 class CellPooling(nn.Module):
