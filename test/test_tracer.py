@@ -58,7 +58,7 @@ class Cell(nn.Module):
         if dim == 1:
             if act:
                 self.conv = ConvBnReLU1d(
-                    8,
+                    4,
                     8,
                     3,
                     qconfig=get_trax_qat_qconfig(
@@ -69,7 +69,7 @@ class Cell(nn.Module):
                 )
             else:
                 self.conv = ConvBn1d(
-                    8,
+                    4,
                     8,
                     3,
                     qconfig=get_trax_qat_qconfig(
@@ -81,7 +81,7 @@ class Cell(nn.Module):
             if act:
                 self.conv2 = ConvReLU1d(
                     8,
-                    8,
+                    2,
                     3,
                     qconfig=get_trax_qat_qconfig(
                         Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
@@ -92,7 +92,7 @@ class Cell(nn.Module):
             else:
                 self.conv2 = Conv1d(
                     8,
-                    8,
+                    2,
                     3,
                     qconfig=get_trax_qat_qconfig(
                         Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
@@ -103,7 +103,7 @@ class Cell(nn.Module):
         elif dim == 2:
             if act:
                 self.conv = ConvBnReLU2d(
-                    8,
+                    4,
                     8,
                     3,
                     qconfig=get_trax_qat_qconfig(
@@ -114,7 +114,7 @@ class Cell(nn.Module):
                 )
             else:
                 self.conv = ConvBn2d(
-                    8,
+                    4,
                     8,
                     3,
                     qconfig=get_trax_qat_qconfig(
@@ -126,7 +126,7 @@ class Cell(nn.Module):
             if act:
                 self.conv2 = ConvReLU2d(
                     8,
-                    8,
+                    2,
                     3,
                     qconfig=get_trax_qat_qconfig(
                         Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
@@ -137,7 +137,7 @@ class Cell(nn.Module):
             else:
                 self.conv2 = Conv2d(
                     8,
-                    8,
+                    2,
                     3,
                     qconfig=get_trax_qat_qconfig(
                         Config(bw_w=bw_w, bw_b=bw_b, bw_f=bw_f)
@@ -149,7 +149,7 @@ class Cell(nn.Module):
     def forward(self, x):
         x = self.activation_post_process(x)
         x = self.conv(x)
-        # x = self.conv2(x)
+        x = self.conv2(x)
         return x
 
 
@@ -188,7 +188,11 @@ def run_test(
     mod = tvm.relay.transform.InferType()(mod)
     print(mod)
 
-    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
+    config = {}
+    if target == "c":
+        config = {"tir.disable_vectorize": True}
+
+    with tvm.transform.PassContext(opt_level=3, config=config):
         lib = tvm.relay.build(mod, target=target, params=params)
 
     if target == "c":
@@ -295,9 +299,9 @@ def test_tracer(dim, act, bw_w, bw_f, bw_b, target):
     output_bits = bw_f
 
     if dim == 1:
-        input_shape = (1, 8, 8)
+        input_shape = (1, 4, 4)
     elif dim == 2:
-        input_shape = (1, 8, 8, 8)
+        input_shape = (1, 4, 4, 4)
 
     run_test(cell, input_shape, act, input_bits, output_bits, "int8", target=target)
 
