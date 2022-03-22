@@ -563,7 +563,7 @@ def test_tracer_model():
 
 
 if __name__ == "__main__":
-    test_tracer(1, True, 8, 6, 8)
+    test_tracer(1, True, 8, 6, 8, "c")
     # test_tracer_linear()
     # while True:
     #    test_tracer_reduction(1, True, 8, 6, 6)
