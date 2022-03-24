@@ -2,17 +2,13 @@ import copy
 import logging
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch.fx
+import tvm
+import tvm.relay as relay
 from hannah.models.factory import pooling, qat, qconfig
-
-try:
-    import tvm
-    import tvm.relay as relay
-except ModuleNotFoundError:
-    relay = None
-    tvm = None
+from matplotlib import use
 
 logger = logging.getLogger("__name__")
 
@@ -232,7 +228,7 @@ class RelayConverter(torch.fx.Interpreter):
             self.modules[name] = module
 
         self.outputs = {}
-        self.tensor_info = {}
+        self.tensor_info: Dict["str", TensorMetadata] = {}
         self.func_args = []
         self.returns = []
         self.params = {}
@@ -251,6 +247,7 @@ class RelayConverter(torch.fx.Interpreter):
             qconfig.STEQuantize: self._handle_requantize,
             torch.nn.ReLU: self._handle_relu,
             torch.nn.Dropout: self._handle_identity,
+            torch.nn.Identity: self._handle_identity,
             torch.nn.Flatten: self._handle_flatten,
         }
 
@@ -712,19 +709,26 @@ class RelayConverter(torch.fx.Interpreter):
             inputs = list(node.all_input_nodes)
             assert len(inputs) == 1
             data = self.outputs[inputs[0].name]
-            data = tvm.relay.cast(data, self.accumulator_dtype)
             sum = tvm.relay.sum(data, axis=2, keepdims=True)
             self.outputs[node.name] = sum
-            self.tensor_info[node.name] = self.tensor_info[inputs[0].name]
+            output_info = copy.deepcopy(self.tensor_info[inputs[0].name])
+            self.tensor_info[node.name] = output_info
         elif target.__name__ == "truediv":
             inputs = list(node.all_input_nodes)
             assert len(inputs) == 1
+            input_info = self.tensor_info[inputs[0].name]
+            divider = node.args[1]
+
             data = self.outputs[inputs[0].name]
-            div = tvm.relay.cast(data, self.accumulator_dtype) / tvm.relay.cast(
-                tvm.relay.const(node.args[1]), self.accumulator_dtype
+            div = data / tvm.relay.cast(
+                tvm.relay.cast(tvm.relay.const(divider), input_info.relay_dtype),
+                input_info.relay_dtype,
             )
+            print(input_info)
+            print(div)
             self.outputs[node.name] = div
-            self.tensor_info[node.name] = self.tensor_info[inputs[0].name]
+            output_info = copy.deepcopy(self.tensor_info[inputs[0].name])
+            self.tensor_info[node.name] = output_info
         else:
             raise Exception(f"Unandled function {target}")
 

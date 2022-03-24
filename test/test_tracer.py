@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import tvm
 import tvm.contrib.debugger.debug_executor
+from hydra import compose, initialize
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
@@ -166,6 +167,7 @@ def run_test(
     out_dtype,
     approximate=False,
     target="llvm",
+    output_scale=None,  # If none it is inferred from target
 ):
     print(cell)
     cell.eval()
@@ -216,7 +218,7 @@ def run_test(
     module = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
     module.set_input("x", input_ndarray)
     module.run()
-    output_scale = 1 / 2 ** (output_bits - 1)
+    output_scale = 1 / 2 ** (output_bits - 1) if output_scale is None else output_scale
     print("Output scale:", output_scale)
     tvm_output = (
         module.get_output(0, tvm.nd.empty(output_torch.shape, dtype=out_dtype))
@@ -440,24 +442,33 @@ class CellPooling(nn.Module):
         super().__init__()
         self.qconfig = get_trax_qat_qconfig(Config())
         self.activation_post_process = self.qconfig.activation()
-        self.pool = ApproximateGlobalAveragePooling1D(
-            length, qconfig=get_trax_qat_qconfig(Config())
+        self.conv = Conv1d(
+            64,
+            128,
+            3,
+            qconfig=get_trax_qat_qconfig(Config()),
+            padding=1,
+            bias=False,
+            out_quant=False,
         )
+        self.pool = ApproximateGlobalAveragePooling1D(length)
 
     def forward(self, x):
         x = self.activation_post_process(x)
+        x = self.conv(x)
         x = self.pool(x)
+        x = self.activation_post_process(x)
         return x
 
 
-@pytest.mark.parametrize("length", [5, 8, 17, 33])
+@pytest.mark.parametrize("length", [5, 8, 17, 33, 36])
 def test_tracer_pooling(length):
     cell = CellPooling(length=length)
     input_shape = (1, 64, length)
     act = False
     input_bits = 8
     output_bits = 8
-    out_dtype = "int32"
+    out_dtype = "int8"
     run_test(
         cell, input_shape, act, input_bits, output_bits, out_dtype, approximate=True
     )
@@ -494,78 +505,38 @@ def test_tracer_simple():
     run_test(cell, input_shape, act, input_bits, output_bits, out_dtype)
 
 
-@pytest.mark.skip
-def test_tracer_model():
+@pytest.mark.parametrize(
+    "model",
+    ["conv-net-trax", "conv-net4-trax", "test_net_2layer", "test_net_2layer_res"],
+)
+def test_tracer_model(model):
     input_shape = (1, 101, 40)
     input_bits = 8
-    output_bits = 15
+    output_bits = 13
     out_dtype = "int32"
+    act = False
     from pprint import pprint
 
-    model_path = Path(hannah.__file__).parent / "conf" / "model" / "conv-net-mini.yaml"
+    import hannah.conf
 
-    model_conf = OmegaConf.load(model_path)
-    cell = instantiate(
-        model_conf, input_shape=input_shape, labels=12, __recursive__=False
-    )
-    cell.eval()
-    print(cell)
+    with initialize(
+        config_path=Path("../../../hannah") / "conf", job_name="test_tracer"
+    ):
+        cfg = compose(config_name="config", overrides=[f"model={model}"])
 
-    tracer = QuantizationTracer()
+        cell = instantiate(
+            cfg.model, input_shape=input_shape, labels=12, _recursive_=False
+        )
+        cell.eval()
+        print(cell)
 
-    traced_graph = tracer.trace(cell)
+        assert cell.qconfig.activation().bits == 8
+        assert cell.qconfig.bias().bits == 8
+        assert cell.qconfig.weight().bits == 6
 
-    converter = RelayConverter(torch.fx.GraphModule(cell, traced_graph))
-
-    input = torch.rand(input_shape)
-
-    mod, params = converter.run(input)
-    print(mod)
-
-    mod = tvm.relay.transform.InferType()(mod)
-
-    mod = LegalizeQuantizedTypes()(mod)
-
-    mod = tvm.relay.transform.InferType()(mod)
-    print(mod)
-    # print(params)
-
-    target = "llvm"
-    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        json, lib, params = tvm.relay.build(mod, target=target, params=params)
-
-    output_torch = cell(input)
-    input_ndarray = (input * 2 ** (input_bits - 1)).detach().numpy().astype("byte")
-
-    dev = tvm.device(str(target), 0)
-    module = tvm.contrib.debugger.debug_executor.create(
-        json, lib, dev, dump_root="tvmdbg"
-    )
-    module.set_input("x", input_ndarray)
-    module.set_input(**params)
-    module.run()
-
-    output_scale = 1 / 2 ** (output_bits - 1)
-    print("Output scale:", output_scale)
-    tvm_output = (
-        module.get_output(0, tvm.nd.empty(output_torch.shape, dtype=out_dtype))
-        .numpy()
-        .astype(float)
-        * output_scale
-    )
-
-    mse = ((output_torch.detach().numpy() - tvm_output) ** 2).mean()
-    max_se = ((output_torch.detach().numpy() - tvm_output) ** 2).max()
-
-    print(output_torch)
-    print(tvm_output)
-
-    print("MSE:   ", mse)
-    print("MAX_SE:", max_se)
-
-    assert mse < 1 / (2 ** (min(output_bits, input_bits) - 1))
-    assert max_se < 2 / (2 ** (min(output_bits, input_bits) - 1))
+        run_test(cell, input_shape, act, input_bits, output_bits, out_dtype)
 
 
 if __name__ == "__main__":
-    test_tracer(1, True, 8, 6, 8, "c")
+    # test_tracer(1, True, 8, 6, 8, "c")
+    test_tracer_pooling(13)
