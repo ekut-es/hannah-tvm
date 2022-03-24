@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -12,6 +13,7 @@ from omegaconf import OmegaConf
 torch.set_printoptions(precision=10)
 
 try:
+    import hannah
     from hannah.models.factory import factory
     from hannah.models.factory.pooling import ApproximateGlobalAveragePooling1D
     from hannah.models.factory.qat import (
@@ -248,7 +250,6 @@ def run_test(
             atol=output_scale,
             verbose=True,
         )
-        # np.testing.assert_equal(tvm_output, output_torch.cpu().detach().numpy())
 
 
 @pytest.mark.parametrize(
@@ -501,8 +502,12 @@ def test_tracer_model():
     out_dtype = "int32"
     from pprint import pprint
 
-    model_conf = OmegaConf.load("hannah/conf/model/conv-net-mini.yaml")
-    cell = instantiate(model_conf, input_shape=input_shape, labels=12)
+    model_path = Path(hannah.__file__).parent / "conf" / "model" / "conv-net-mini.yaml"
+
+    model_conf = OmegaConf.load(model_path)
+    cell = instantiate(
+        model_conf, input_shape=input_shape, labels=12, __recursive__=False
+    )
     cell.eval()
     print(cell)
 
@@ -564,6 +569,3 @@ def test_tracer_model():
 
 if __name__ == "__main__":
     test_tracer(1, True, 8, 6, 8, "c")
-    # test_tracer_linear()
-    # while True:
-    #    test_tracer_reduction(1, True, 8, 6, 6)
