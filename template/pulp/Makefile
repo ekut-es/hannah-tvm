@@ -9,7 +9,7 @@ MODEL_OBJ = $(wildcard build/codegen/host/lib/*.o) $(wildcard build/model/*.o)
 TESTFILE ?= test.c
 
 PULP_APP_SRCS = $(TESTFILE) build/runner.c utvm_runtime_api.c $(MODEL_SRC)
-PULP_LDFLAGS = $(MODEL_OBJ)
+PULP_LDFLAGS = $(MODEL_OBJ) -lm
 
 conf:
 	echo $(PYTHONPATH)
