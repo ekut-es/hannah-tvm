@@ -54,12 +54,12 @@ class PerformanceDataset:
 
     def add_tasks(self, scheduler, network_name, tasks, task_weights=None):
         task_info_filename = (
-            self._base_dir / "task_info" / self.board / scheduler / network_name.name
+            self._base_dir / "task_info" / self.board / scheduler / network_name
         )
-        task_info_filename.with_suffix(".pkl")
+        task_info_filename = task_info_filename.with_suffix(".pkl")
         task_info_filename.parent.mkdir(exist_ok=True, parents=True)
 
-        with task_info_filename.open() as f:
+        with task_info_filename.open("wb") as f:
             pickle.dump((tasks, task_weights), f)
 
     def add_measurement(self, network_name, profile_results, debug_results):
