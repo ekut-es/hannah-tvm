@@ -1,8 +1,9 @@
+import hashlib
 import logging
 import pathlib
-import hashlib
+import pickle
 
-from multiprocessing import Lock
+from .utils import RelayVisualizer
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +34,33 @@ class PerformanceDataset:
         hash_path = hash_path.with_suffix(suffix)
         return hash_path
 
-    def add_program(self, network_name, relay_mod):
+    def add_program(self, network_name, relay_mod, params):
         logger.info("Adding relay program: %s", network_name)
 
+        base_path = self._base_dir / "network_info" / self.board / network_name
+        base_path.parent.mkdir(exist_ok=True, parents=True)
+
+        plotter = RelayVisualizer()
+        plotter = plotter.render(relay_mod, params, base_path)
+
         relay_txt = relay_mod.astext().encode("utf-8")
-
-        network_path = self._base_dir / "network_info" / self.board / network_name
-        network_path = network_path.with_suffix(".relay.txt")
-        network_path.parent.mkdir(exist_ok=True, parents=True)
-
+        network_path = base_path.with_suffix(".relay.txt")
         with network_path.open("wb") as out_file:
             out_file.write(relay_txt)
+
+        network_pkl_path = base_path.with_suffix(".relay.pkl")
+        with network_pkl_path.open("wb") as out_file:
+            pickle.dump(relay_mod, out_file)
+
+    def add_tasks(self, scheduler, network_name, tasks, task_weights=None):
+        task_info_filename = (
+            self._base_dir / "task_info" / self.board / scheduler / network_name.name
+        )
+        task_info_filename.with_suffix(".pkl")
+        task_info_filename.parent.mkdir(exist_ok=True, parents=True)
+
+        with task_info_filename.open() as f:
+            pickle.dump((tasks, task_weights), f)
 
     def add_measurement(self, network_name, profile_results, debug_results):
         logger.info("Adding Measurement result")

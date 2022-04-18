@@ -1,31 +1,29 @@
+import enum
 import logging
 import multiprocessing as mp
 import os
 import time
 import traceback
-import enum
-import tqdm
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+import tqdm
 import tvm
 import tvm.auto_scheduler as auto_scheduler
-from tvm.auto_scheduler import search_policy
 import tvm.autotvm as autotvm
 import tvm.contrib.debugger.debug_runtime
 import tvm.relay as relay
 import tvm.rpc
 import tvm.rpc.tracker
+from omegaconf import OmegaConf
+from tvm.auto_scheduler import search_policy
+
 from hannah_tvm.dataset import PerformanceDataset
 from hannah_tvm.tuner.autotvm.callbacks import (
     progress_callback as autotvm_progress_callback,
 )
-
-from tvm.contrib.relay_viz import RelayVisualizer, TermPlotter, TermVizParser
-
-from omegaconf import OmegaConf
 
 from . import config, load
 
@@ -115,12 +113,7 @@ class TuningTask:
                 with tvm.transform.PassContext(opt_level=3):
                     relay_mod = seq(relay_mod)
 
-            visualizer = RelayVisualizer(
-                relay_mod, params, TermPlotter(), TermVizParser()
-            )
-            visualizer.render()
-
-            self.dataset.add_program(self.model_key, relay_mod)
+            self.dataset.add_program(self.model_key, relay_mod, params)
 
             if self.tuner_config is not None:
                 logger.info("Starting tuning with config:")
@@ -177,6 +170,8 @@ class TuningTask:
             ops=None,
         )
 
+        self.dataset.add_tasks("autotvm", self.model_key, tasks, None)
+
         logger.info("Extracted %d tasks", len(tasks))
 
         logger.info("Begin tuning:")
@@ -226,6 +221,8 @@ class TuningTask:
             self._task_connector.target(),
             hardware_params=hardware_params,
         )
+
+        self.dataset.add_tasks("auto_scheduler", self.model_key, tasks, None)
 
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")

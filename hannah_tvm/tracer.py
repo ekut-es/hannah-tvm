@@ -54,7 +54,7 @@ def parse_dtype(dtype: str):
 def get_integer_range(dtype) -> Optional[Tuple[int, int]]:
     type, bits = parse_dtype(dtype)
     if type == "int":
-        return -2 ** (bits - 1), --2 ** (bits - 1) - 1
+        return -(2 ** (bits - 1)), --(2 ** (bits - 1)) - 1
     elif type == "uint":
         return 0, 2 ** (bits - 1)
     else:

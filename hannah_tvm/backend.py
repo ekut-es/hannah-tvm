@@ -1,17 +1,18 @@
-import logging
 import copy
-from hannah_tvm.experiment_scheduler import BackendScheduler
+import logging
 
+import numpy as np
 import torch
 import tvm
-from tvm.auto_scheduler.measure import prepare_input_map
 import tvm.relay
-import numpy as np
-
 from hannah.callbacks.backends import InferenceBackendBase
-from .tracer import QuantizationTracer, RelayConverter
-from .passes.legalize import LegalizeQuantizedTypes
+from tvm.auto_scheduler.measure import prepare_input_map
+
+from hannah_tvm.experiment_scheduler import BackendScheduler
+
 from . import pass_instrument
+from .passes.legalize import LegalizeQuantizedTypes
+from .tracer import QuantizationTracer, RelayConverter
 
 
 def build_relay(model, dummy_input):
@@ -113,8 +114,8 @@ class TVMBackend(InferenceBackendBase):
         results = []
 
         for input in features:
-            from tvm.contrib import utils
             import numpy as np
+            from tvm.contrib import utils
 
             input = input * 128
             input = input.round()
