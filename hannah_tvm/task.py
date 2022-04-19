@@ -251,9 +251,9 @@ class TuningTask:
                     search_policy=search_policy,
                 )
         else:
-            tuner = auto_scheduler.TaskScheduler(tasks, task_weights=None)
+            tuner = auto_scheduler.TaskScheduler(tasks, task_weights=task_weights)
             tune_option = auto_scheduler.TuningOptions(
-                num_measure_trials=self.tuner_config.task_budget,
+                num_measure_trials=self.tuner_config.task_budget * len(tasks),
                 builder=builder,
                 runner=runner,
                 measure_callbacks=[auto_scheduler.RecordToFile(self.tuner_log_file)],
