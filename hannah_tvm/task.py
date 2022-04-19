@@ -222,7 +222,7 @@ class TuningTask:
             hardware_params=hardware_params,
         )
 
-        self.dataset.add_tasks("auto_scheduler", self.model_key, tasks, None)
+        self.dataset.add_tasks("auto_scheduler", self.model_key, tasks, task_weights)
 
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")
@@ -265,6 +265,8 @@ class TuningTask:
                 adapative_training=True,
                 search_policy=search_policy,
             )
+        record_reader = auto_scheduler.RecordReader(self.tuner_log_file)
+        self.dataset.add_tuning_results("auto_scheduler", record_reader)
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")

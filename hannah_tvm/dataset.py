@@ -3,9 +3,19 @@ import logging
 import pathlib
 import pickle
 
+from tvm.auto_scheduler.measure_record import dump_record_to_string
+
 from .utils import RelayVisualizer
 
 logger = logging.getLogger(__name__)
+
+
+def clean_file_name(x):
+    x = str(x)
+    x = x.replace(" ", "")
+    x = x.replace('"', "")
+    x = x.replace("'", "")
+    return x
 
 
 class PerformanceDataset:
@@ -61,6 +71,22 @@ class PerformanceDataset:
 
         with task_info_filename.open("wb") as f:
             pickle.dump((tasks, task_weights), f)
+
+    def add_tuning_results(self, scheduler, results):
+        base_folder = self._base_dir / "tuning_results" / self.board / scheduler
+        base_folder.mkdir(exist_ok=True, parents=True)
+        for result in results:
+            inp, res = result
+            workload_key = inp.task.workload_key
+            base_filename = clean_file_name(f"{inp.task.workload_key}_{self.target}")
+            target_file = base_folder / base_filename
+            target_file = target_file.with_suffix(".json")
+
+            logger.info("Logging results to %s", str(target_file))
+
+            with target_file.open("a+") as f:
+                target_str = dump_record_to_string(inp, res) + "\n"
+                f.write(target_str)
 
     def add_measurement(self, network_name, profile_results, debug_results):
         logger.info("Adding Measurement result")
