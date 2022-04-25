@@ -17,8 +17,10 @@ import tvm.contrib.debugger.debug_runtime
 import tvm.relay as relay
 import tvm.rpc
 import tvm.rpc.tracker
+from matplotlib.style import available
 from omegaconf import OmegaConf
 from tvm.auto_scheduler import search_policy
+from tvm.auto_scheduler.measure_record import dump_record_to_string
 
 from hannah_tvm.dataset import PerformanceDataset
 from hannah_tvm.tuner.autotvm.callbacks import (
@@ -223,6 +225,14 @@ class TuningTask:
         )
 
         self.dataset.add_tasks("auto_scheduler", self.model_key, tasks, task_weights)
+        available_measurements = self.dataset.load_tuning_results(
+            "auto_scheduler", tasks
+        )
+
+        with open(self.tuner_log_file, "w") as log_f:
+            for inp, res in available_measurements:
+                log_f.write(dump_record_to_string(inp, res))
+        breakpoint()
 
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")
@@ -234,7 +244,10 @@ class TuningTask:
 
         if self.tuner_config.equal_task_budget:
             for num, task in enumerate(tasks):
-                tuner = auto_scheduler.TaskScheduler([task], task_weights=None)
+                tuner = auto_scheduler.TaskScheduler(
+                    [task], task_weights=None, load_log_file=self.tuner_log_file
+                )
+
                 tune_option = auto_scheduler.TuningOptions(
                     num_measure_trials=self.tuner_config.task_budget,
                     builder=builder,
@@ -251,7 +264,9 @@ class TuningTask:
                     search_policy=search_policy,
                 )
         else:
-            tuner = auto_scheduler.TaskScheduler(tasks, task_weights=task_weights)
+            tuner = auto_scheduler.TaskScheduler(
+                tasks, task_weights=task_weights, load_log_file=self.tuner_log_file
+            )
             tune_option = auto_scheduler.TuningOptions(
                 num_measure_trials=self.tuner_config.task_budget * len(tasks),
                 builder=builder,

@@ -1,8 +1,11 @@
 import hashlib
+import itertools
 import logging
 import pathlib
 import pickle
+from typing import Iterable, Optional
 
+from tvm import auto_scheduler
 from tvm.auto_scheduler.measure_record import dump_record_to_string
 
 from .utils import RelayVisualizer
@@ -73,22 +76,52 @@ class PerformanceDataset:
             pickle.dump((tasks, task_weights), f)
 
     def add_tuning_results(self, scheduler, results):
-        base_folder = self._base_dir / "tuning_results" / self.board / scheduler
-        base_folder.mkdir(exist_ok=True, parents=True)
-        for result in results:
-            inp, res = result
+        base_folder = self._get_tuning_results_dir(scheduler)
+        for inp, res in results:
+
             workload_key = inp.task.workload_key
-            base_filename = clean_file_name(f"{inp.task.workload_key}_{self.target}")
+            base_filename = clean_file_name(f"{workload_key}_{self.target}")
             target_file = base_folder / base_filename
             target_file = target_file.with_suffix(".json")
 
             logger.info("Logging results to %s", str(target_file))
 
             with target_file.open("a+") as f:
-                target_str = dump_record_to_string(inp, res) + "\n"
+                target_str = dump_record_to_string(inp, res)
                 f.write(target_str)
+
+    def load_tuning_results(
+        self, scheduler, tasks: Optional[Iterable[auto_scheduler.SearchTask]] = None
+    ):
+        base_folder = self._get_tuning_results_dir(scheduler)
+        task_files = []
+        if task_files is not None:
+            for task in tasks:
+                workload_key = task.workload_key
+                base_filename = clean_file_name(f"{workload_key}_{self.target}")
+                target_file = base_folder / base_filename
+                target_file = target_file.with_suffix(".json")
+
+                if target_file.exists():
+                    task_files.append(target_file)
+
+        readers = []
+        for task_file in task_files:
+            logger.info("Creating reader for file: %s", str(task_file))
+            reader = auto_scheduler.RecordReader(str(task_file))
+
+            readers.append(reader)
+
+        res_iterator = list(itertools.chain(*readers))
+
+        return res_iterator
 
     def add_measurement(self, network_name, profile_results, debug_results):
         logger.info("Adding Measurement result")
         result_path = self._base_dir / "network_results" / self.board / network_name
         result_path.parent.mkdir(exist_ok=True, parents=True)
+
+    def _get_tuning_results_dir(self, scheduler):
+        base_folder = self._base_dir / "tuning_results" / self.board / scheduler
+        base_folder.mkdir(exist_ok=True, parents=True)
+        return base_folder
