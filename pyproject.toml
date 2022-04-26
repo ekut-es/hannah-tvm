@@ -37,6 +37,8 @@ west =  {version="^0.11.0", optional=true}
 automate = {path = "external/automate", extras = ["postgres"], develop=true, optional=true}
 onnxoptimizer = "^0.2.6"
 xgboost = "1.5.2"
+dash = "^2.3.1"
+pandas = "<1.4.0"
 
 
 
@@ -44,6 +46,7 @@ xgboost = "1.5.2"
 hannah-tvm-compile = 'hannah_tvm.compile:main'
 hannah-tvm-tune = 'hannah_tvm.tune:main'
 hannah-tvm-memory = 'hannah_tvm.analysis:memory_main'
+hannah-tvm-board = 'hannah_tvm.board.app:main'
 
 [tool.poetry.extras]
 automate = ["automate"]
