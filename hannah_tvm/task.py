@@ -232,7 +232,6 @@ class TuningTask:
         with open(self.tuner_log_file, "w") as log_f:
             for inp, res in available_measurements:
                 log_f.write(dump_record_to_string(inp, res))
-        breakpoint()
 
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")

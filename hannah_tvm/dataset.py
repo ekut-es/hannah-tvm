@@ -84,7 +84,7 @@ class PerformanceDataset:
             target_file = base_folder / base_filename
             target_file = target_file.with_suffix(".json")
 
-            logger.info("Logging results to %s", str(target_file))
+            logger.debug("Logging results to %s", str(target_file))
 
             with target_file.open("a+") as f:
                 target_str = dump_record_to_string(inp, res)
@@ -107,7 +107,7 @@ class PerformanceDataset:
 
         readers = []
         for task_file in task_files:
-            logger.info("Creating reader for file: %s", str(task_file))
+            logger.debug("Creating reader for file: %s", str(task_file))
             reader = auto_scheduler.RecordReader(str(task_file))
 
             readers.append(reader)
