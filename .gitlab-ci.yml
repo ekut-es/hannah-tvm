@@ -41,9 +41,14 @@ build_micro:
   tags:
     - docker
   interruptible: true
+  coverage: '/TOTAL.*\s([.\d]+)%/'
   artifacts:
     reports:
       cobertura: coverage.xml
+  cache:
+    key: tvm-micro
+    paths:
+      - external/tvm/build
 
 build_full:
   stage: build
@@ -57,6 +62,7 @@ build_full:
   tags:
     - docker
   interruptible: true
+  coverage: '/TOTAL.*\s([.\d]+)%/'
   cache:
     key: tvm-full
     paths:
