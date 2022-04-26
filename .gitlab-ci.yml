@@ -28,7 +28,7 @@ before_script:
 
 build_micro:
   stage: build
-  image: ubuntu:latest
+  image: ubuntu:20.04
 
   script:
     - set -e
