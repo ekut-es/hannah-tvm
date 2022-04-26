@@ -36,10 +36,12 @@ class TaskConnector(ABC):
 
     @abstractmethod
     def measure(self, handle, inputs):
+        """Measure a full neural network"""
         pass
 
     @abstractmethod
     def profile(self, handle, inputs):
+        """Run per layer profiling of full neural network"""
         pass
 
     @abstractmethod

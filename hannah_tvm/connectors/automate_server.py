@@ -19,6 +19,9 @@ _automate_context = None
 
 
 def automate_context():
+    if not automate_available:
+        raise Exception("automate module is not available")
+
     global _automate_context
     if _automate_context is None:
         automate_config = AutomateConfig()
@@ -44,57 +47,58 @@ class AutomateServer(multiprocessing.Process):
         tracker_port = self.tracker_port
 
         try:
-            with board.connect() as board_connection:
+            with board.lock_ctx():
+                with board.connect() as board_connection:
 
-                if self.board_config.rebuild_runtime:
-                    self._build_runtime(board_connection, board)
+                    if self.board_config.rebuild_runtime:
+                        self._build_runtime(board_connection, board)
 
-                logger.info("Running setup commands")
-                for setup in self.board_config.setup:
-                    board_connection.run(setup)
+                    logger.info("Running setup commands")
+                    for setup in self.board_config.setup:
+                        board_connection.run(setup)
 
-                logger.info(
-                    "forwarding remote port %d to local port %i",
-                    tracker_port,
-                    tracker_port,
-                )
-                with board_connection.forward_remote(tracker_port, tracker_port):
-                    local_port = find_local_port(9091, 90199)
                     logger.info(
-                        "forwarding local port %d to remote port %i",
-                        local_port,
-                        local_port,
+                        "forwarding remote port %d to local port %i",
+                        tracker_port,
+                        tracker_port,
                     )
-                    with board_connection.forward_local(local_port, local_port):
-                        logger.info("Starting remote server")
-                        promise = board_connection.run(
-                            f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port={local_port} --port-end={local_port+1} --tracker=localhost:{tracker_port}",
-                            env={"PYTHONPATH": str(python_path)},
-                            shell=True,
-                            warn=True,
-                            pty=True,
-                            asynchronous=True,
+                    with board_connection.forward_remote(tracker_port, tracker_port):
+                        local_port = find_local_port(9091, 90199)
+                        logger.info(
+                            "forwarding local port %d to remote port %i",
+                            local_port,
+                            local_port,
                         )
+                        with board_connection.forward_local(local_port, local_port):
+                            logger.info("Starting remote server")
+                            promise = board_connection.run(
+                                f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port={local_port} --port-end={local_port+1} --tracker=localhost:{tracker_port}",
+                                env={"PYTHONPATH": str(python_path)},
+                                shell=True,
+                                warn=True,
+                                pty=True,
+                                asynchronous=True,
+                            )
 
-                        killed = False
-                        while (
-                            not promise.runner.process_is_finished
-                            and not promise.runner.has_dead_threads
-                        ):
-                            if self._cconn.poll():
-                                msg = self._cconn.recv()
-                                if msg == "exit":
-                                    promise.runner.send_interrupt(
-                                        Exception("Could not send interrupt")
-                                    )
-                                    killed = True
-                            time.sleep(2.0)
+                            killed = False
+                            while (
+                                not promise.runner.process_is_finished
+                                and not promise.runner.has_dead_threads
+                            ):
+                                if self._cconn.poll():
+                                    msg = self._cconn.recv()
+                                    if msg == "exit":
+                                        promise.runner.send_interrupt(
+                                            Exception("Could not send interrupt")
+                                        )
+                                        killed = True
+                                time.sleep(2.0)
 
-                        result = promise.join()
+                            result = promise.join()
 
-                        if (not result) and (not killed):
-                            logger.info("Result %s", str(result))
-                            self._cconn.send(str(result))
+                            if (not result) and (not killed):
+                                logger.info("Result %s", str(result))
+                                self._cconn.send(str(result))
 
                 logger.info("Running teardown commands")
                 for teardown in self.board_config.teardown:

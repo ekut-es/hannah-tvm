@@ -1,8 +1,8 @@
 import importlib
 import os
-
+import socket
 from dataclasses import dataclass, field
-from typing import Any, Optional, List, Dict
+from typing import Any, Dict, List, Optional
 
 import hydra
 from hydra.core.config_store import ConfigStore
@@ -50,19 +50,28 @@ class Board:
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)
     desired_layouts: Optional[Any] = None
+    connector: str = "default"
 
 
 @dataclass
 class Model:
     file: str = MISSING
-    input_shapes: Any = None
+    input_shapes: Any = None  # Input shapes for models from sources that do not encode input shapes e.g. PyTorch/TorchScript
+
+
+@dataclass
+class TunerConfig:
+    name: str = MISSING
+    task_budget: int = 4
+    mode: str = "xgb"
+    equal_task_budget: bool = False  # Run same amount of tuning for each task (only used for auto_scheduler/meta_scheduler)
 
 
 @dataclass
 class Config:
     board: Dict[str, Board] = MISSING
     model: Dict[str, Model] = MISSING
-    tuner: Optional[str] = None
+    tuner: Optional[TunerConfig] = None
 
 
 cs = ConfigStore.instance()
@@ -94,3 +103,6 @@ OmegaConf.register_new_resolver(
     "db_dir",
     lambda: os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database"),
 )
+
+
+OmegaConf.register_new_resolver("hostname", lambda: socket.gethostname())

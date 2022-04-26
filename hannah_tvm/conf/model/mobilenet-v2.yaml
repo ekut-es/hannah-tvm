@@ -1,2 +1,2 @@
 mobilenet-v2:
-  file:  ${models_dir:}/mobilenetv2-7.onnx
+  file:  ${models_dir:}/mobilenet_v2_1.0_224.tflite
