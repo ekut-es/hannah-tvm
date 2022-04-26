@@ -35,9 +35,15 @@ build_micro:
     - poetry install -E micro
     - poetry run ./scripts/install_micro.sh
     - poetry run ./scripts/install_zephyr.sh
+    - poetry run coverage run py.test test
+    - poetry run coverage reports
+    - poetry run coverage xml
   tags:
     - docker
   interruptible: true
+  artifacts:
+    reports:
+      cobertura: coverage.xml
 
 build_full:
   stage: build
@@ -45,7 +51,9 @@ build_full:
   script:
     - set -e
     - poetry run ./scripts/install_full.sh
-    - poetry run py.test test
+    - poetry run coverage run py.test test
+    - poetry run coverage reports
+    - poetry run coverage xml
   tags:
     - docker
   interruptible: true
@@ -53,6 +61,9 @@ build_full:
     key: tvm-full
     paths:
       - external/tvm/build
+  artifacts:
+    reports:
+      cobertura: coverage.xml
 
 #build_micro_pulp:
 #  stage: build
