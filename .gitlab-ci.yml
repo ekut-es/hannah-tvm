@@ -26,17 +26,29 @@ before_script:
 #  tags:
 #    - docker
 
-#build_micro:
-#  stage: build
-#  image: ubuntu:latest
-#
-#  script:
-#    - set -e
-#    - poetry run ./scripts/install_micro.sh
-#    - poetry run ./scripts/install_zephyr.sh
-#  tags:
-#    - docker
-#  interruptible: true
+build_micro:
+  stage: build
+  image: ubuntu:20.04
+
+  script:
+    - set -e
+    - poetry install -E micro
+    - poetry run ./scripts/install_micro.sh
+    - poetry run ./scripts/install_zephyr.sh
+    - poetry run coverage run -m pytest test
+    - poetry run coverage report
+    - poetry run coverage xml
+  tags:
+    - docker
+  interruptible: true
+  coverage: '/TOTAL.*\s([.\d]+)%/'
+  artifacts:
+    reports:
+      cobertura: coverage.xml
+  cache:
+    key: tvm-micro
+    paths:
+      - external/tvm/build
 
 build_full:
   stage: build
@@ -44,14 +56,20 @@ build_full:
   script:
     - set -e
     - poetry run ./scripts/install_full.sh
-    - poetry run py.test test
+    - poetry run coverage run -m pytest test
+    - poetry run coverage report
+    - poetry run coverage xml
   tags:
     - docker
   interruptible: true
+  coverage: '/TOTAL.*\s([.\d]+)%/'
   cache:
     key: tvm-full
     paths:
       - external/tvm/build
+  artifacts:
+    reports:
+      cobertura: coverage.xml
 
 #build_micro_pulp:
 #  stage: build
