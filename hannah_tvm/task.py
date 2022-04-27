@@ -229,7 +229,8 @@ class TuningTask:
             "auto_scheduler", tasks
         )
 
-        with open(self.tuner_log_file, "w") as log_f:
+        tuner_log_file_inp = self.tuner_log_file + ".inp"
+        with open(tuner_log_file_inp, "w") as log_f:
             for inp, res in available_measurements:
                 log_f.write(dump_record_to_string(inp, res))
 
@@ -240,15 +241,34 @@ class TuningTask:
             search_policy = "sketch.xgb"
         elif self.tuner_config.mode == "random":
             search_policy = "sketch.random"
+        try:
+            if self.tuner_config.equal_task_budget:
+                for num, task in enumerate(tasks):
+                    tuner = auto_scheduler.TaskScheduler(
+                        [task], task_weights=None, load_log_file=tuner_log_file_inp
+                    )
 
-        if self.tuner_config.equal_task_budget:
-            for num, task in enumerate(tasks):
+                    tune_option = auto_scheduler.TuningOptions(
+                        num_measure_trials=self.tuner_config.task_budget,
+                        builder=builder,
+                        runner=runner,
+                        measure_callbacks=[
+                            auto_scheduler.RecordToFile(self.tuner_log_file)
+                        ],
+                        verbose=1,
+                    )
+                    tuner.tune(
+                        tune_option,
+                        per_task_early_stopping=64,
+                        adapative_training=True,
+                        search_policy=search_policy,
+                    )
+            else:
                 tuner = auto_scheduler.TaskScheduler(
-                    [task], task_weights=None, load_log_file=self.tuner_log_file
+                    tasks, task_weights=task_weights, load_log_file=tuner_log_file_inp
                 )
-
                 tune_option = auto_scheduler.TuningOptions(
-                    num_measure_trials=self.tuner_config.task_budget,
+                    num_measure_trials=self.tuner_config.task_budget * len(tasks),
                     builder=builder,
                     runner=runner,
                     measure_callbacks=[
@@ -262,25 +282,9 @@ class TuningTask:
                     adapative_training=True,
                     search_policy=search_policy,
                 )
-        else:
-            tuner = auto_scheduler.TaskScheduler(
-                tasks, task_weights=task_weights, load_log_file=self.tuner_log_file
-            )
-            tune_option = auto_scheduler.TuningOptions(
-                num_measure_trials=self.tuner_config.task_budget * len(tasks),
-                builder=builder,
-                runner=runner,
-                measure_callbacks=[auto_scheduler.RecordToFile(self.tuner_log_file)],
-                verbose=1,
-            )
-            tuner.tune(
-                tune_option,
-                per_task_early_stopping=64,
-                adapative_training=True,
-                search_policy=search_policy,
-            )
-        record_reader = auto_scheduler.RecordReader(self.tuner_log_file)
-        self.dataset.add_tuning_results("auto_scheduler", record_reader)
+        finally:
+            record_reader = auto_scheduler.RecordReader(self.tuner_log_file)
+            self.dataset.add_tuning_results("auto_scheduler", record_reader)
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
