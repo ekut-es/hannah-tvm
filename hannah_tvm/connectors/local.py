@@ -32,7 +32,9 @@ class LocalTaskConnector(TaskConnector):
 
     def runner(self, tuner=None):
         if tuner == "autotvm":
-            runner = autotvm.LocalRunner(enable_cpu_cache_flush=True)
+            runner = autotvm.LocalRunner(
+                enable_cpu_cache_flush=True, number=1, repeat=10
+            )
         elif tuner == "auto_scheduler":
             if self.auto_scheduler_ctx is None:
                 self.auto_scheduler_ctx = auto_scheduler.LocalRPCMeasureContext()

@@ -3,9 +3,10 @@ import itertools
 import logging
 import pathlib
 import pickle
+from collections import OrderedDict
 from typing import Iterable, Optional
 
-from tvm import auto_scheduler
+from tvm import auto_scheduler, autotvm
 from tvm.auto_scheduler.measure_record import dump_record_to_string
 
 from .utils import RelayVisualizer
@@ -18,6 +19,7 @@ def clean_file_name(x):
     x = x.replace(" ", "")
     x = x.replace('"', "")
     x = x.replace("'", "")
+    x = x.replace(".", "_")
     return x
 
 
@@ -77,44 +79,74 @@ class PerformanceDataset:
 
     def add_tuning_results(self, scheduler, results):
         base_folder = self._get_tuning_results_dir(scheduler)
-        for inp, res in results:
+        if scheduler == "auto_scheduler":
+            for inp, res in results:
 
-            workload_key = inp.task.workload_key
-            base_filename = clean_file_name(f"{workload_key}_{self.target}")
-            target_file = base_folder / base_filename
-            target_file = target_file.with_suffix(".json")
+                workload_key = inp.task.workload_key
+                base_filename = clean_file_name(f"{workload_key}_{self.target}")
+                target_file = base_folder / base_filename
+                target_file = target_file.with_suffix(".json")
 
-            logger.debug("Logging results to %s", str(target_file))
+                logger.debug("Logging results to %s", str(target_file))
 
-            with target_file.open("a+") as f:
-                target_str = dump_record_to_string(inp, res)
-                f.write(target_str)
+                with target_file.open("a+") as f:
+                    target_str = dump_record_to_string(inp, res)
+                    f.write(target_str)
+
+        elif scheduler == "autotvm":
+            wkl_dict = OrderedDict()
+            for inp, res in results:
+                str_key = self._gen_autotvm_task_key(inp.task)
+                base_filename = clean_file_name(str_key)
+                target_file = base_folder / base_filename
+                target_file = target_file.with_suffix(".json")
+
+                with open(target_file, "a+") as fout:
+                    fout.write(autotvm.record.encode(inp, res) + "\n")
 
     def load_tuning_results(
         self, scheduler, tasks: Optional[Iterable[auto_scheduler.SearchTask]] = None
     ):
         base_folder = self._get_tuning_results_dir(scheduler)
-        task_files = []
-        if task_files is not None:
-            for task in tasks:
-                workload_key = task.workload_key
-                base_filename = clean_file_name(f"{workload_key}_{self.target}")
+        res_iterator = []
+        if scheduler == "auto_scheduler":
+            task_files = []
+            if task_files is not None:
+                for task in tasks:
+                    workload_key = task.workload_key
+                    base_filename = clean_file_name(f"{workload_key}_{self.target}")
+                    target_file = base_folder / base_filename
+                    target_file = target_file.with_suffix(".json")
+
+                    if target_file.exists():
+                        task_files.append(target_file)
+
+            readers = []
+            for task_file in task_files:
+                logger.debug("Creating reader for file: %s", str(task_file))
+                reader = auto_scheduler.RecordReader(str(task_file))
+
+                readers.append(reader)
+
+            res_iterator = list(itertools.chain(*readers))
+        elif scheduler == "autotvm":
+            generators = []
+            for inp in tasks:
+                str_key = self._gen_autotvm_task_key(inp)
+                base_filename = clean_file_name(str_key)
                 target_file = base_folder / base_filename
                 target_file = target_file.with_suffix(".json")
-
                 if target_file.exists():
-                    task_files.append(target_file)
-
-        readers = []
-        for task_file in task_files:
-            logger.debug("Creating reader for file: %s", str(task_file))
-            reader = auto_scheduler.RecordReader(str(task_file))
-
-            readers.append(reader)
-
-        res_iterator = list(itertools.chain(*readers))
-
+                    gen = autotvm.record.load_from_file(target_file)
+                    generators.append(gen)
+            res_iterator = list(itertools.chain(*generators))
         return res_iterator
+
+    def _gen_autotvm_task_key(self, task):
+        str_key = "_".join(
+            [task.name, str(task.args), str(task.kwargs), str(self.target)]
+        )
+        return str_key
 
     def add_measurement(self, network_name, profile_results, debug_results):
         logger.info("Adding Measurement result")
