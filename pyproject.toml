@@ -39,6 +39,7 @@ onnxoptimizer = "^0.2.6"
 xgboost = "1.5.2"
 dash = "^2.3.1"
 pandas = "<1.4.0"
+tabulate = "^0.8.9"
 
 
 
