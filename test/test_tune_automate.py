@@ -22,7 +22,6 @@ def test_auto_scheduler(board, tuner, model):
             config_name="config",
             overrides=[f"model={model}", f"board={board}", f"tuner={tuner}"],
         )
-        board_configs = cfg.board
 
         current_automate_context = automate_context()
 
@@ -30,6 +29,13 @@ def test_auto_scheduler(board, tuner, model):
         try:
             have_lock = False
             for id, config in cfg.board.items():
+                try:
+                    # Try to get board to check availability
+                    current_automate_context.board(config.name)
+                except Exception:
+                    have_lock = False
+                    break
+
                 have_lock = current_automate_context.board(config.name).trylock()
                 if not have_lock:
                     break
