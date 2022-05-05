@@ -1,18 +1,6 @@
-[submodule "tvm"]
-	path = external/tvm
-	url = ../tvm.git
 [submodule "external/automate"]
 	path = external/automate
-	url = ../../timing/schrank/automate.git
-[submodule "external/utvm_staticrt_codegen"]
-	path = external/utvm_staticrt_codegen
-	url = https://github.com/tum-ei-eda/utvm_staticrt_codegen.git
-[submodule "external/pulp-llvm"]
-	path = external/pulp-llvm
-	url = ../../timing/pulp-llvm.git
-[submodule "external/custom-pulp-sdk"]
-	path = external/custom-pulp-sdk
-	url =  ../../pulp-platform/custom-pulp-sdk.git
+	url = ../../../timing/schrank/automate.git
 [submodule "external/tvm"]
 	path = external/tvm
-	url = ../tvm
+	url = ../../tvm/tvm

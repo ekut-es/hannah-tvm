@@ -35,8 +35,8 @@ build_micro:
     - poetry install -E micro
     - poetry run ./scripts/install_micro.sh
     - poetry run ./scripts/install_zephyr.sh
-    - poetry run coverage run py.test test
-    - poetry run coverage reports
+    - poetry run coverage run -m pytest test
+    - poetry run coverage report
     - poetry run coverage xml
   tags:
     - docker
@@ -56,8 +56,8 @@ build_full:
   script:
     - set -e
     - poetry run ./scripts/install_full.sh
-    - poetry run coverage run py.test test
-    - poetry run coverage reports
+    - poetry run coverage run -m pytest test
+    - poetry run coverage report
     - poetry run coverage xml
   tags:
     - docker
