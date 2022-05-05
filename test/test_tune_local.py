@@ -24,3 +24,4 @@ def test_autotvm():
 
 if __name__ == "__main__":
     test_auto_scheduler()
+    test_autotvm()
