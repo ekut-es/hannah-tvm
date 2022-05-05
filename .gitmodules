@@ -1,9 +1,9 @@
 [submodule "tvm"]
 	path = external/tvm
-	url = ../../ai/tvm/tvm.git
+	url = ../../tvm/tvm.git
 [submodule "external/automate"]
 	path = external/automate
-	url = ../../timing/schrank/automate.git
+	url = ../../../timing/schrank/automate.git
 [submodule "external/utvm_staticrt_codegen"]
 	path = external/utvm_staticrt_codegen
 	url = https://github.com/tum-ei-eda/utvm_staticrt_codegen.git
