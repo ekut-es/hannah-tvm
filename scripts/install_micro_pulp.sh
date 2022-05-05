@@ -18,9 +18,9 @@ popd
 pip install -e external/tvm/python
 
 
-echo "Installing utvm_static_runtime"
-mkdir -p external/utvm_staticrt_codegen/build
-pushd external/utvm_staticrt_codegen/build
-cmake ..  -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/
-cmake --build .
-popd
+#echo "Installing utvm_static_runtime"
+#mkdir -p external/utvm_staticrt_codegen/build
+#pushd external/utvm_staticrt_codegen/build
+#cmake ..  -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/
+#cmake --build .
+#popd
