@@ -47,9 +47,9 @@ popd
 pip install -e external/tvm/python
 
 
-echo "Installing utvm_static_runtime"
-mkdir -p external/utvm_staticrt_codegen/build
-pushd external/utvm_staticrt_codegen/build
-$CMAKE ..  -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_CXX_COMPILER=$CXX_COMPILER
-$CMAKE --build .
-popd
+#echo "Installing utvm_static_runtime"
+#mkdir -p external/utvm_staticrt_codegen/build
+#pushd external/utvm_staticrt_codegen/build
+#$CMAKE ..  -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_CXX_COMPILER=$CXX_COMPILER
+#$CMAKE --build .
+#popd
