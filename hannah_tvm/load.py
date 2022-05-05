@@ -1,14 +1,13 @@
 import logging
 import sys
-
 from pathlib import Path
 
+import numpy as np
 import onnx
+import tensorflow as tf
 import torch
 import tvm
 import tvm.relay as relay
-import numpy as np
-import tensorflow as tf
 import tvm.relay.testing.tf as tf_testing
 
 try:
@@ -178,9 +177,7 @@ def _load_tensorflow(model_path, input_shapes):
         shapes[input.op.name] = tuple(input.shape)
         types[input.op.name] = input.dtype.as_numpy_dtype
 
-    mod, params = relay.frontend.from_tensorflow(
-        graph_def, shape=shapes
-    )  # layout="NCHW"
+    mod, params = relay.frontend.from_tensorflow(graph_def, shape=shapes)
 
     inputs = {}
     for input in all_placeholders:

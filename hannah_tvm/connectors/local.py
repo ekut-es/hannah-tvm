@@ -122,7 +122,7 @@ class LocalBoardConnector(BoardConnector):
     def boards_available(self):
         return 1
 
-    def _start_tracker(self) -> int:
+    def _start_tracker(self):
         pass
 
     def _start_server(self):

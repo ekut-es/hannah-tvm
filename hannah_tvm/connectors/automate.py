@@ -163,7 +163,7 @@ class AutomateBoardConnector(BoardConnector):
             return queue_summary[board_name]["free"]
         return 0
 
-    def _start_tracker(self) -> int:
+    def _start_tracker(self):
         """Start tvm remote tracker"""
         logger.info("Starting experiment tracker")
         host = "0.0.0.0"
