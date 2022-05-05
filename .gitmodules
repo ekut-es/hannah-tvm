@@ -1,6 +1,6 @@
 [submodule "tvm"]
 	path = external/tvm
-	url = ../tvm.git
+	url = ../../ai/tvm/tvm.git
 [submodule "external/automate"]
 	path = external/automate
 	url = ../../timing/schrank/automate.git
