@@ -1,6 +1,7 @@
 #!/bin/bash -e
 
-west init zephyrproject --mr v2.5.0
+
+west init zephyrproject --mr v2.7.0
 pushd zephyrproject
 west update
 pip install -r zephyr/scripts/requirements.txt
