@@ -11,28 +11,41 @@ def main():
 
     dataset = DatasetFull()
     measurements = dataset.measurements()
-
-    # px.bar(measurements[measurements["Target"] == "llvm"], x=["Model"], y="Duration (us)", error_y="Duration PtP", barmode="group", color="Scheduler", )
+    models = measurements["Model"].unique()
 
     app.layout = html.Div(
         children=[
             html.H1(children="Tuning Results"),
             html.H2(children="Overview"),
             dcc.Dropdown(["cuda", "llvm"], "llvm", id="target-selection"),
+            dcc.Dropdown(
+                ["Duration StdDev", "Duration PtP"],
+                "Duration PtP",
+                id="error-selection",
+            ),
+            dcc.Dropdown(
+                models,
+                [x for x in models if x != "sine"],
+                multi=True,
+                id="model-selection",
+            ),
             dcc.Graph(id="overview-graph"),
         ]
     )
 
     @app.callback(
-        Output("overview-graph", "figure"), Input("target-selection", "value")
+        Output("overview-graph", "figure"),
+        Input("target-selection", "value"),
+        Input("error-selection", "value"),
+        Input("model-selection", "value"),
     )
-    def update_overview_figure(target):
+    def update_overview_figure(target, error, models):
+        print(models)
         overview_fig = go.Figure()
         for scheduler in ["baseline", "autotvm", "auto_scheduler"]:
             filtered_measurements = measurements.query(
-                f"Tuner == '{scheduler}' and Target == '{target}'"
+                "Tuner == @scheduler and Target == @target and Model == @models"
             )
-            print(filtered_measurements)
             overview_fig.add_trace(
                 go.Bar(
                     x=[filtered_measurements["Board"], filtered_measurements["Model"]],
@@ -40,7 +53,7 @@ def main():
                     name=scheduler,
                     error_y={
                         "type": "data",
-                        "array": filtered_measurements["Duration PtP"],
+                        "array": filtered_measurements[error],
                         "visible": True,
                     },
                 )
