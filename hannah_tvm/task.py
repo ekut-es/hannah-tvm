@@ -297,7 +297,7 @@ class TuningTask:
         finally:
             record_reader = auto_scheduler.RecordReader(self.tuner_log_file)
             records = record_reader.read_lines(skip_lines=preloaded_measurements)
-            self.dataset.add_tuning_results("auto_scheduler", record_reader)
+            self.dataset.add_tuning_results("auto_scheduler", records)
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
