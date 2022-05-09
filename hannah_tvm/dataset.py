@@ -153,7 +153,9 @@ class PerformanceDataset:
 
     def add_measurement(self, network_name, results: Dict[str, Any]):
         logger.info("Adding Measurement result")
-        result_path = self._base_dir / "network_results" / self.board / network_name
+        result_path = (
+            self._base_dir / "network_results" / self.board / f"{network_name}.json"
+        )
         result_path.parent.mkdir(exist_ok=True, parents=True)
         with result_path.open("w") as result_file:
             json.dump(results, result_file)

@@ -128,7 +128,7 @@ class TuningTask:
                 self.results["tuning_duration"] = final_time - start_time
             elif self.tuner_config.name == "autotvm":
                 start_time = time.time()
-                self._run_autotuner(relay_mod, params)
+                self._run_autotvm(relay_mod, params)
                 final_time = time.time()
                 self.results["tuning_duration"] = final_time - start_time
             elif self.tuner_config.name == "baseline":
@@ -153,8 +153,8 @@ class TuningTask:
         finally:
             self._task_connector.teardown()
 
-    def _run_autotuner(self, relay_mod, params):
-        logger.info("Running autotuner")
+    def _run_autotvm(self, relay_mod, params):
+        logger.info("Running ")
 
         early_stopping = 800
 
@@ -210,13 +210,14 @@ class TuningTask:
             )
 
             lines = list(open(tmp_log_file).readlines())
+
             records = [
                 rec for rec in map(autotvm.record.decode, lines) if rec is not None
             ]
 
             self.dataset.add_tuning_results("autotvm", records)
 
-            autotvm.record.pick_best(tmp_log_file, self.tuner_log_file)
+            autotvm.record.pick_best(str(tmp_log_file), str(self.tuner_log_file))
             os.remove(tmp_log_file)
 
     def _run_autoscheduler(self, relay_mod, params):
