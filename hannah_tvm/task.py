@@ -1,4 +1,5 @@
 import enum
+import json
 import logging
 import multiprocessing as mp
 import os
@@ -6,7 +7,7 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
 import numpy as np
 import tqdm
@@ -68,7 +69,8 @@ class TuningTask:
         self.board_config = board_config
         self.model_config = model_config
         self.tuner_config = tuner
-        self.tuner_log_file = f"{board_key}_{model_key}_{self.tuner_config.name}.json"
+        tuner_name = self.tuner_config.name if self.tuner_config else "baseline"
+        self.tuner_log_file = f"{board_key}_{model_key}_{tuner_name}.json"
 
         self.results = {}
 
@@ -77,9 +79,7 @@ class TuningTask:
         self.results["error"] = None
 
         self.name = f"tuning-task-{board_key}-{model_key}"
-        # Handle to child Process running this task if task is run in a different process
-        self.process = None
-        self.dataset = None
+        self.dataset: Optional[PerformanceDataset] = None
 
         self.status = TaskStatus.CREATED
 
@@ -117,25 +117,24 @@ class TuningTask:
 
             self.dataset.add_program(self.model_key, relay_mod, params)
 
-            if self.tuner_config is not None:
-                logger.info("Starting tuning with config:")
-                for k, v in self.tuner_config.items():
-                    logger.info("  %s, %s", str(k), str(v))
+            logger.info("Starting tuning with config:")
+            for k, v in self.tuner_config.items():
+                logger.info("  %s, %s", str(k), str(v))
 
-                if self.tuner_config.name == "auto_scheduler":
-                    start_time = time.time()
-                    self._run_autoscheduler(relay_mod, params)
-                    final_time = time.time()
-                    self.results["tuning_duration"] = final_time - start_time
-                elif self.tuner_config.name == "autotvm":
-                    start_time = time.time()
-                    self._run_autotuner(relay_mod, params)
-                    final_time = time.time()
-                    self.results["tuning_duration"] = final_time - start_time
-                elif self.tuner_config.name:
-                    raise Exception(f"Unknown tuner {self.tuner_config.name}")
-                else:
-                    self.results["tuning_duration"] = 0.0
+            if self.tuner_config.name == "auto_scheduler":
+                start_time = time.time()
+                self._run_autoscheduler(relay_mod, params)
+                final_time = time.time()
+                self.results["tuning_duration"] = final_time - start_time
+            elif self.tuner_config.name == "autotvm":
+                start_time = time.time()
+                self._run_autotvm(relay_mod, params)
+                final_time = time.time()
+                self.results["tuning_duration"] = final_time - start_time
+            elif self.tuner_config.name == "baseline":
+                self.results["tuning_duration"] = 0.0
+            else:
+                raise Exception(f"Unknown tuner {self.tuner_config.name}")
 
             lib = self._build(relay_mod, params)
             remote_handle = self._task_connector.upload(lib)
@@ -154,8 +153,8 @@ class TuningTask:
         finally:
             self._task_connector.teardown()
 
-    def _run_autotuner(self, relay_mod, params):
-        logger.info("Running autotuner")
+    def _run_autotvm(self, relay_mod, params):
+        logger.info("Running ")
 
         early_stopping = 800
 
@@ -176,10 +175,10 @@ class TuningTask:
 
         logger.info("Extracted %d tasks", len(tasks))
 
-        logger.info("Begin tuning:")
-        logger.info("  per task budget: %d", self.tuner_config.task_budget)
+        pretrained_results = self.dataset.load_tuning_results("autotvm", tasks)
+        logger.info("Loaded %d pretrained tuning results", len(pretrained_results))
 
-        for num, tsk in tqdm.tqdm(enumerate(tasks), desc=self.name):
+        for num, tsk in enumerate(tasks):
             prefix = f"Task {tsk.name} ({num+1}/{len(tasks)})"
             if self.tuner_config.mode == "xgb":
                 tuner_obj = autotvm.tuner.XGBTuner(tsk, loss_type="reg")
@@ -191,6 +190,8 @@ class TuningTask:
                 raise Exception(
                     "Tuner mode: %s is unknown for autotvm", self.tuner_config.mode
                 )
+
+            tuner_obj.load_history(pretrained_results)
 
             tmp_log_file = self.tuner_log_file + ".tmp"
             if os.path.exists(tmp_log_file):
@@ -208,7 +209,15 @@ class TuningTask:
                 ],
             )
 
-            autotvm.record.pick_best(tmp_log_file, self.tuner_log_file)
+            lines = list(open(tmp_log_file).readlines())
+
+            records = [
+                rec for rec in map(autotvm.record.decode, lines) if rec is not None
+            ]
+
+            self.dataset.add_tuning_results("autotvm", records)
+
+            autotvm.record.pick_best(str(tmp_log_file), str(self.tuner_log_file))
             os.remove(tmp_log_file)
 
     def _run_autoscheduler(self, relay_mod, params):
@@ -229,10 +238,13 @@ class TuningTask:
             "auto_scheduler", tasks
         )
 
-        tuner_log_file_inp = self.tuner_log_file + ".inp"
-        with open(tuner_log_file_inp, "w") as log_f:
+        preloaded_measurements = 0
+        with open(self.tuner_log_file, "w") as log_f:
             for inp, res in available_measurements:
                 log_f.write(dump_record_to_string(inp, res))
+                preloaded_measurements += 1
+
+        logger.info("Preloaded %d measurements", preloaded_measurements)
 
         runner = self._task_connector.runner("auto_scheduler")
         builder = self._task_connector.builder("auto_scheduler")
@@ -245,7 +257,7 @@ class TuningTask:
             if self.tuner_config.equal_task_budget:
                 for num, task in enumerate(tasks):
                     tuner = auto_scheduler.TaskScheduler(
-                        [task], task_weights=None, load_log_file=tuner_log_file_inp
+                        [task], task_weights=None, load_log_file=self.tuner_log_file
                     )
 
                     tune_option = auto_scheduler.TuningOptions(
@@ -265,7 +277,7 @@ class TuningTask:
                     )
             else:
                 tuner = auto_scheduler.TaskScheduler(
-                    tasks, task_weights=task_weights, load_log_file=tuner_log_file_inp
+                    tasks, task_weights=task_weights, load_log_file=self.tuner_log_file
                 )
                 tune_option = auto_scheduler.TuningOptions(
                     num_measure_trials=self.tuner_config.task_budget * len(tasks),
@@ -284,7 +296,9 @@ class TuningTask:
                 )
         finally:
             record_reader = auto_scheduler.RecordReader(self.tuner_log_file)
-            self.dataset.add_tuning_results("auto_scheduler", record_reader)
+            records = record_reader.read_lines(skip_lines=preloaded_measurements)
+            records = zip(*records)
+            self.dataset.add_tuning_results("auto_scheduler", records)
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
@@ -336,15 +350,15 @@ class TuningTask:
 
         debug_profile = self._task_connector.profile(remote_handle, inputs)
 
+        result = {}
+        result["Duration (us)"] = prof_res.tolist()
         if debug_profile is not None:
             logger.info("Profile information: %s", str(debug_profile))
+            json_profile = debug_profile.json()
+            dict_profile = json.loads(json_profile)
+            result.update(dict_profile)
+        self.dataset.add_measurement(self.model_key, dict_profile)
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"
         return s
-
-    def is_alive(self):
-        if self.process:
-            return self.process.is_alive()
-
-        return False

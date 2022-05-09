@@ -92,6 +92,8 @@ OmegaConf.register_new_resolver(
 
 def find_tvm_root():
     spec = importlib.util.find_spec("tvm")
+    if not spec:
+        return None
     origin = spec.origin
     return os.path.abspath(os.path.join(os.path.dirname(origin), "..", ".."))
 

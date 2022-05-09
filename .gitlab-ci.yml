@@ -15,7 +15,7 @@ before_script:
   - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
   - export PATH=${POETRY_HOME}/bin:${PATH}
   - poetry config experimental.new-installer false
-  - poetry install
+  - poetry install -E automate
 
 #sca:
 #  stage: build
@@ -35,7 +35,8 @@ build_micro:
     - poetry install -E micro
     - poetry run ./scripts/install_micro.sh
     - poetry run ./scripts/install_zephyr.sh
-    - poetry run coverage run -m pytest test
+      poetry run ./scripts/install_corstone_vfps.sh
+    - poetry run coverage run --source=hannah_tvm -m pytest test
     - poetry run coverage report
     - poetry run coverage xml
   tags:
@@ -56,7 +57,7 @@ build_full:
   script:
     - set -e
     - poetry run ./scripts/install_full.sh
-    - poetry run coverage run -m pytest test
+    - poetry run coverage run --source=hannah_tvm -m pytest test
     - poetry run coverage report
     - poetry run coverage xml
   tags:

@@ -1,12 +1,13 @@
 import atexit
 import logging
 import multiprocessing
+import pathlib
 import time
 
 try:
     from automate.config import AutomateConfig
     from automate.context import AutomateContext
-    from automate.utils.network import find_local_port, find_remote_port
+    from automate.utils.network import find_local_port, find_remote_port, rsync
 
     automate_available = True
 except ModuleNotFoundError:
@@ -110,11 +111,20 @@ class AutomateServer(multiprocessing.Process):
             logger.critical(str(e))
 
     def _build_runtime(self, connection, board):
+        import tvm  # noqa
+
+        tvm_base_dir = pathlib.Path(tvm.__file__).parent.parent.parent
+        logger.info("Syncing tvm from: %s", str(tvm_base_dir))
+        rsync(
+            connection,
+            tvm_base_dir,
+            board.rundir,
+            exclude=["build/", "tmp/"],
+            verbose=True,
+        )
         with connection.cd(board.rundir):
-            connection.run("rm -rf tvm")
-            connection.run("git clone https://github.com/apache/tvm.git")
             with connection.cd("tvm"):
-                connection.run("git submodule update --init --recursive")
+                connection.run("rm -rf build")
                 connection.run("cp cmake/config.cmake .")
                 if self.board_config.opencl:
                     connection.run(
