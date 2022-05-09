@@ -34,12 +34,12 @@ graphviz = "^0.19.1"
 pyserial = {version="^3.5", optional=true}
 usb = {version="^0.0.83-alpha.0", optional=true}
 west =  {version="^0.11.0", optional=true}
-automate = {path = "external/automate", extras = ["postgres"], develop=true, optional=true}
 onnxoptimizer = "^0.2.6"
 xgboost = "1.5.2"
 dash = "^2.3.1"
 pandas = "<1.4.0"
 tabulate = "^0.8.9"
+automate = {path = "external/automate", optional = true, extras = ["postgres"], develop = true}
 
 
 
