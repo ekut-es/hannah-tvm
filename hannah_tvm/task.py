@@ -1,4 +1,5 @@
 import enum
+import json
 import logging
 import multiprocessing as mp
 import os
@@ -6,7 +7,7 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
 import numpy as np
 import tqdm
@@ -78,9 +79,7 @@ class TuningTask:
         self.results["error"] = None
 
         self.name = f"tuning-task-{board_key}-{model_key}"
-        # Handle to child Process running this task if task is run in a different process
-        self.process = None
-        self.dataset = None
+        self.dataset: Optional[PerformanceDataset] = None
 
         self.status = TaskStatus.CREATED
 
@@ -297,6 +296,7 @@ class TuningTask:
         finally:
             record_reader = auto_scheduler.RecordReader(self.tuner_log_file)
             records = record_reader.read_lines(skip_lines=preloaded_measurements)
+            records = zip(*records)
             self.dataset.add_tuning_results("auto_scheduler", records)
 
     def _build(self, relay_mod, params):
@@ -349,15 +349,15 @@ class TuningTask:
 
         debug_profile = self._task_connector.profile(remote_handle, inputs)
 
+        result = {}
+        result["Duration (us)"] = prof_res.tolist()
         if debug_profile is not None:
             logger.info("Profile information: %s", str(debug_profile))
+            json_profile = debug_profile.json()
+            dict_profile = json.loads(json_profile)
+            result.update(dict_profile)
+        self.dataset.add_measurement(self.model_key, dict_profile)
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"
         return s
-
-    def is_alive(self):
-        if self.process:
-            return self.process.is_alive()
-
-        return False

@@ -1,10 +1,12 @@
 import hashlib
 import itertools
+import json
 import logging
 import pathlib
 import pickle
 from collections import OrderedDict
-from typing import Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
+from unittest import result
 
 from tvm import auto_scheduler, autotvm
 from tvm.auto_scheduler.measure_record import dump_record_to_string
@@ -80,6 +82,7 @@ class PerformanceDataset:
     def add_tuning_results(self, scheduler, results):
         base_folder = self._get_tuning_results_dir(scheduler)
         if scheduler == "auto_scheduler":
+            print(results)
             for inp, res in results:
 
                 workload_key = inp.task.workload_key
@@ -148,10 +151,12 @@ class PerformanceDataset:
         )
         return str_key
 
-    def add_measurement(self, network_name, profile_results, debug_results):
+    def add_measurement(self, network_name, results: Dict[str, Any]):
         logger.info("Adding Measurement result")
         result_path = self._base_dir / "network_results" / self.board / network_name
         result_path.parent.mkdir(exist_ok=True, parents=True)
+        with result_path.open("w") as result_file:
+            json.dump(results, result_file)
 
     def _get_tuning_results_dir(self, scheduler):
         base_folder = self._base_dir / "tuning_results" / self.board / scheduler

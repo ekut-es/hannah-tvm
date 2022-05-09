@@ -1,21 +1,17 @@
+import contextlib
 import logging
 import time
-import contextlib
-
 from abc import ABC, abstractmethod
 
-
-import tvm.rpc.tracker
 import numpy as np
 import tabulate
-
+import tvm.rpc.tracker
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from . import config
-from .task import ModelConfig, TaskStatus, TuningTask
 from .connectors import AutomateBoardConnector, LocalBoardConnector
-
+from .task import ModelConfig, TaskStatus, TuningTask
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +63,8 @@ class ExperimentSchedulerBase(ABC):
                     self._start_tasks()
 
                     for board_name, task in list(self.running_tasks.items()):
-                        if not task.is_alive():
-                            del self.running_tasks[board_name]
-                            pbar.update(1)
+                        del self.running_tasks[board_name]
+                        pbar.update(1)
 
                     for board_name, board_connector in self.board_connectors.items():
                         if board_name not in self.running_tasks:
