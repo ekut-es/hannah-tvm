@@ -203,4 +203,8 @@ class DatasetFull:
 
             measurements.append(result)
 
-        return pd.DataFrame.from_records(measurements)
+        df = pd.DataFrame.from_records(measurements)
+
+        df = df.sort_values(["Board", "Model", "Tuner"])
+
+        return df

@@ -20,7 +20,7 @@ def main():
             dcc.Dropdown(["cuda", "llvm"], "llvm", id="target-selection"),
             dcc.Dropdown(
                 ["Duration StdDev", "Duration PtP"],
-                "Duration PtP",
+                "Duration StdDev",
                 id="error-selection",
             ),
             dcc.Dropdown(

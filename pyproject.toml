@@ -36,7 +36,7 @@ usb = {version="^0.0.83-alpha.0", optional=true}
 west =  {version="^0.11.0", optional=true}
 onnxoptimizer = "^0.2.6"
 xgboost = "1.5.2"
-dash = "^2.3.1"
+dash = {version="^2.3.1", optional=true}
 pandas = "<1.4.0"
 tabulate = "^0.8.9"
 automate = {path = "external/automate", optional = true, extras = ["postgres"], develop = true}
@@ -52,6 +52,7 @@ hannah-tvm-dashboard = 'hannah_tvm.dashboard.app:main'
 [tool.poetry.extras]
 automate = ["automate", "jinja2"]
 micro = ["pyserial", "usb", "west"]
+dash = ["dash"]
 
 [tool.poetry.dev-dependencies]
 flake8 = ">=3.9.0"
