@@ -8,12 +8,16 @@ from collections import OrderedDict
 from typing import Any, Dict, Iterable, Optional
 from unittest import result
 
+import numpy as np
+import pandas as pd
 from tvm import auto_scheduler, autotvm
 from tvm.auto_scheduler.measure_record import dump_record_to_string
 
 from .utils import RelayVisualizer
 
 logger = logging.getLogger(__name__)
+
+_BASE_DIR = pathlib.Path(__file__).parent.resolve() / ".." / "dataset"
 
 
 def clean_file_name(x):
@@ -29,9 +33,7 @@ class PerformanceDataset:
     def __init__(self, board: str, target: str) -> None:
         self.board = str(board)
         self.target = str(target)
-        self._base_dir = self.database_file = (
-            pathlib.Path(__file__).parent.resolve() / ".." / "dataset"
-        )
+        self._base_dir = _BASE_DIR
 
     def _build_hash_path(self, hash: str, category: str, suffix: str):
         num_splits = 3
@@ -151,10 +153,14 @@ class PerformanceDataset:
         )
         return str_key
 
-    def add_measurement(self, network_name, results: Dict[str, Any]):
+    def add_measurement(self, scheduler, network_name, results: Dict[str, Any]):
         logger.info("Adding Measurement result")
         result_path = (
-            self._base_dir / "network_results" / self.board / f"{network_name}.json"
+            self._base_dir
+            / "network_results"
+            / self.board
+            / scheduler
+            / f"{network_name}_{str(self.target)}.json"
         )
         result_path.parent.mkdir(exist_ok=True, parents=True)
         with result_path.open("w") as result_file:
@@ -164,3 +170,41 @@ class PerformanceDataset:
         base_folder = self._base_dir / "tuning_results" / self.board / scheduler
         base_folder.mkdir(exist_ok=True, parents=True)
         return base_folder
+
+
+class DatasetFull:
+    def __init__(self):
+        self._base_dir = _BASE_DIR
+
+    def measurements(self) -> pd.DataFrame:
+        base_folder = self._base_dir / "network_results"
+        measurements = []
+        for result_file in base_folder.glob("*/*/*.json"):
+            parts = result_file.parts
+            model_name = parts[-1].split(".")[0]
+            model_name, target_name = (
+                "_".join(model_name.split("_")[:-1]),
+                model_name.split("_")[-1],
+            )
+            scheduler_name = parts[-2]
+            board_name = parts[-3]
+
+            result = {}
+            result["Model"] = model_name
+            result["Board"] = board_name
+            result["Tuner"] = scheduler_name
+            result["Target"] = target_name
+
+            with result_file.open() as result_stream:
+                record = json.load(result_stream)
+                result["Duration (us)"] = np.mean(record["Duration (us)"])
+                result["Duration StdDev"] = np.std(record["Duration (us)"])
+                result["Duration PtP"] = np.ptp(record["Duration (us)"])
+
+            measurements.append(result)
+
+        df = pd.DataFrame.from_records(measurements)
+
+        df = df.sort_values(["Board", "Model", "Tuner"])
+
+        return df

@@ -4,7 +4,7 @@ To get the basic installation use:
 
 1. Install `git-lfs` on ubuntu `apt install git-lfs`
 2. checkout submodules: `git submodule update --init --recursive`
-3. `poetry install`
+3. `poetry install -E automate -E dash -E micro`
 4. `poetry shell`
 
 For the tvm installation there are the following installation options.
@@ -40,9 +40,12 @@ The full installation uses the host provided llvm backend and activates cuda and
 ./scripts/install_full.sh
 ```
 
-
 # Common error reasons
 
 1. Pythonpath not set when using automate runner on schrank boards
 
   Add `AcceptEnv LANG LC_* PYTHONPATH` to `/etc/ssh/sshd_config` and restart server
+
+# Result  Visualization
+
+Currently a basic result visualization is available via `hannah-tvm-dashboard`

@@ -357,7 +357,7 @@ class TuningTask:
             json_profile = debug_profile.json()
             dict_profile = json.loads(json_profile)
             result.update(dict_profile)
-        self.dataset.add_measurement(self.model_key, dict_profile)
+        self.dataset.add_measurement(self.tuner_config.name, self.model_key, result)
 
     def __str__(self):
         s = f"TuningTask(board={self.board_key} model={self.model_key})"
