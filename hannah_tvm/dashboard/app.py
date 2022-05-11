@@ -12,6 +12,7 @@ def main():
     dataset = DatasetFull()
     measurements = dataset.measurements()
     models = measurements["Model"].unique()
+    boards = measurements["Board"].unique()
 
     app.layout = html.Div(
         children=[
@@ -29,6 +30,7 @@ def main():
                 multi=True,
                 id="model-selection",
             ),
+            dcc.Dropdown(boards, boards, multi=True, id="board-selection"),
             dcc.Graph(id="overview-graph"),
         ]
     )
@@ -38,13 +40,13 @@ def main():
         Input("target-selection", "value"),
         Input("error-selection", "value"),
         Input("model-selection", "value"),
+        Input("board-selection", "value"),
     )
-    def update_overview_figure(target, error, models):
-        print(models)
+    def update_overview_figure(target, error, models, boards):
         overview_fig = go.Figure()
         for scheduler in ["baseline", "autotvm", "auto_scheduler"]:
             filtered_measurements = measurements.query(
-                "Tuner == @scheduler and Target == @target and Model == @models"
+                "Tuner == @scheduler and Target == @target and Model == @models and Board == @boards"
             )
             overview_fig.add_trace(
                 go.Bar(
