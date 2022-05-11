@@ -31,6 +31,9 @@ def main():
                 id="model-selection",
             ),
             dcc.Dropdown(boards, boards, multi=True, id="board-selection"),
+            dcc.RadioItems(
+                ["Absolute", "Speedup"], "Absolute", inline=True, id="type-selection"
+            ),
             dcc.Graph(id="overview-graph"),
         ]
     )
@@ -41,25 +44,61 @@ def main():
         Input("error-selection", "value"),
         Input("model-selection", "value"),
         Input("board-selection", "value"),
+        Input("type-selection", "value"),
     )
-    def update_overview_figure(target, error, models, boards):
+    def update_overview_figure(target, error, models, boards, type):
         overview_fig = go.Figure()
-        for scheduler in ["baseline", "autotvm", "auto_scheduler"]:
+        schedulers = ["baseline", "autotvm", "auto_scheduler"]
+        if type == "Speedup":
+            schedulers = ["autotvm", "auto_scheduler"]
+        for scheduler in schedulers:
             filtered_measurements = measurements.query(
                 "Tuner == @scheduler and Target == @target and Model == @models and Board == @boards"
             )
-            overview_fig.add_trace(
-                go.Bar(
-                    x=[filtered_measurements["Board"], filtered_measurements["Model"]],
-                    y=filtered_measurements["Duration (us)"],
-                    name=scheduler,
-                    error_y={
-                        "type": "data",
-                        "array": filtered_measurements[error],
-                        "visible": True,
-                    },
+
+            if type == "Speedup":
+                baseline_measurements = measurements.query(
+                    "Tuner == 'baseline' and Target == @target and Model == @models and Board == @boards"
                 )
-            )
+
+                merged_measurements = pd.merge(
+                    filtered_measurements,
+                    baseline_measurements,
+                    on=["Target", "Model", "Board"],
+                )
+
+                merged_measurements["Speedup"] = (
+                    merged_measurements["Duration (us)_y"]
+                    / merged_measurements["Duration (us)_x"]
+                )
+                filtered_measurements = merged_measurements
+
+                overview_fig.add_trace(
+                    go.Bar(
+                        x=[
+                            filtered_measurements["Board"],
+                            filtered_measurements["Model"],
+                        ],
+                        y=filtered_measurements["Speedup"],
+                        name=scheduler,
+                    )
+                )
+            else:
+                overview_fig.add_trace(
+                    go.Bar(
+                        x=[
+                            filtered_measurements["Board"],
+                            filtered_measurements["Model"],
+                        ],
+                        y=filtered_measurements["Duration (us)"],
+                        name=scheduler,
+                        error_y={
+                            "type": "data",
+                            "array": filtered_measurements[error],
+                            "visible": True,
+                        },
+                    )
+                )
 
         return overview_fig
 
