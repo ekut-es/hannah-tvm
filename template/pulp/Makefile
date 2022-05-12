@@ -1,5 +1,5 @@
 
-CONFIG_OPT = 'compiler=llvm'
+CONFIG_OPT ?= 'compiler=llvm'
 PULP_APP = test
 PULP_CFLAGS = -O3 -g -I${TVM_HOME}/include -I${TVM_HOME}/3rdparty/dlpack/include
 

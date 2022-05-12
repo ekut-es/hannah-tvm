@@ -28,7 +28,7 @@ PROJECT_OPTIONS=[
     server.ProjectOption(
         "compiler",
         help="Compile with gcc or clang",
-        choices=("gcc", "clang"),
+        choices=("gcc", "llvm"),
         optional=["build"],
         type="str"
     )
@@ -67,13 +67,13 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
     def build(self, options: dict):
         if IS_TEMPLATE:
             return
-        subprocess.run(["make", "conf", "clean", "all"], timeout=30, cwd=HERE)
+        subprocess.run(["make", "conf", "clean", "all", f"CONFIG_OPT='compiler={options['compiler']}'"], timeout=30, cwd=HERE)
 
     def flash(self, options: dict):
         if IS_TEMPLATE:
             return
         with open(HERE / "cycles.txt", "wb") as out:
-            subprocess.run(["make", "run", "-s"], timeout=30, cwd=HERE, stdout=out)
+            subprocess.run(["make", "run", "-s", f"CONFIG_OPT='compiler={options['compiler']}'"], timeout=30, cwd=HERE, stdout=out)
 
     def write_transport(self, data: bytes, timeout_sec: float):
         return super().write_transport(data, timeout_sec)
