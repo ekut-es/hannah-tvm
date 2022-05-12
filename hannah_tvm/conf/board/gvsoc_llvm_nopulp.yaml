@@ -1,6 +1,6 @@
-gvsoc_llvm:
-  name: gvsoc_llvm
-  target: "llvm -mtriple=riscv32 -mattr=+m,+c,+xpulpv -keys=pulp -runtime=c -system-lib=1 --link-params=1"
+gvsoc_llvm_nopulp:
+  name: gvsoc_llvm_nopulp
+  target: "llvm -mtriple=riscv32 -mattr=+m,+c -keys=pulp -runtime=c -system-lib=1 --link-params=1"
   target_host: null
   opencl: false
   cuda: false
