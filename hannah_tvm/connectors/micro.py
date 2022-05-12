@@ -56,6 +56,10 @@ class MicroTVMTaskConnector(TaskConnector):
         return builder
 
     def upload(self, mod):
+        for i, m in enumerate(mod.module._collect_dso_modules()):
+            (self.project_dir / "build").mkdir(exist_ok=True, parents=True)
+            with open(self.project_dir / "build" / f"lib{i}.ll", "w") as file:
+                file.write(m.get_source())
         return tvm.micro.generate_project(
             self.board.micro.template_dir,
             mod,
