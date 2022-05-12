@@ -23,6 +23,7 @@ from omegaconf import OmegaConf
 from . import config
 from . import measure
 from . import load
+from . import pass_instrument
 
 
 logger = logging.getLogger(__name__)
@@ -92,7 +93,8 @@ class TuningTask(multiprocessing.Process):
                     [relay.transform.ConvertLayout(desired_layouts)]
                 )
                 with tvm.transform.PassContext(opt_level=3):
-                    relay_mod = seq(relay_mod)
+                    with self._task_connector.target():
+                        relay_mod = seq(relay_mod)
 
             if self.tuner == "auto_scheduler":
                 start_time = time.time()
@@ -212,10 +214,21 @@ class TuningTask(multiprocessing.Process):
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
+
+        #instruments=[pass_instrument.PrintIR("all")]
+        instruments=[]
+
+        build_cfg = {}
+        target = self._task_connector.target()
+        if str(target.kind) == "c" or self.board_config.disable_vectorize == True:
+            build_cfg = {"tir.disable_vectorize": True}
+
+        serialize = tvm.tir.transform.ConvertForLoopsToSerial()
         if self.tuner == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.log_file):
+                build_cfg["relay.backend.use_auto_scheduler"] = True
                 with tvm.transform.PassContext(
-                    opt_level=3, config={"relay.backend.use_auto_scheduler": True}
+                    opt_level=3, config=build_cfg, instruments=instruments,
                 ):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
@@ -223,7 +236,7 @@ class TuningTask(multiprocessing.Process):
         elif self.tuner == "autotvm":
             if Path(self.log_file).exists():
                 with autotvm.apply_history_best(self.log_file):
-                    with tvm.transform.PassContext(opt_level=3):
+                    with tvm.transform.PassContext(opt_level=3, instruments=instruments,config=build_cfg):
                         lib = relay.build_module.build(
                             relay_mod,
                             target=self._task_connector.target(),
@@ -231,15 +244,16 @@ class TuningTask(multiprocessing.Process):
                         )
             else:
                 logger.warning("Could not find tuner logs in: %s", self.log_file)
-                with tvm.transform.PassContext(opt_level=3):
+                with tvm.transform.PassContext(opt_level=3, instruments=instruments, config=build_cfg):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
                     )
 
         else:
-            with tvm.transform.PassContext(opt_level=3):
+            build_cfg["tir.add_lower_pass"] =  [(1, serialize)]
+            with tvm.transform.PassContext(opt_level=3, config=build_cfg,  instruments=instruments,):
                 lib = relay.build_module.build(
-                    relay_mod, target=self._task_connector.target(), params=params
+                    relay_mod, target=self._task_connector.target(), params=params,
                 )
 
         return lib
