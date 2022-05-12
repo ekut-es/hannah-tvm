@@ -30,7 +30,7 @@ class MicroTVMTaskConnector(TaskConnector):
 
     def runner(self, tuner=None):
         if tuner == "autotvm":
-            if "pulp" in self._target.keys:
+            if self.board.rpc_runner == "pulp":
                 runner = PulpRunner(Path(self.board.micro.template_dir))
             else:
                 runner = autotvm.RPCRunner(

@@ -16,6 +16,7 @@ from tvm.contrib import graph_runtime
 from . import config
 from . import measure
 from . import load
+from . import pass_instrument
 
 logger = logging.getLogger("hannah-tvm-compile")
 
@@ -31,8 +32,6 @@ def compile(config):
             build_cfg = {}
             if str(target.kind) == "c":
                 build_cfg = {"tir.disable_vectorize": True}
-
-            from . import pass_instrument
 
             with tvm.transform.PassContext(
                 opt_level=3,
