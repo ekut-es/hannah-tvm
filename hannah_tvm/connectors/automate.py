@@ -1,17 +1,16 @@
-from dataclasses import dataclass
-import time
 import logging
-from typing import Union, Any
+import time
+from dataclasses import dataclass
+from typing import Any, Union
 
 import numpy as np
 import tvm
-import tvm.rpc as rpc
 import tvm.auto_scheduler as auto_scheduler
 import tvm.autotvm as autotvm
+import tvm.rpc as rpc
 
-from .core import BoardConnector, TaskConnector, BuildArtifactHandle
 from .automate_server import AutomateServer, automate_context
-
+from .core import BoardConnector, BuildArtifactHandle, TaskConnector
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,9 @@ class AutomateTaskConnector(TaskConnector):
                 self._board_config.name,
                 host="localhost",
                 port=self._tracker_port,
-                number=5,
+                number=1,
+                repeat=10,
+                enable_cpu_cache_flush=True,
                 timeout=10,
             )
         elif tuner == "auto_scheduler":
@@ -162,7 +163,7 @@ class AutomateBoardConnector(BoardConnector):
             return queue_summary[board_name]["free"]
         return 0
 
-    def _start_tracker(self) -> int:
+    def _start_tracker(self):
         """Start tvm remote tracker"""
         logger.info("Starting experiment tracker")
         host = "0.0.0.0"

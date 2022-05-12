@@ -14,7 +14,6 @@ import tvm.autotvm as autotvm
 from tvm.contrib import graph_runtime
 
 from . import config
-from . import measure
 from . import load
 from . import pass_instrument
 
