@@ -6,11 +6,15 @@ import re
 from math import prod
 
 
+# Generate c code to execute the given json graph
 def runner(graph, params, file):
-
+    # include headers
     file.write("#include \"../runner.h\"\n#include \"tvm/runtime/c_runtime_api.h\"\n\n")
+
+    # declare lookup function for linked parameters
     file.write("int _lookup_linked_param(TVMValue *args, int *type_codes, int num_args, void *ret_value, int *ret_tcode, void *resource_handle);\n\n")
 
+    # read node attributes
     shapes = None
     for s in graph["attrs"]["shape"]:
         if isinstance(s, str):
@@ -27,6 +31,7 @@ def runner(graph, params, file):
             continue
         storage_ids = ids
 
+    # read the storage id of the linked parameters
     param_ids = set()
 
     for i, node in enumerate(graph["nodes"]):
@@ -37,6 +42,8 @@ def runner(graph, params, file):
     storage_sizes = {}
     define_tensors = ""
     lookup = "\tTVMValue storage_id; int lookup_arg_type = kTVMArgInt, lookup_ret_type;\n"
+
+    # iterate over tensors
     for i, (shape, dltype) in enumerate(zip(shapes, dltypes)):
         match = re.match(r"(float|u?int)(\d+)", dltype)
         if match:
@@ -56,10 +63,12 @@ def runner(graph, params, file):
 
         storage_id = storage_ids[i]
         if storage_id in param_ids:
+            # in the main function, first write pointers for the linked parameters to the tensors
             lookup += f"\tstorage_id.v_int64 = { storage_id };\n"
             lookup += f"\t_lookup_linked_param(&storage_id, &lookup_arg_type, 1, &tensor{i}.data, &lookup_ret_type, NULL);\n"
             data_pointer = "NULL"
         else:
+            # calculate the needed size for allocated arrays
             size = (int(match.group(2)) + 7) // 8 * prod(shape)
             old_size = storage_sizes.get(storage_id, 0)
             if size > old_size:
@@ -67,16 +76,20 @@ def runner(graph, params, file):
 
             data_pointer = f"data{storage_id}"
 
+        # define the tensors after allocating the arrays
         shape_str = ", ".join(map(str, shape))
         define_tensors += f"int64_t shape{i}[] = {{ {shape_str} }};\n"
         define_tensors += f"DLTensor tensor{i} = {{ { data_pointer }, {{ kDLCPU, 0 }}, {len(shape)}, {dldatatype}, shape{i}, NULL, 0 }};\n\n"
 
+    # allocate memory for remaining tensors
     for storage_id, size in storage_sizes.items():
         file.write(f"char data{storage_id}[{size}];\n\n")
 
     file.write(define_tensors)
 
     call_ops = "\tint error = 0;\n"
+
+    # iterate over operator nodes
     for i, node in enumerate(graph["nodes"]):
         if node["op"] == "tvm_op":
             func_name = node["attrs"]["func_name"]
@@ -85,19 +98,24 @@ def runner(graph, params, file):
             num_outputs = int(node["attrs"]["num_outputs"])
             num_args = num_inputs + num_outputs
 
+            # allocate argument array
             args = [graph["node_row_ptr"][n] + j for n, j, _ in inputs]
             args += [graph["node_row_ptr"][i] + j for j in range(num_outputs)]
             args_str = ", ".join(f"{{ .v_handle = &tensor{arg} }}" for arg in args)
             file.write(f"\nTVMValue args{i}[] = {{ {args_str} }};\n")
 
+            # allocate argument types
             types = ", ".join(["kTVMDLTensorHandle"] * len(args))
             file.write(f"int types{i}[] = {{ {types} }};\n")
 
+            # declare this nodes function
             file.write(f"int {func_name}(TVMValue* args, int* type_codes, int num_args);\n")
 
+            # call function and check for errors
             call_ops += f"\terror = {func_name}(args{i}, types{i}, {num_args});\n"
             call_ops += "\tif(error) return error;\n"
 
+    # write the main function
     file.write("\nint run() {\n")
     file.write(lookup)
     file.write(call_ops)
