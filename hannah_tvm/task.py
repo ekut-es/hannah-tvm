@@ -33,7 +33,6 @@ from . import config, load
 logger = logging.getLogger(__name__)
 
 from . import config
-from . import measure
 from . import load
 from . import pass_instrument
 
@@ -317,7 +316,8 @@ class TuningTask:
             build_cfg = {"tir.disable_vectorize": True}
 
         serialize = tvm.tir.transform.ConvertForLoopsToSerial()
-        if self.tuner == "auto_scheduler":
+        build_cfg["tir.add_lower_pass"] =  [(1, serialize)]
+        if self.tuner_config == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
                 build_cfg["relay.backend.use_auto_scheduler"] = True
                 with tvm.transform.PassContext(
@@ -326,7 +326,7 @@ class TuningTask:
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
                     )
-        elif self.tuner == "autotvm":
+        elif self.tuner_config == "autotvm":
             if Path(self.log_file).exists():
                 with autotvm.apply_history_best(self.tuner_log_file):
                     with tvm.transform.PassContext(opt_level=3, instruments=instruments,config=build_cfg):
@@ -343,7 +343,6 @@ class TuningTask:
                     )
 
         else:
-            build_cfg["tir.add_lower_pass"] =  [(1, serialize)]
             with tvm.transform.PassContext(opt_level=3, config=build_cfg,  instruments=instruments,):
                 lib = relay.build_module.build(
                     relay_mod, target=self._task_connector.target(), params=params,

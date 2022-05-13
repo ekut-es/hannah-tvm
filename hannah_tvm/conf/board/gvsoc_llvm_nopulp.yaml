@@ -16,3 +16,5 @@ gvsoc_llvm_nopulp:
     nn.conv1d: ["NWC", "OWI"]
 
   rpc_runner: pulp
+  connector: micro
+  disable_vectorize: true

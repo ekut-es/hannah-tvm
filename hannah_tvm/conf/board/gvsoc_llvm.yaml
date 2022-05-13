@@ -16,3 +16,4 @@ gvsoc_llvm:
     nn.conv1d: ["NWC", "OWI"]
 
   rpc_runner: pulp
+  connector: micro

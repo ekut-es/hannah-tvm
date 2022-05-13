@@ -83,7 +83,7 @@ class PulpRunner(Runner):
                 build_result = subprocess.run(["make", "conf", "clean", "all"], capture_output=True, timeout=30, cwd=self.project_dir)
                 if build_result.returncode != 0:
                     results.append(MeasureResult(
-                        (build_result.stderr.decode(),),
+                        ("", build_result.stderr.decode(),),
                         MeasureErrorNo.COMPILE_HOST,
                         0,
                         0
@@ -91,7 +91,7 @@ class PulpRunner(Runner):
                     continue
             except subprocess.TimeoutExpired:
                 results.append(MeasureResult(
-                    ("makefile timeout",),
+                    ("", "makefile timeout",),
                     MeasureErrorNo.COMPILE_HOST,
                     0,
                     0
@@ -110,21 +110,21 @@ class PulpRunner(Runner):
                     ))
                 else:
                     results.append(MeasureResult(
-                        ("pulp runtime error",),
+                        ("", "pulp runtime error",),
                         MeasureErrorNo.RUNTIME_DEVICE,
                         0,
                         0
                     ))
             except subprocess.TimeoutExpired:
                 results.append(MeasureResult(
-                    ("timeout",),
+                    ("", "timeout",),
                     MeasureErrorNo.RUN_TIMEOUT,
                     0,
                     0
                 ))
             except subprocess.CalledProcessError as e:
                 results.append(MeasureResult(
-                    (e.output.decode(),),
+                    ("", e.output.decode(),),
                     MeasureErrorNo.RUNTIME_DEVICE,
                     0,
                     0

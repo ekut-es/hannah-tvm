@@ -17,3 +17,4 @@ gvsoc_llvm_generic:
 
   rpc_runner: pulp
   disable_vectorize: True
+  connector: micro

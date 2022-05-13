@@ -8,6 +8,7 @@ from tvm import autotvm, auto_scheduler
 from pathlib import Path
 import re
 import shutil
+import numpy as np
 
 
 class MicroTVMTaskConnector(TaskConnector):
@@ -77,7 +78,7 @@ class MicroTVMTaskConnector(TaskConnector):
             match = re.match(r"cycles:(\d+)\n", result)
             if match:
                 cycles = int(match.group(1))
-                return [cycles]
+                return np.array([cycles])
 
         return []
 

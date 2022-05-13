@@ -9,9 +9,6 @@ import tvm.rpc.tracker
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from . import config
-from . import measure
-from . import load
 from .connectors import AutomateBoardConnector, LocalBoardConnector, MicroTVMBoardConnector
 from .task import ModelConfig, TaskStatus, TuningTask
 
