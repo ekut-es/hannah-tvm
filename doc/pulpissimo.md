@@ -2,6 +2,8 @@
 
 First build llvm with support for pulp instructions.
 
+[pulp-llvm](https://atreus.informatik.uni-tuebingen.de/ties/timing/pulp-llvm) (8da738873bcecba323c95b7f0e95a1359e0e8618)
+
 Then run
 
 `./scripts/install_micro_pulp.sh path/to/llvm_config`
