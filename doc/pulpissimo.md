@@ -1,6 +1,6 @@
 # Installing
 
-First build llvm with support for pulp instructions.
+First build [llvm](https://atreus.informatik.uni-tuebingen.de/ties/timing/pulp-llvm) with support for pulp instructions.
 
 Then run
 
