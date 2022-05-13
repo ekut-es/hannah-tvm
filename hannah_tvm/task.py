@@ -203,6 +203,7 @@ class TuningTask:
 
             tsk_trial = min(self.tuner_config.task_budget, len(tsk.config_space))
 
+            logger.info("Starting tuning of task: %d", num)
             tuner_obj.tune(
                 n_trial=tsk_trial,
                 early_stopping=early_stopping,
