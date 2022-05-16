@@ -14,6 +14,8 @@ def main():
     models = measurements["Model"].unique()
     boards = measurements["Board"].unique()
 
+    networks = dataset.networks()
+
     app.layout = html.Div(
         children=[
             html.H1(children="Tuning Results"),
@@ -35,6 +37,8 @@ def main():
                 ["Absolute", "Speedup"], "Absolute", inline=True, id="type-selection"
             ),
             dcc.Graph(id="overview-graph"),
+            html.H2(children="Network Info"),
+            html.H2(children="Roofline analysis"),
         ]
     )
 

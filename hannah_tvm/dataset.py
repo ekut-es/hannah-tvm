@@ -153,6 +153,32 @@ class PerformanceDataset:
         )
         return str_key
 
+    def add_measurement_network(self, scheduler, network_name, relay_module):
+        logger.info("Adding target relay")
+        result_path = (
+            self._base_dir
+            / "network_results"
+            / self.board
+            / scheduler
+            / f"{network_name}_{str(self.target)}.relay.pkl"
+        )
+        result_path.parent.mkdir(exist_ok=True, parents=True)
+        with result_path.open("wb") as result_file:
+            pickle.dump(relay_module, result_file)
+
+    def add_measurement_primfuncs(self, scheduler, network_name, primfuncs):
+        logger.info("Adding target relay")
+        result_path = (
+            self._base_dir
+            / "network_results"
+            / self.board
+            / scheduler
+            / f"{network_name}_{str(self.target)}.primfuncs.pkl"
+        )
+        result_path.parent.mkdir(exist_ok=True, parents=True)
+        with result_path.open("wb") as result_file:
+            pickle.dump(primfuncs, result_file)
+
     def add_measurement(self, scheduler, network_name, results: Dict[str, Any]):
         logger.info("Adding Measurement result")
         result_path = (
@@ -208,3 +234,11 @@ class DatasetFull:
         df = df.sort_values(["Board", "Model", "Tuner"])
 
         return df
+
+    def networks(self):
+        base_folder = self._base_dir / "network_results"
+        for result_file in base_folder.glob("*/*/*.pkl"):
+            print(result_file)
+
+    def tasks(self):
+        pass

@@ -7,6 +7,7 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from re import M
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -29,8 +30,11 @@ from hannah_tvm.tuner.autotvm.callbacks import (
 )
 
 from . import config, load
+from .pass_instrument import PrintIR
 
 logger = logging.getLogger(__name__)
+
+MAIN_FUNC_NAME_STR = "__tvm_main__"
 
 
 class TaskStatus(enum.IntEnum):
@@ -332,6 +336,33 @@ class TuningTask:
                 lib = relay.build_module.build(
                     relay_mod, target=self._task_connector.target(), params=params
                 )
+
+        from pprint import pprint
+
+        pprint(lib.function_metadata[MAIN_FUNC_NAME_STR])
+
+        main_func_metadata = lib.function_metadata[MAIN_FUNC_NAME_STR]
+        main_relay = list(main_func_metadata.relay_primfuncs.values())
+
+        assert (
+            len(main_relay) == 1
+        ), "The main function should be a single relay function"
+
+        self.dataset.add_measurement_network(
+            self.tuner_config.name, self.model_key, main_relay[0]
+        )
+
+        primfuncs = []
+        for name, function_metadata in lib.function_metadata.items():
+            if name == MAIN_FUNC_NAME_STR:
+                continue
+            tir_primfuncs = list(function_metadata.tir_primfuncs.values())
+
+            primfuncs.extend(tir_primfuncs)
+
+        self.dataset.add_measurement_primfuncs(
+            self.tuner_config.name, self.model_key, primfuncs
+        )
 
         return lib
 
