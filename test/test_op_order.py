@@ -2,10 +2,8 @@ import pickle
 from pathlib import Path
 
 import tvm
-from tvm import relay
-from tvm.parser import fromtext
 
-from hannah_tvm.utils.op_order import calculate_op_order
+from hannah_tvm.passes.op_order import calculate_op_order
 
 data_dir = Path(__file__).parent / "data"
 

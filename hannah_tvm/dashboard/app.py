@@ -7,7 +7,7 @@ from ..dataset import DatasetFull
 
 
 def main():
-    app = Dash("Hanna-TVM Results")
+    app = Dash("Hannah-TVM Results")
 
     print("Loading dataset")
     dataset = DatasetFull()
