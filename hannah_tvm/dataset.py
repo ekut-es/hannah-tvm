@@ -4,8 +4,8 @@ import json
 import logging
 import pathlib
 import pickle
-from collections import OrderedDict
-from typing import Any, Dict, Iterable, Optional
+from collections import OrderedDict, namedtuple
+from typing import Any, Dict, Iterable, List, Optional
 from unittest import result
 
 import numpy as np
@@ -18,6 +18,11 @@ from .utils import RelayVisualizer
 logger = logging.getLogger(__name__)
 
 _BASE_DIR = pathlib.Path(__file__).parent.resolve() / ".." / "dataset"
+
+NetworkResult = namedtuple(
+    "NetworkResult",
+    ["board", "target", "model", "tuner", "measurement", "relay", "tir_primfuncs"],
+)
 
 
 def clean_file_name(x):
@@ -235,10 +240,39 @@ class DatasetFull:
 
         return df
 
-    def networks(self):
+    def network_results(self) -> List[NetworkResult]:
         base_folder = self._base_dir / "network_results"
-        for result_file in base_folder.glob("*/*/*.pkl"):
-            print(result_file)
+        measurements = []
+        for result_file in base_folder.glob("*/*/*.json"):
+            parts = result_file.parts
+            model_name = parts[-1].split(".")[0]
+            model_name, target_name = (
+                "_".join(model_name.split("_")[:-1]),
+                model_name.split("_")[-1],
+            )
+            scheduler_name = parts[-2]
+            board_name = parts[-3]
 
-    def tasks(self):
-        pass
+            with result_file.open() as result_stream:
+                record = json.load(result_stream)
+
+            relay_file = result_file.with_suffix(".relay.pkl")
+            tir_file = result_file.with_suffix(".primfuncs.pkl")
+
+            relay = None
+            tir = None
+
+            # if relay_file.exists():
+            #    with relay_file.open("rb") as f:
+            #        relay = pickle.load(f)
+
+            # if tir_file.exists():
+            #    with tir_file.open("rb") as f:
+            #        tir = pickle.load(f)
+
+            result = NetworkResult(
+                board_name, target_name, model_name, scheduler_name, record, relay, tir
+            )
+            measurements.append(result)
+
+        return measurements
