@@ -1,15 +1,21 @@
+import logging
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
 from dash import Dash, Input, Output, dash_table, dcc, html
 
+from hannah_tvm.passes.op_order import calculate_op_order
+
 from ..dataset import DatasetFull
+
+logger = logging.getLogger(__name__)
 
 
 def main():
     app = Dash("Hannah-TVM Results")
 
-    print("Loading dataset")
+    logger.info("Loading dataset")
     dataset = DatasetFull()
     measurements = dataset.measurements()
     models = list(measurements["Model"].unique())
@@ -65,6 +71,7 @@ def main():
                 columns=[
                     {"name": "Layer", "id": "layer"},
                     {"name": "Hash", "id": "hash"},
+                    {"name": "Name", "id": "name"},
                     {"name": "Duration (us)", "id": "duration"},
                 ],
                 data=[],
@@ -86,28 +93,51 @@ def main():
 
         selected_result = None
         for result in network_results:
-            print("Wanted Result  ", target, model, tuner, board)
-            print(
-                "Current Result",
-                result.target,
-                result.model,
-                result.tuner,
-                result.board,
-            )
             if (
                 result.target == target
                 and result.model == model
                 and result.tuner == tuner
                 and result.board == board
             ):
+                if selected_result is not None:
+                    logger.critical("Multiple results found")
                 selected_result = result
 
         if selected_result is None:
             return network_info_figure, []
 
-        print(selected_result)
+        relay_model = selected_result.relay
+        measurement = selected_result.measurement
+        call_profile = measurement["calls"]
 
-        return network_info_figure, []
+        if relay_model is not None:
+            op_order = calculate_op_order(relay_model)
+        else:
+            logger.warning(
+                "Could not read target relay graph, ops will be sorted by runtime"
+            )
+            op_order = [x["Hash"]["string"] for x in call_profile]
+
+        op_nums = {}
+        for num, hash in enumerate(op_order):
+            op_nums[hash] = num
+
+        op_table = []
+        for call in call_profile:
+            hash = call["Hash"]["string"]
+            name = call["Name"]["string"]
+            duration = call["Duration (us)"]["microseconds"]
+            op_table.append(
+                dict(layer=op_nums[hash], hash=hash, name=name, duration=duration)
+            )
+
+        op_table.sort(key=lambda x: x["layer"])
+
+        op_table_frame = pd.DataFrame.from_records(op_table)
+
+        network_info_figure = px.bar(op_table_frame, y="duration", x="layer")
+
+        return network_info_figure, op_table
 
     @app.callback(
         Output("overview-graph", "figure"),
@@ -173,5 +203,5 @@ def main():
 
         return overview_fig
 
-    print("Starting server")
+    logger.info("Starting server")
     app.run_server(debug=True)

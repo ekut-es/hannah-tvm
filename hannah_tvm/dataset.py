@@ -262,13 +262,13 @@ class DatasetFull:
             relay = None
             tir = None
 
-            if relay_file.exists():
-                with relay_file.open("rb") as f:
-                    relay = pickle.load(f)
+            # if relay_file.exists():
+            #    with relay_file.open("rb") as f:
+            #        relay = pickle.load(f)
 
-            if tir_file.exists():
-                with tir_file.open("rb") as f:
-                    tir = pickle.load(f)
+            # if tir_file.exists():
+            #    with tir_file.open("rb") as f:
+            #        tir = pickle.load(f)
 
             result = NetworkResult(
                 board_name, target_name, model_name, scheduler_name, record, relay, tir
