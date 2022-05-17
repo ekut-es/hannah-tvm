@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
-from dash import Dash, Input, Output, dcc, html
+from dash import Dash, Input, Output, dash_table, dcc, html
 
 from ..dataset import DatasetFull
 
@@ -9,46 +9,113 @@ from ..dataset import DatasetFull
 def main():
     app = Dash("Hanna-TVM Results")
 
+    print("Loading dataset")
     dataset = DatasetFull()
     measurements = dataset.measurements()
-    models = measurements["Model"].unique()
+    models = list(measurements["Model"].unique())
+    if "" in models:
+        models.remove("")
     boards = measurements["Board"].unique()
-
-    networks = dataset.networks()
+    network_results = dataset.network_results()
 
     app.layout = html.Div(
         children=[
             html.H1(children="Tuning Results"),
+            # Overview
             html.H2(children="Overview"),
-            dcc.Dropdown(["cuda", "llvm"], "llvm", id="target-selection"),
+            dcc.Dropdown(["cuda", "llvm"], "llvm", id="overview-target-selection"),
             dcc.Dropdown(
                 ["Duration StdDev", "Duration PtP"],
                 "Duration StdDev",
-                id="error-selection",
+                id="overview-error-selection",
             ),
             dcc.Dropdown(
                 models,
                 [x for x in models if x != "sine"],
                 multi=True,
-                id="model-selection",
+                id="overview-model-selection",
             ),
-            dcc.Dropdown(boards, boards, multi=True, id="board-selection"),
+            dcc.Dropdown(boards, boards, multi=True, id="overview-board-selection"),
             dcc.RadioItems(
-                ["Absolute", "Speedup"], "Absolute", inline=True, id="type-selection"
+                ["Absolute", "Speedup"],
+                "Absolute",
+                inline=True,
+                id="overview-type-selection",
             ),
             dcc.Graph(id="overview-graph"),
-            html.H2(children="Network Info"),
+            # Roofline
             html.H2(children="Roofline analysis"),
+            # Network Info
+            html.H2(children="Network Info"),
+            dcc.Dropdown(
+                models, models[0] if len(models) > 1 else "", id="network-info-model"
+            ),
+            dcc.Dropdown(
+                boards, boards[0] if len(boards) > 1 else "", id="network-info-board"
+            ),
+            dcc.Dropdown(["cuda", "llvm"], "llvm", id="network-info-target"),
+            dcc.Dropdown(
+                ["baseline", "autotvm", "auto_scheduler"],
+                "baseline",
+                id="network-info-tuner",
+            ),
+            dcc.Graph(id="network-info-graph"),
+            dash_table.DataTable(
+                id="network-info-table",
+                columns=[
+                    {"name": "Layer", "id": "layer"},
+                    {"name": "Hash", "id": "hash"},
+                    {"name": "Duration (us)", "id": "duration"},
+                ],
+                data=[],
+            ),
         ]
     )
 
     @app.callback(
+        Output("network-info-graph", "figure"),
+        Output("network-info-table", "data"),
+        Input("network-info-target", "value"),
+        Input("network-info-model", "value"),
+        Input("network-info-board", "value"),
+        Input("network-info-tuner", "value"),
+    )
+    def update_network_details(target, model, board, tuner):
+
+        network_info_figure = go.Figure()
+
+        selected_result = None
+        for result in network_results:
+            print("Wanted Result  ", target, model, tuner, board)
+            print(
+                "Current Result",
+                result.target,
+                result.model,
+                result.tuner,
+                result.board,
+            )
+            if (
+                result.target == target
+                and result.model == model
+                and result.tuner == tuner
+                and result.board == board
+            ):
+                selected_result = result
+
+        if selected_result is None:
+            return network_info_figure, []
+
+        print(selected_result)
+
+        return network_info_figure, []
+
+    @app.callback(
         Output("overview-graph", "figure"),
-        Input("target-selection", "value"),
-        Input("error-selection", "value"),
-        Input("model-selection", "value"),
-        Input("board-selection", "value"),
-        Input("type-selection", "value"),
+        Input("overview-target-selection", "value"),
+        Input("overview-error-selection", "value"),
+        Input("overview-model-selection", "value"),
+        Input("overview-board-selection", "value"),
+        Input("overview-type-selection", "value"),
     )
     def update_overview_figure(target, error, models, boards, type):
         overview_fig = go.Figure()
@@ -106,4 +173,5 @@ def main():
 
         return overview_fig
 
+    print("Starting server")
     app.run_server(debug=True)

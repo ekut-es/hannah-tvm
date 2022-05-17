@@ -21,7 +21,7 @@ _BASE_DIR = pathlib.Path(__file__).parent.resolve() / ".." / "dataset"
 
 NetworkResult = namedtuple(
     "NetworkResult",
-    ["board", "target", "model", "tuner", "measurement", "relay", "tir"],
+    ["board", "target", "model", "tuner", "measurement", "relay", "tir_primfuncs"],
 )
 
 
@@ -257,7 +257,7 @@ class DatasetFull:
                 record = json.load(result_stream)
 
             relay_file = result_file.with_suffix(".relay.pkl")
-            tir_file = result_file.with_suffix(".tir.pkl")
+            tir_file = result_file.with_suffix(".primfuncs.pkl")
 
             relay = None
             tir = None
