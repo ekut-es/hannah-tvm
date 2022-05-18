@@ -3,7 +3,8 @@
         "cstring": "cpp",
         "iostream": "cpp",
         "iterator": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "platform.h": "c"
     },
     "cmake.configureOnOpen": false,
     "cSpell.words": [

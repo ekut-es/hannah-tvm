@@ -1,30 +1,26 @@
-from dataclasses import dataclass
-from .core import BoardConnector, TaskConnector, BuildArtifactHandle
-from .pulp_runner import PulpRunner
-
-import tvm
-from tvm import autotvm, auto_scheduler
-
-from pathlib import Path
 import re
 import shutil
+from dataclasses import dataclass
+from pathlib import Path
+
 import numpy as np
+import tvm
+from tvm import auto_scheduler, autotvm
+
+from .core import BoardConnector, BuildArtifactHandle, TaskConnector
+from .pulp_runner import PulpRunner
 
 
 class MicroTVMTaskConnector(TaskConnector):
-    id=0
     def __init__(self, board_config):
         self.board = board_config
         self._target = None
 
     def setup(self):
-        self._target = tvm.target.Target(
-            self.board.target, host=self.board.target_host
-        )
+        self._target = tvm.target.Target(self.board.target, host=self.board.target_host)
         build_dir = Path("build")
         build_dir.mkdir(exist_ok=True)
-        self.project_dir = build_dir.absolute() / f"microtvm_project_{MicroTVMTaskConnector.id}"
-        MicroTVMTaskConnector.id += 1
+        self.project_dir = build_dir.absolute() / f"microtvm_project"
 
     def target(self):
         return self._target
@@ -47,7 +43,6 @@ class MicroTVMTaskConnector(TaskConnector):
             )
         return runner
 
-
     def builder(self, tuner=None):
         runtime = tvm.relay.backend.Runtime("crt", {"system-lib": True})
         if tuner == "autotvm":
@@ -65,7 +60,7 @@ class MicroTVMTaskConnector(TaskConnector):
             self.board.micro.template_dir,
             mod,
             self.project_dir,
-            dict(self.board.micro.project_options)
+            dict(self.board.micro.project_options),
         )
 
     def measure(self, handle, inputs):
@@ -80,9 +75,7 @@ class MicroTVMTaskConnector(TaskConnector):
                 cycles = int(match.group(1))
                 return np.array([cycles])
 
-        return []
-
-
+        return np.array([])
 
     def profile(self, handle, inputs):
         pass
@@ -91,9 +84,7 @@ class MicroTVMTaskConnector(TaskConnector):
         shutil.rmtree(self.project_dir)
 
 
-
 class MicroTVMBoardConnector(BoardConnector):
-
     def __init__(self, board_config):
         self._board_config = board_config
 
