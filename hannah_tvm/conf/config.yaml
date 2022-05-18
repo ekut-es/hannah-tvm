@@ -20,6 +20,6 @@ defaults:
       - tinyml_ic01
       - tinyml_kws01
       - tinyml_vww01
-      - resnext50_224
+      - resnext50-224
   - tuner: autotvm
   - override hydra/job_logging: silent
