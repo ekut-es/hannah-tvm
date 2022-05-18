@@ -4,8 +4,8 @@ import json
 import logging
 import pathlib
 import pickle
-from collections import OrderedDict
-from typing import Any, Dict, Iterable, Optional
+from collections import OrderedDict, namedtuple
+from typing import Any, Dict, Iterable, List, Optional
 from unittest import result
 
 import numpy as np
@@ -18,6 +18,59 @@ from .utils import RelayVisualizer
 logger = logging.getLogger(__name__)
 
 _BASE_DIR = pathlib.Path(__file__).parent.resolve() / ".." / "dataset"
+
+NetworkResult = namedtuple(
+    "NetworkResult",
+    ["board", "target", "model", "tuner", "measurement", "relay", "tir_primfuncs"],
+)
+
+
+class NetworkResult:
+    def __init__(
+        self,
+        board: str,
+        target: str,
+        model: str,
+        tuner: str,
+        measurement_file: pathlib.Path,
+        relay_file: pathlib.Path,
+        tir_file: pathlib.Path,
+    ):
+        self.board = board
+        self.target = target
+        self.model = model
+        self.tuner = tuner
+        self.measurement_file = measurement_file
+        self.relay_file = relay_file
+        self.tir_file = tir_file
+
+    @property
+    def measurement(self):
+
+        with self.measurement_file.open() as result_stream:
+            record = json.load(result_stream)
+
+        return record
+
+    @property
+    def relay(self):
+        relay = None
+
+        if self.relay_file.exists():
+            with self.relay_file.open("rb") as f:
+                relay = pickle.load(f)
+
+        return relay
+
+    @property
+    def tir(self):
+        tir = None
+
+        if self.tir_file.exists():
+            with self.tir_file.open("rb") as f:
+                tir = pickle.load(f)
+
+        return tir
 
 
 def clean_file_name(x):
@@ -153,6 +206,32 @@ class PerformanceDataset:
         )
         return str_key
 
+    def add_measurement_network(self, scheduler, network_name, relay_module):
+        logger.info("Adding target relay")
+        result_path = (
+            self._base_dir
+            / "network_results"
+            / self.board
+            / scheduler
+            / f"{network_name}_{str(self.target)}.relay.pkl"
+        )
+        result_path.parent.mkdir(exist_ok=True, parents=True)
+        with result_path.open("wb") as result_file:
+            pickle.dump(relay_module, result_file)
+
+    def add_measurement_primfuncs(self, scheduler, network_name, primfuncs):
+        logger.info("Adding target relay")
+        result_path = (
+            self._base_dir
+            / "network_results"
+            / self.board
+            / scheduler
+            / f"{network_name}_{str(self.target)}.primfuncs.pkl"
+        )
+        result_path.parent.mkdir(exist_ok=True, parents=True)
+        with result_path.open("wb") as result_file:
+            pickle.dump(primfuncs, result_file)
+
     def add_measurement(self, scheduler, network_name, results: Dict[str, Any]):
         logger.info("Adding Measurement result")
         result_path = (
@@ -173,8 +252,11 @@ class PerformanceDataset:
 
 
 class DatasetFull:
-    def __init__(self):
-        self._base_dir = _BASE_DIR
+    def __init__(self, base_dir: Optional[str] = None):
+        if base_dir is None:
+            self._base_dir = _BASE_DIR
+        else:
+            self._base_dir = pathlib.Path(base_dir)
 
     def measurements(self) -> pd.DataFrame:
         base_folder = self._base_dir / "network_results"
@@ -208,3 +290,32 @@ class DatasetFull:
         df = df.sort_values(["Board", "Model", "Tuner"])
 
         return df
+
+    def network_results(self) -> List[NetworkResult]:
+        base_folder = self._base_dir / "network_results"
+        measurements = []
+        for result_file in base_folder.glob("*/*/*.json"):
+            parts = result_file.parts
+            model_name = parts[-1].split(".")[0]
+            model_name, target_name = (
+                "_".join(model_name.split("_")[:-1]),
+                model_name.split("_")[-1],
+            )
+            scheduler_name = parts[-2]
+            board_name = parts[-3]
+
+            relay_file = result_file.with_suffix(".relay.pkl")
+            tir_file = result_file.with_suffix(".primfuncs.pkl")
+
+            result = NetworkResult(
+                board_name,
+                target_name,
+                model_name,
+                scheduler_name,
+                result_file,
+                relay_file,
+                tir_file,
+            )
+            measurements.append(result)
+
+        return measurements

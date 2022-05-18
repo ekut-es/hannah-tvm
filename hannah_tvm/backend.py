@@ -139,7 +139,7 @@ class TVMBackend(InferenceBackendBase):
             print(out_deploy.flatten()[0:10])
 
             out = out_deploy.astype(float)
-            out = out / (2 ** 14)
+            out = out / (2**14)
 
             print(out[0:10])
 
