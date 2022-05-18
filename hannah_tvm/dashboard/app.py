@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
 from dash import Dash, Input, Output, dash_table, dcc, html
+from matplotlib.pyplot import xlabel
 
 from hannah_tvm.passes.op_order import calculate_op_order
 
@@ -110,28 +111,12 @@ def main():
         measurement = selected_result.measurement
         call_profile = measurement["calls"]
 
-        if relay_model is not None:
-            op_order = calculate_op_order(relay_model)
-        else:
-            logger.warning(
-                "Could not read target relay graph, ops will be sorted by runtime"
-            )
-            op_order = [x["Hash"]["string"] for x in call_profile]
-
-        op_nums = {}
-        for num, hash in enumerate(op_order):
-            op_nums[hash] = num
-
         op_table = []
-        for call in call_profile:
+        for layer, call in enumerate(call_profile):
             hash = call["Hash"]["string"]
             name = call["Name"]["string"]
             duration = call["Duration (us)"]["microseconds"]
-            op_table.append(
-                dict(layer=op_nums[hash], hash=hash, name=name, duration=duration)
-            )
-
-        op_table.sort(key=lambda x: x["layer"])
+            op_table.append(dict(layer=layer, hash=hash, name=name, duration=duration))
 
         op_table_frame = pd.DataFrame.from_records(op_table)
 
