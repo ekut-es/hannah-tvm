@@ -22,7 +22,7 @@ PROJECT_OPTIONS=[
         "project_type",
         help="Type of project to generate.",
         choices=("host_driven",),
-        optional=["generte_project"],
+        optional=["generate_project"],
         type="str"
     ),
     server.ProjectOption(
@@ -61,6 +61,10 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
         shutil.copy(HERE / "test.c", project_dir)
         shutil.copy(HERE / "utvm_runtime_api.c", project_dir)
         shutil.copy(HERE / "utvm_runtime_api.h", project_dir)
+
+        if os.path.exists("/tmp/utvm_project"):
+            shutil.rmtree("/tmp/utvm_project")
+        shutil.copytree(project_dir, "/tmp/utvm_project")
 
 
 

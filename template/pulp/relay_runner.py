@@ -93,6 +93,8 @@ def runner(graph, params, file):
     for i, node in enumerate(graph["nodes"]):
         if node["op"] == "tvm_op":
             func_name = node["attrs"]["func_name"]
+            if func_name == "__nop":
+                continue
             inputs = node["inputs"]
             num_inputs = int(node["attrs"]["num_inputs"])
             num_outputs = int(node["attrs"]["num_outputs"])
