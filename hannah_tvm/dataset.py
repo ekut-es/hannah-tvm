@@ -252,8 +252,11 @@ class PerformanceDataset:
 
 
 class DatasetFull:
-    def __init__(self):
-        self._base_dir = _BASE_DIR
+    def __init__(self, base_dir: Optional[str] = None):
+        if base_dir is None:
+            self._base_dir = _BASE_DIR
+        else:
+            self._base_dir = pathlib.Path(base_dir)
 
     def measurements(self) -> pd.DataFrame:
         base_folder = self._base_dir / "network_results"
