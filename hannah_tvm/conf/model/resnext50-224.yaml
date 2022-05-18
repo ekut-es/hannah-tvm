@@ -1,0 +1,3 @@
+resnext50-224:
+  file:  ${models_dir:}/resnext50_32x4d.pt
+  input_shapes: [["input0", [1,3,224,224]]]
