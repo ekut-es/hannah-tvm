@@ -15,6 +15,12 @@ for network_result in dataset.network_results():
     relay = network_result.relay
     print(relay)
     print()
+    print("TIR Primfuncs:")
+    tir_funcs = network_result.tir
+    if tir_funcs is not None:
+        for func in tir_funcs:
+            print(func)
+    print()
     print("Performance Measurements:")
     measurement = network_result.measurement
     pprint(measurement)
