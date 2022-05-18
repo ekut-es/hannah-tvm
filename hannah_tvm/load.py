@@ -9,6 +9,7 @@ import torch
 import tvm
 import tvm.relay as relay
 import tvm.relay.testing.tf as tf_testing
+from omegaconf import OmegaConf
 
 try:
     tf_compat_v1 = tf.compat.v1
@@ -23,7 +24,19 @@ logger = logging.getLogger("hannah-tvm.compile")
 def _load_torch(model_path, input_shapes):
     logger.info("Loading model %s", str(model_path))
 
-    script_model = torch.script.load(model_path)
+    script_model = torch.jit.load(model_path)
+
+    input_info = []
+    for name, shape in input_shapes:
+        input_info.append((name, tuple(shape)))
+
+    mod, params = relay.frontend.from_pytorch(script_model, input_info)
+
+    input_data = {}
+    for name, shape in input_info:
+        input_data[name] = np.random.uniform(size=shape).astype(np.float32)
+
+    return mod, params, input_data
 
 
 def _load_onnx(model_path, input_shapes):
