@@ -34,7 +34,12 @@ from .pass_instrument import PrintIR
 
 logger = logging.getLogger(__name__)
 
+from . import config
+from . import load
+from . import pass_instrument
+
 MAIN_FUNC_NAME_STR = "__tvm_main__"
+
 
 
 class TaskStatus(enum.IntEnum):
@@ -117,7 +122,8 @@ class TuningTask:
                     ]
                 )
                 with tvm.transform.PassContext(opt_level=3):
-                    relay_mod = seq(relay_mod)
+                    with self._task_connector.target():
+                        relay_mod = seq(relay_mod)
 
             self.dataset.add_program(self.model_key, relay_mod, params)
 
@@ -307,18 +313,30 @@ class TuningTask:
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
-        if self.tuner_config.name == "auto_scheduler":
+
+        #instruments=[pass_instrument.PrintIR("all")]
+        instruments=[]
+
+        build_cfg = {}
+        target = self._task_connector.target()
+        if str(target.kind) == "c" or self.board_config.disable_vectorize == True:
+            build_cfg = {"tir.disable_vectorize": True}
+
+        serialize = tvm.tir.transform.ConvertForLoopsToSerial()
+        build_cfg["tir.add_lower_pass"] =  [(1, serialize)]
+        if self.tuner_config == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
+                build_cfg["relay.backend.use_auto_scheduler"] = True
                 with tvm.transform.PassContext(
-                    opt_level=3, config={"relay.backend.use_auto_scheduler": True}
+                    opt_level=3, config=build_cfg, instruments=instruments,
                 ):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
                     )
-        elif self.tuner_config.name == "autotvm":
-            if Path(self.tuner_log_file).exists():
+        elif self.tuner_config == "autotvm":
+            if Path(self.log_file).exists():
                 with autotvm.apply_history_best(self.tuner_log_file):
-                    with tvm.transform.PassContext(opt_level=3):
+                    with tvm.transform.PassContext(opt_level=3, instruments=instruments,config=build_cfg):
                         lib = relay.build_module.build(
                             relay_mod,
                             target=self._task_connector.target(),
@@ -326,15 +344,15 @@ class TuningTask:
                         )
             else:
                 logger.warning("Could not find tuner logs in: %s", self.tuner_log_file)
-                with tvm.transform.PassContext(opt_level=3):
+                with tvm.transform.PassContext(opt_level=3, instruments=instruments, config=build_cfg):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
                     )
 
         else:
-            with tvm.transform.PassContext(opt_level=3):
+            with tvm.transform.PassContext(opt_level=3, config=build_cfg,  instruments=instruments,):
                 lib = relay.build_module.build(
-                    relay_mod, target=self._task_connector.target(), params=params
+                    relay_mod, target=self._task_connector.target(), params=params,
                 )
 
         from pprint import pprint
