@@ -25,6 +25,54 @@ NetworkResult = namedtuple(
 )
 
 
+class NetworkResult:
+    def __init__(
+        self,
+        board: str,
+        target: str,
+        model: str,
+        tuner: str,
+        measurement_file: pathlib.Path,
+        relay_file: pathlib.Path,
+        tir_file: pathlib.Path,
+    ):
+        self.board = board
+        self.target = target
+        self.model = model
+        self.tuner = tuner
+        self.measurement_file = measurement_file
+        self.relay_file = relay_file
+        self.tir_file = tir_file
+
+    @property
+    def measurement(self):
+
+        with self.measurement_file.open() as result_stream:
+            record = json.load(result_stream)
+
+        return record
+
+    @property
+    def relay(self):
+        relay = None
+
+        if self.relay_file.exists():
+            with self.relay_file.open("rb") as f:
+                relay = pickle.load(f)
+
+        return relay
+
+    @property
+    def tir(self):
+        tir = None
+
+        if self.tir_file.exists():
+            with self.tir_file.open("rb") as f:
+                tir = pickle.load(f)
+
+        return tir
+
+
 def clean_file_name(x):
     x = str(x)
     x = x.replace(" ", "")
@@ -253,25 +301,17 @@ class DatasetFull:
             scheduler_name = parts[-2]
             board_name = parts[-3]
 
-            with result_file.open() as result_stream:
-                record = json.load(result_stream)
-
             relay_file = result_file.with_suffix(".relay.pkl")
             tir_file = result_file.with_suffix(".primfuncs.pkl")
 
-            relay = None
-            tir = None
-
-            # if relay_file.exists():
-            #    with relay_file.open("rb") as f:
-            #        relay = pickle.load(f)
-
-            # if tir_file.exists():
-            #    with tir_file.open("rb") as f:
-            #        tir = pickle.load(f)
-
             result = NetworkResult(
-                board_name, target_name, model_name, scheduler_name, record, relay, tir
+                board_name,
+                target_name,
+                model_name,
+                scheduler_name,
+                result_file,
+                relay_file,
+                tir_file,
             )
             measurements.append(result)
 
