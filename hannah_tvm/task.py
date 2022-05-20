@@ -314,13 +314,16 @@ class TuningTask:
         # instruments=[pass_instrument.PrintIR("all")]
         instruments = []
 
-        build_cfg = {}
         target = self._task_connector.target()
+
+        build_cfg = {}
         if str(target.kind) == "c" or self.board_config.disable_vectorize == True:
             build_cfg = {"tir.disable_vectorize": True}
 
-        serialize = tvm.tir.transform.ConvertForLoopsToSerial()
-        build_cfg["tir.add_lower_pass"] = [(1, serialize)]
+        if self.board_config.micro:
+            serialize = tvm.tir.transform.ConvertForLoopsToSerial()
+            build_cfg["tir.add_lower_pass"] = [(1, serialize)]
+
         if self.tuner_config.name == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
                 build_cfg["relay.backend.use_auto_scheduler"] = True
