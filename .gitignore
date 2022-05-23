@@ -1,4 +1,6 @@
 *.pyc
+*.o
+*.a
 zephyrproject/
 outputs/
 poetry.lock
