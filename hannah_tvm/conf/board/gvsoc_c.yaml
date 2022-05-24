@@ -1,0 +1,19 @@
+gvsoc_c:
+  name: gvsoc_c
+  target: "c -runtime=c -keys=pulp -system-lib=1 --link-params=1"
+  target_host: null
+  opencl: false
+  cuda: false
+  micro:
+    template_dir: ${template_dir:}/pulp/
+    project_options:
+      project_type: host_driven
+      compiler: llvm
+
+  desired_layouts:
+    nn.conv2d: ["NHWC", "default"]
+    qnn.conv2d: ["NHWC", "default"]
+    nn.conv1d: ["NWC", "OWI"]
+
+  rpc_runner: pulp
+  connector: micro

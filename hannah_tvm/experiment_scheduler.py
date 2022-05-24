@@ -9,8 +9,7 @@ import tvm.rpc.tracker
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from . import config
-from .connectors import AutomateBoardConnector, LocalBoardConnector
+from .connectors import AutomateBoardConnector, LocalBoardConnector, MicroTVMBoardConnector
 from .task import ModelConfig, TaskStatus, TuningTask
 
 logger = logging.getLogger(__name__)
@@ -33,9 +32,7 @@ class ExperimentSchedulerBase(ABC):
             elif board_config.connector == "micro" or (
                 board_config.connector == "default" and board_config.micro
             ):
-                raise Exception(
-                    "Tuning on micro targets is not supported at the moment"
-                )
+                connector = MicroTVMBoardConnector(board_config)
             elif (
                 board_config.connector == "automate"
                 or board_config.connector == "default"

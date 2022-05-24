@@ -209,7 +209,7 @@ class RelayConverter(torch.fx.Interpreter):
         self,
         graph_module,
         input_dtype="int8",
-        input_scale=1 / (2 ** 7),
+        input_scale=1 / (2**7),
         accumulator_dtype="int20",
     ):
         super().__init__(graph_module)
@@ -292,7 +292,7 @@ class RelayConverter(torch.fx.Interpreter):
             if output_bits > input_bits:
                 output = relay.cast(output, output_dtype)
             if rescale != 1.0:
-                if 2 ** rescale_shift == rescale:
+                if 2**rescale_shift == rescale:
                     if rescale_shift > 0:
                         output = tvm.relay.left_shift(
                             output,

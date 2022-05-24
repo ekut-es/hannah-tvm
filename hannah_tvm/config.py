@@ -50,6 +50,8 @@ class Board:
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)
     desired_layouts: Optional[Any] = None
+    rpc_runner: Optional[str] = None
+    disable_vectorize: Optional[bool] = None
     connector: str = "default"
 
 

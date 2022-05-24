@@ -7,6 +7,7 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from re import M
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -29,8 +30,13 @@ from hannah_tvm.tuner.autotvm.callbacks import (
 )
 
 from . import config, load
+from .pass_instrument import PrintIR
 
 logger = logging.getLogger(__name__)
+
+from . import config, load, pass_instrument
+
+MAIN_FUNC_NAME_STR = "__tvm_main__"
 
 
 class TaskStatus(enum.IntEnum):
@@ -113,7 +119,8 @@ class TuningTask:
                     ]
                 )
                 with tvm.transform.PassContext(opt_level=3):
-                    relay_mod = seq(relay_mod)
+                    with self._task_connector.target():
+                        relay_mod = seq(relay_mod)
 
             self.dataset.add_program(self.model_key, relay_mod, params)
 
@@ -199,6 +206,7 @@ class TuningTask:
 
             tsk_trial = min(self.tuner_config.task_budget, len(tsk.config_space))
 
+            logger.info("Starting tuning of task: %d", num)
             tuner_obj.tune(
                 n_trial=tsk_trial,
                 early_stopping=early_stopping,
@@ -302,18 +310,37 @@ class TuningTask:
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")
+
+        # instruments=[pass_instrument.PrintIR("all")]
+        instruments = []
+
+        target = self._task_connector.target()
+
+        build_cfg = {}
+        if str(target.kind) == "c" or self.board_config.disable_vectorize == True:
+            build_cfg = {"tir.disable_vectorize": True}
+
+        if self.board_config.micro:
+            serialize = tvm.tir.transform.ConvertForLoopsToSerial()
+            build_cfg["tir.add_lower_pass"] = [(1, serialize)]
+
         if self.tuner_config.name == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
+                build_cfg["relay.backend.use_auto_scheduler"] = True
                 with tvm.transform.PassContext(
-                    opt_level=3, config={"relay.backend.use_auto_scheduler": True}
+                    opt_level=3,
+                    config=build_cfg,
+                    instruments=instruments,
                 ):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
                     )
         elif self.tuner_config.name == "autotvm":
-            if Path(self.tuner_log_file).exists():
+            if Path(self.log_file).exists():
                 with autotvm.apply_history_best(self.tuner_log_file):
-                    with tvm.transform.PassContext(opt_level=3):
+                    with tvm.transform.PassContext(
+                        opt_level=3, instruments=instruments, config=build_cfg
+                    ):
                         lib = relay.build_module.build(
                             relay_mod,
                             target=self._task_connector.target(),
@@ -321,16 +348,51 @@ class TuningTask:
                         )
             else:
                 logger.warning("Could not find tuner logs in: %s", self.tuner_log_file)
-                with tvm.transform.PassContext(opt_level=3):
+                with tvm.transform.PassContext(
+                    opt_level=3, instruments=instruments, config=build_cfg
+                ):
                     lib = relay.build_module.build(
                         relay_mod, target=self._task_connector.target(), params=params
                     )
 
         else:
-            with tvm.transform.PassContext(opt_level=3):
+            with tvm.transform.PassContext(
+                opt_level=3,
+                config=build_cfg,
+                instruments=instruments,
+            ):
                 lib = relay.build_module.build(
-                    relay_mod, target=self._task_connector.target(), params=params
+                    relay_mod,
+                    target=self._task_connector.target(),
+                    params=params,
                 )
+
+        from pprint import pprint
+
+        pprint(lib.function_metadata[MAIN_FUNC_NAME_STR])
+
+        main_func_metadata = lib.function_metadata[MAIN_FUNC_NAME_STR]
+        main_relay = list(main_func_metadata.relay_primfuncs.values())
+
+        assert (
+            len(main_relay) == 1
+        ), "The main function should be a single relay function"
+
+        self.dataset.add_measurement_network(
+            self.tuner_config.name, self.model_key, main_relay[0]
+        )
+
+        primfuncs = []
+        for name, function_metadata in lib.function_metadata.items():
+            if name == MAIN_FUNC_NAME_STR:
+                continue
+            tir_primfuncs = list(function_metadata.tir_primfuncs.values())
+
+            primfuncs.extend(tir_primfuncs)
+
+        self.dataset.add_measurement_primfuncs(
+            self.tuner_config.name, self.model_key, primfuncs
+        )
 
         return lib
 
