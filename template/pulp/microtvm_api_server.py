@@ -22,7 +22,7 @@ PROJECT_OPTIONS = [
     server.ProjectOption(
         "project_type",
         help="Type of project to generate.",
-        choices=("host_driven",),
+        choices=("crt", "static", "aot"),
         optional=["generate_project"],
         type="str",
     ),
@@ -59,15 +59,14 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
         project_tvm_runtime_dir = project_dir / "tvm" / "runtime"
 
         self.model_library_format_path = model_library_format_path
-        with tarfile.open(model_library_format_path) as tar:
-            tar.extractall(project_dir / "build")
-            graph = json.load(tar.extractfile("./executor-config/graph/graph.json"))
-            param_bytes = bytearray(
-                tar.extractfile("./parameters/default.params").read()
-            )
-            params = load_param_dict(param_bytes)
-            with open(project_dir / "build" / "runner.c", "w") as f:
-                runner(graph, params, f)
+        if options["project_type"] == "crt":
+            self.generate_run_crt(model_library_format_path, project_dir)
+        elif options["project_type"] == "static":
+            self.generate_run_static(model_library_format_path, project_dir)
+        elif options["project_type"] == "aot":
+            self.generate_run_aot(model_library_format_path, project_dir)
+        else:
+            raise Exception("Unknown project type")
 
         shutil.copy(__file__, project_dir)
 
@@ -91,6 +90,23 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
         if os.path.exists("/tmp/utvm_project"):
             shutil.rmtree("/tmp/utvm_project")
         shutil.copytree(project_dir, "/tmp/utvm_project")
+
+    def generate_run_crt(self, model_library_format_path, project_dir):
+        with tarfile.open(model_library_format_path) as tar:
+            tar.extractall(project_dir / "build")
+            graph = json.load(tar.extractfile("./executor-config/graph/graph.json"))
+            param_bytes = bytearray(
+                tar.extractfile("./parameters/default.params").read()
+            )
+            params = load_param_dict(param_bytes)
+            with open(project_dir / "build" / "runner.c", "w") as f:
+                runner(graph, params, f)
+
+    def generate_run_static(self, model_library_format_path, project_dir):
+        pass
+
+    def generate_run_aot(self, model_library_format_path, project_dir):
+        pass
 
     def build(self, options: dict):
         if IS_TEMPLATE:
