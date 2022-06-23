@@ -11,7 +11,6 @@ from re import M
 from typing import Any, Dict, Optional
 
 import numpy as np
-import tqdm
 import tvm
 import tvm.auto_scheduler as auto_scheduler
 import tvm.autotvm as autotvm
@@ -336,7 +335,7 @@ class TuningTask:
                         relay_mod, target=self._task_connector.target(), params=params
                     )
         elif self.tuner_config.name == "autotvm":
-            if Path(self.log_file).exists():
+            if Path(self.tuner_log_file).exists():
                 with autotvm.apply_history_best(self.tuner_log_file):
                     with tvm.transform.PassContext(
                         opt_level=3, instruments=instruments, config=build_cfg
@@ -347,7 +346,7 @@ class TuningTask:
                             params=params,
                         )
             else:
-                logger.warning("Could not find tuner logs in: %s", self.tuner_log_file)
+                logger.critical("Could not find tuner logs in: %s", self.tuner_log_file)
                 with tvm.transform.PassContext(
                     opt_level=3, instruments=instruments, config=build_cfg
                 ):
@@ -366,10 +365,6 @@ class TuningTask:
                     target=self._task_connector.target(),
                     params=params,
                 )
-
-        from pprint import pprint
-
-        pprint(lib.function_metadata[MAIN_FUNC_NAME_STR])
 
         main_func_metadata = lib.function_metadata[MAIN_FUNC_NAME_STR]
         main_relay = list(main_func_metadata.relay_primfuncs.values())

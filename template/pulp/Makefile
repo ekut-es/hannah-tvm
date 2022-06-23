@@ -1,7 +1,7 @@
 
 CONFIG_OPT ?= 'compiler=llvm'
 PULP_APP = test
-PULP_CFLAGS = -O3 -g -I${TVM_HOME}/include -I${TVM_HOME}/3rdparty/dlpack/include
+PULP_CFLAGS = -O3 -g -Icrt/include
 
 MODEL_SRC = $(wildcard build/codegen/host/src/*.c) $(wildcard build/model/*.c)
 MODEL_OBJ = $(wildcard build/codegen/host/lib/*.o) $(wildcard build/model/*.o)
