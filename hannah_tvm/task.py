@@ -367,10 +367,6 @@ class TuningTask:
                     params=params,
                 )
 
-        from pprint import pprint
-
-        pprint(lib.function_metadata[MAIN_FUNC_NAME_STR])
-
         main_func_metadata = lib.function_metadata[MAIN_FUNC_NAME_STR]
         main_relay = list(main_func_metadata.relay_primfuncs.values())
 
