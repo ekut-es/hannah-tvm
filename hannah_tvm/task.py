@@ -11,7 +11,6 @@ from re import M
 from typing import Any, Dict, Optional
 
 import numpy as np
-import tqdm
 import tvm
 import tvm.auto_scheduler as auto_scheduler
 import tvm.autotvm as autotvm
@@ -347,7 +346,7 @@ class TuningTask:
                             params=params,
                         )
             else:
-                logger.warning("Could not find tuner logs in: %s", self.tuner_log_file)
+                logger.critical("Could not find tuner logs in: %s", self.tuner_log_file)
                 with tvm.transform.PassContext(
                     opt_level=3, instruments=instruments, config=build_cfg
                 ):
