@@ -336,7 +336,7 @@ class TuningTask:
                         relay_mod, target=self._task_connector.target(), params=params
                     )
         elif self.tuner_config.name == "autotvm":
-            if Path(self.log_file).exists():
+            if Path(self.tuner_log_file).exists():
                 with autotvm.apply_history_best(self.tuner_log_file):
                     with tvm.transform.PassContext(
                         opt_level=3, instruments=instruments, config=build_cfg
