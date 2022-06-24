@@ -162,7 +162,7 @@ class TuningTask:
     def _run_autotvm(self, relay_mod, params):
         logger.info("Running ")
 
-        early_stopping = 800
+        early_stopping = 1000
 
         builder = self._task_connector.builder("autotvm")
         runner = self._task_connector.runner("autotvm")
@@ -278,7 +278,7 @@ class TuningTask:
                     )
                     tuner.tune(
                         tune_option,
-                        per_task_early_stopping=64,
+                        per_task_early_stopping=512,
                         adapative_training=True,
                         search_policy=search_policy,
                     )
@@ -297,7 +297,7 @@ class TuningTask:
                 )
                 tuner.tune(
                     tune_option,
-                    per_task_early_stopping=64,
+                    per_task_early_stopping=512,
                     adapative_training=True,
                     search_policy=search_policy,
                 )

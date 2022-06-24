@@ -9,11 +9,6 @@ import typing
 import tvm.micro.project_api.server as server
 from tvm.relay import load_param_dict
 
-try:
-    from relay_runner import runner
-except:
-    pass
-
 HERE = pathlib.Path(__file__).parent
 MODEL = "model.tar"
 IS_TEMPLATE = HERE.parent.name == "template"
@@ -36,7 +31,7 @@ PROJECT_OPTIONS = [
 ]
 
 
-class PulpProjectAPIHandler(server.ProjectAPIHandler):
+class TGCProjectAPIHandler(server.ProjectAPIHandler):
     def server_info_query(self, tvm_version: str) -> server.ServerInfo:
         return server.ServerInfo(
             "tgc_vp", IS_TEMPLATE, "" if IS_TEMPLATE else HERE / MODEL, PROJECT_OPTIONS
@@ -102,9 +97,7 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
     def write_transport(self, data: bytes, timeout_sec: float):
         return super().write_transport(data, timeout_sec)
 
-    def read_transport(
-        self, n: int, timeout_sec: typing.Union[float, type(None)]
-    ) -> bytes:
+    def read_transport(self, n: int, timeout_sec: typing.Union[float, None]) -> bytes:
         return super().read_transport(n, timeout_sec)
 
     def open_transport(self, options: dict) -> server.TransportTimeouts:
@@ -115,4 +108,4 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
 
 
 if __name__ == "__main__":
-    server.main(PulpProjectAPIHandler())
+    server.main(TGCProjectAPIHandler())

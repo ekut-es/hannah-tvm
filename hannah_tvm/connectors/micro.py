@@ -81,7 +81,7 @@ class MicroTVMTaskConnector(TaskConnector):
         pass
 
     def teardown(self):
-        shutil.rmtree(self.project_dir)
+        pass
 
 
 class MicroTVMBoardConnector(BoardConnector):
