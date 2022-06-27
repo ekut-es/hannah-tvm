@@ -1,6 +1,6 @@
 import logging
-import hydra
 
+import hydra
 from omegaconf import OmegaConf
 
 from .experiment_scheduler import TuningExperimentScheduler
@@ -8,7 +8,7 @@ from .experiment_scheduler import TuningExperimentScheduler
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(config_name="config", config_path="conf")
+@hydra.main(config_name="config", config_path="conf", version_base="1.2")
 def main(config):
     logging.captureWarnings(True)
     logger.info(OmegaConf.to_yaml(config))

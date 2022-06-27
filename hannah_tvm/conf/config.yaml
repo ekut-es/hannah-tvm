@@ -23,3 +23,8 @@ defaults:
       - resnext50-224
   - tuner: autotvm
   - override hydra/job_logging: silent
+  - _self_
+
+hydra:
+    job:
+        chdir: true

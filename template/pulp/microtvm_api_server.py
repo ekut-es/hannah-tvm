@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import pathlib
 import shutil
@@ -14,6 +15,8 @@ try:
 except:
     pass
 
+logger = logging.getLogger(__name__)
+
 HERE = pathlib.Path(__file__).parent
 MODEL = "model.tar"
 IS_TEMPLATE = HERE.parent.name == "template"
@@ -22,14 +25,14 @@ PROJECT_OPTIONS = [
     server.ProjectOption(
         "project_type",
         help="Type of project to generate.",
-        choices=("crt", "static", "aot"),
+        choices=("host_driven", "aot"),
         optional=["generate_project"],
         type="str",
     ),
     server.ProjectOption(
         "compiler",
         help="Compile with gcc or clang",
-        choices=("gcc", "llvm"),
+        choices=("gcc", "llvm"),  # TODO(@gerum) enable tvm
         optional=["build"],
         type="str",
     ),
@@ -55,12 +58,10 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
         project_dir: pathlib.Path,
         options: dict,
     ):
-
-        project_tvm_runtime_dir = project_dir / "tvm" / "runtime"
-
+        logger.info("Generate project in %s", str(project_dir))
         self.model_library_format_path = model_library_format_path
-        if options["project_type"] == "crt":
-            self.generate_run_crt(model_library_format_path, project_dir)
+        if options["project_type"] == "host_driven":
+            self.generate_run_host_driven(model_library_format_path, project_dir)
         elif options["project_type"] == "static":
             self.generate_run_static(model_library_format_path, project_dir)
         elif options["project_type"] == "aot":
@@ -70,11 +71,16 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
 
         shutil.copy(__file__, project_dir)
 
-        shutil.copy(HERE / "Makefile", project_dir)
-        shutil.copy(HERE / "runner.h", project_dir)
-        shutil.copy(HERE / "test.c", project_dir)
-        shutil.copy(HERE / "utvm_runtime_api.c", project_dir)
-        shutil.copy(HERE / "utvm_runtime_api.h", project_dir)
+        type_dir = HERE / options["project_type"]
+        if type_dir.exists():
+            shutil.copytree(type_dir, project_dir, dirs_exist_ok=True)
+
+        common_dir = HERE / "common"
+        if common_dir.exists():
+            shutil.copytree(common_dir, project_dir, dirs_exist_ok=True)
+        global_common_dir = HERE / ".." / "common"
+        if global_common_dir.exists():
+            shutil.copytree(global_common_dir, project_dir, dirs_exist_ok=True)
 
         # Populate CRT.
         crt_path = project_dir / "crt"
@@ -87,14 +93,14 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
             else:
                 shutil.copy2(src_path, dst_path)
 
-        if os.path.exists("/tmp/utvm_project"):
-            shutil.rmtree("/tmp/utvm_project")
-        shutil.copytree(project_dir, "/tmp/utvm_project")
-
-    def generate_run_crt(self, model_library_format_path, project_dir):
+    def generate_run_host_driven(self, model_library_format_path, project_dir):
         with tarfile.open(model_library_format_path) as tar:
+            logger.info("model library format files:")
+            for file_name in tar.getnames():
+                logger.info("%s", file_name)
+
             tar.extractall(project_dir / "build")
-            graph = json.load(tar.extractfile("./executor-config/graph/graph.json"))
+            graph = json.load(tar.extractfile("./executor-config/graph/default.graph"))
             param_bytes = bytearray(
                 tar.extractfile("./parameters/default.params").read()
             )
@@ -111,6 +117,7 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
     def build(self, options: dict):
         if IS_TEMPLATE:
             return
+        logger.info("Building project in: %s", os.getcwd())
         subprocess.run(
             [
                 "make",
@@ -137,9 +144,7 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
     def write_transport(self, data: bytes, timeout_sec: float):
         return super().write_transport(data, timeout_sec)
 
-    def read_transport(
-        self, n: int, timeout_sec: typing.Union[float, type(None)]
-    ) -> bytes:
+    def read_transport(self, n: int, timeout_sec: typing.Union[float, None]) -> bytes:
         return super().read_transport(n, timeout_sec)
 
     def open_transport(self, options: dict) -> server.TransportTimeouts:
