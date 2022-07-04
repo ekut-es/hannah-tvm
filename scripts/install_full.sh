@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+topdir=${0%/*}/..
+echo "Running in $topdir"
+pushd $topdir
+
 if command -v nvcc;
 then
     if command -v g++-7;
@@ -53,3 +57,4 @@ pip install -e external/tvm/python
 #$CMAKE ..  -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_CXX_COMPILER=$CXX_COMPILER
 #$CMAKE --build .
 #popd
+popd
