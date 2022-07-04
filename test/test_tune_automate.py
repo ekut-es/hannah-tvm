@@ -25,7 +25,7 @@ def test_auto_scheduler(board, tuner, model):
         warnings.warn("Skipping automate tests as automate is not available")
         return
 
-    with initialize(config_path="../hannah_tvm/conf"):
+    with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
             overrides=[f"model={model}", f"board={board}", f"tuner={tuner}"],

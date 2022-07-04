@@ -13,7 +13,7 @@ from hannah_tvm.tune import main
 
 
 def test_auto_scheduler():
-    with initialize(config_path="../hannah_tvm/conf"):
+    with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
             overrides=["model=sine", "board=local_cpu", "tuner=auto_scheduler"],
@@ -22,7 +22,7 @@ def test_auto_scheduler():
 
 
 def test_autotvm():
-    with initialize(config_path="../hannah_tvm/conf"):
+    with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
             overrides=["model=sine", "board=local_cpu", "tuner=autotvm"],

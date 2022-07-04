@@ -528,7 +528,9 @@ def test_tracer_model(model):
     import hannah.conf
 
     with initialize(
-        config_path=Path("../../../hannah") / "conf", job_name="test_tracer"
+        config_path=Path("../../../hannah") / "conf",
+        job_name="test_tracer",
+        version_base="1.2",
     ):
         cfg = compose(config_name="config", overrides=[f"model={model}"])
 

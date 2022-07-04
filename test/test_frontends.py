@@ -1,4 +1,5 @@
 import pytest
+from importlib_metadata import version
 
 try:
     import tvm
@@ -13,7 +14,7 @@ from hannah_tvm.tune import main
 
 
 def test_tflite():
-    with initialize(config_path="../hannah_tvm/conf"):
+    with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
             overrides=["board=local_cpu", "tuner=baseline", "model=tinyml_ad01"],
@@ -22,7 +23,7 @@ def test_tflite():
 
 
 def test_onnx():
-    with initialize(config_path="../hannah_tvm/conf"):
+    with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
             overrides=["board=local_cpu", "tuner=baseline", "model=conv-net-trax"],
@@ -31,7 +32,7 @@ def test_onnx():
 
 
 def test_pytorch():
-    with initialize(config_path="../hannah_tvm/conf"):
+    with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
             overrides=["board=local_cpu", "tuner=baseline", "model=resnext50-224"],
