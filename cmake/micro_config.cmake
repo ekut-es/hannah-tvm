@@ -103,7 +103,7 @@ set(USE_GRAPH_EXECUTOR ON)
 set(USE_GRAPH_EXECUTOR_DEBUG ON)
 
 # Whether enable additional vm profiler functions
-set(USE_VM_PROFILER OFF)
+set(USE_PROFILER OFF)
 
 # Whether enable uTVM standalone runtime
 set(USE_MICRO_STANDALONE_RUNTIME ON)
@@ -116,7 +116,7 @@ set(USE_MICRO_STANDALONE_RUNTIME ON)
 # - OFF: disable llvm, note this will disable CPU codegen
 #        which is needed for most cases
 # - /path/to/llvm-config: enable specific LLVM when multiple llvm-dev is available.
-set(USE_LLVM ON)
+set(USE_LLVM "llvm-config --ignore-libllvm --link-static")
 
 #---------------------------------------------
 # Contrib libraries
@@ -264,8 +264,14 @@ set(USE_TF_TVMDSOOP OFF)
 set(USE_FALLBACK_STL_MAP OFF)
 
 # Whether to use hexagon device
-set(USE_HEXAGON_DEVICE OFF)
+set(USE_HEXAGON OFF)
 set(USE_HEXAGON_SDK /path/to/sdk)
 
 # Whether to use ONNX codegen
 set(USE_TARGET_ONNX ON)
+
+# Set hide private symbols to on to avoid the following error:
+# free(): invalid pointer
+# Aborted (core dumped)
+# Reference: https://github.com/apache/tvm/issues/9362
+set(HIDE_PRIVATE_SYMBOLS ON)
