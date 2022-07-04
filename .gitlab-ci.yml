@@ -28,7 +28,7 @@ before_script:
 
 build_micro:
   stage: build
-  image: ubuntu:20.04
+  image: ubuntu:22.04
 
   script:
     - set -e
@@ -53,7 +53,7 @@ build_micro:
 
 build_full:
   stage: build
-  image: ubuntu:20.04
+  image: ubuntu:22.04
   script:
     - set -e
     - poetry run ./scripts/install_full.sh
