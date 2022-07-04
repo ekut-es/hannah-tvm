@@ -33,6 +33,7 @@ build_micro:
 
   script:
     - set -e
+    - rm -f external/tvm/build/CMakeCache.txt
     - poetry install -E micro
     - poetry run ./scripts/install_micro.sh
     - poetry run ./scripts/install_zephyr.sh
@@ -47,16 +48,17 @@ build_micro:
   artifacts:
     reports:
       cobertura: coverage.xml
-  #cache:
-  #  key: tvm-micro
-  #  paths:
-  #    - external/tvm/build
+  cache:
+    key: tvm-micro
+    paths:
+      - external/tvm/build
 
 build_full:
   stage: build
   image: ubuntu:22.04
   script:
     - set -e
+    - rm -f external/tvm/build/CMakeCache.txt
     - poetry run ./scripts/install_full.sh
     - poetry run coverage run --source=hannah_tvm -m pytest test
     - poetry run coverage report
@@ -65,10 +67,10 @@ build_full:
     - docker
   interruptible: true
   coverage: '/TOTAL.*\s([.\d]+)%/'
-  #cache:
-  #  key: tvm-full
-  #  paths:
-  #    - external/tvm/build
+  cache:
+    key: tvm-full
+    paths:
+      - external/tvm/build
   artifacts:
     reports:
       cobertura: coverage.xml
