@@ -16,8 +16,6 @@ logger = logging.getLogger("__name__")
 def legalize_var_name(s):
     s = s.replace(".", "_")
 
-    print("name", s)
-
     return s
 
 
@@ -617,7 +615,7 @@ class RelayConverter(torch.fx.Interpreter):
         else:
             requantize_mod = module
 
-        output_scale = requantize_mod.scale
+        output_scale = requantize_mod.quantization_function.scale
         output_dtype = requantize_mod.dtype
         output_bits = requantize_mod.bits
 
