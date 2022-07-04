@@ -7,7 +7,7 @@ mkdir -p external/tvm/build
 cp cmake/micro_config.cmake  external/tvm/build/config.cmake
 echo "set(USE_LLVM ${llvm_config_path})" >> external/tvm/build/config.cmake
 pushd external/tvm/build
-cmake --cmake-force-configure .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/
+cmake  .. -G Ninja -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/
 cmake --build .
 popd
 pip install -e external/tvm/python

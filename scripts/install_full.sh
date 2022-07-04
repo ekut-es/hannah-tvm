@@ -41,7 +41,7 @@ else
     cp cmake/nocuda_config.cmake external/tvm/build/config.cmake
 fi
 pushd external/tvm/build
-$CMAKE --cmake-force-configure .. -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER
+$CMAKE  .. -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER
 $CMAKE --build .
 popd
 pip install -e external/tvm/python
