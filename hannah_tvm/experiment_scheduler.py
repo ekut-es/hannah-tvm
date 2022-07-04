@@ -9,7 +9,11 @@ import tvm.rpc.tracker
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from .connectors import AutomateBoardConnector, LocalBoardConnector, MicroTVMBoardConnector
+from .connectors import (
+    AutomateBoardConnector,
+    LocalBoardConnector,
+    MicroTVMBoardConnector,
+)
 from .task import ModelConfig, TaskStatus, TuningTask
 
 logger = logging.getLogger(__name__)
@@ -188,7 +192,7 @@ class BackendScheduler(ExperimentSchedulerBase):
                 self.task_name,
                 board_config,
                 ModelConfig(self.model, self.params, self.inputs),
-                tuner=tuner,
+                tuner=self.config.tuner,
             )
 
             self.worklist.append(task)

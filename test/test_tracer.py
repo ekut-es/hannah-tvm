@@ -1,3 +1,11 @@
+import pytest
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,7 +14,6 @@ import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-import tvm
 import tvm.contrib.debugger.debug_executor
 from hydra import compose, initialize
 from hydra.utils import instantiate

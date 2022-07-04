@@ -1,3 +1,11 @@
+import pytest
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
 import warnings
 
 from hydra import compose, initialize

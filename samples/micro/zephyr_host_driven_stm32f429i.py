@@ -120,15 +120,15 @@ model with Relay.
 # Load the pretrained TFLite model from a file in your current
 # directory into a buffer
 
-import os
-import numpy as np
 import logging
+import os
 
+import numpy as np
 import tvm
 import tvm.micro as micro
-from tvm.contrib.download import download_testdata
-from tvm.contrib import graph_executor, utils
 from tvm import relay
+from tvm.contrib import graph_executor, utils
+from tvm.contrib.download import download_testdata
 
 model_url = "https://people.linaro.org/~tom.gall/sine_model.tflite"
 model_file = "sine_model.tflite"
@@ -215,8 +215,8 @@ with tvm.transform.PassContext(
     module = relay.build(mod, target=TARGET, params=params)
 
 
-import subprocess
 import pathlib
+import subprocess
 
 repo_root = pathlib.Path(
     subprocess.check_output(

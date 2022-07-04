@@ -1,18 +1,20 @@
-
-import tvm
-from tvm import relay
 import json
 import re
 from math import prod
+
+import tvm
+from tvm import relay
 
 
 # Generate c code to execute the given json graph
 def runner(graph, params, file):
     # include headers
-    file.write("#include \"../runner.h\"\n#include \"tvm/runtime/c_runtime_api.h\"\n\n")
+    file.write('#include "../runner.h"\n#include "tvm/runtime/c_runtime_api.h"\n\n')
 
     # declare lookup function for linked parameters
-    file.write("int _lookup_linked_param(TVMValue *args, int *type_codes, int num_args, void *ret_value, int *ret_tcode, void *resource_handle);\n\n")
+    file.write(
+        "int _lookup_linked_param(TVMValue *args, int *type_codes, int num_args, void *ret_value, int *ret_tcode, void *resource_handle);\n\n"
+    )
 
     # read node attributes
     shapes = None
@@ -41,7 +43,9 @@ def runner(graph, params, file):
 
     storage_sizes = {}
     define_tensors = ""
-    lookup = "\tTVMValue storage_id; int lookup_arg_type = kTVMArgInt, lookup_ret_type;\n"
+    lookup = (
+        "\tTVMValue storage_id; int lookup_arg_type = kTVMArgInt, lookup_ret_type;\n"
+    )
 
     # iterate over tensors
     for i, (shape, dltype) in enumerate(zip(shapes, dltypes)):
@@ -111,7 +115,9 @@ def runner(graph, params, file):
             file.write(f"int types{i}[] = {{ {types} }};\n")
 
             # declare this nodes function
-            file.write(f"int {func_name}(TVMValue* args, int* type_codes, int num_args);\n")
+            file.write(
+                f"int {func_name}(TVMValue* args, int* type_codes, int num_args);\n"
+            )
 
             # call function and check for errors
             call_ops += f"\terror = {func_name}(args{i}, types{i}, {num_args});\n"
@@ -139,7 +145,9 @@ def build(module, target, pulp_key):
             tgt = "c -mcpu=generic-rv32 -runtime=c -system-lib -keys=pulp"
         else:
             tgt = "c -mcpu=generic-rv32 -runtime=c -system-lib"
-        with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize" : True}):
+        with tvm.transform.PassContext(
+            opt_level=3, config={"tir.disable_vectorize": True}
+        ):
             m = relay.build(module, tgt)
 
     lib = m.module
@@ -153,4 +161,3 @@ def build(module, target, pulp_key):
             file.write(m.get_source())
     with open("build/graph.json", "w") as file:
         file.write(graph)
-

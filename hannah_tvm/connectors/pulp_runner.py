@@ -1,14 +1,15 @@
-
-from pathlib import Path
+import re
 import shutil
 import subprocess
-import re
 import tarfile
+from pathlib import Path
 
-from tvm.autotvm.measure.measure import Runner, MeasureResult, MeasureErrorNo
+from tvm.autotvm.measure.measure import MeasureErrorNo, MeasureResult, Runner
+
 
 class PulpRunner(Runner):
     id = 0
+
     def __init__(self, template_dir) -> None:
         build_dir = Path("build")
         build_dir.mkdir(exist_ok=True)
@@ -19,8 +20,12 @@ class PulpRunner(Runner):
         shutil.copy(template_dir / "Makefile", self.project_dir / "Makefile")
         shutil.copy(template_dir / "runner.h", self.project_dir / "runner.h")
         shutil.copy(template_dir / "test.c", self.project_dir / "test.c")
-        shutil.copy(template_dir / "utvm_runtime_api.c", self.project_dir / "utvm_runtime_api.c")
-        shutil.copy(template_dir / "utvm_runtime_api.h", self.project_dir / "utvm_runtime_api.h")
+        shutil.copy(
+            template_dir / "utvm_runtime_api.c", self.project_dir / "utvm_runtime_api.c"
+        )
+        shutil.copy(
+            template_dir / "utvm_runtime_api.h", self.project_dir / "utvm_runtime_api.h"
+        )
 
         super().__init__()
 
@@ -30,9 +35,11 @@ class PulpRunner(Runner):
     def write_c_runner(self, arg_info):
         (self.project_dir / "build").mkdir(exist_ok=True)
         with open(self.project_dir / "build" / "runner.c", "w+") as f:
-            f.write("#include \"../runner.h\"\n")
-            f.write("#include \"tvm/runtime/c_runtime_api.h\"\n")
-            f.write("int default_function(TVMValue* args, int* type_codes, int num_args);\n")
+            f.write('#include "../runner.h"\n')
+            f.write('#include "tvm/runtime/c_runtime_api.h"\n')
+            f.write(
+                "int default_function(TVMValue* args, int* type_codes, int num_args);\n"
+            )
 
             for i, (shape, type) in enumerate(arg_info):
                 match = re.match(r"(float|u?int)(\d+)", type)
@@ -50,15 +57,21 @@ class PulpRunner(Runner):
 
                 f.write(f"{ctype} data{i}{''.join(f'[{dim}]'for dim in shape)};\n")
                 f.write(f"int64_t shape{i}[] = {{ {', '.join(map(str, shape))} }};\n")
-                f.write(f"DLTensor tensor{i} = {{ data{i}, {{ kDLCPU, 0 }}, {len(shape)}, {dldatatype}, shape{i}, NULL, 0 }};\n")
+                f.write(
+                    f"DLTensor tensor{i} = {{ data{i}, {{ kDLCPU, 0 }}, {len(shape)}, {dldatatype}, shape{i}, NULL, 0 }};\n"
+                )
 
-            args = ", ".join(f"{{ .v_handle = &tensor{i} }}" for i in range(len(arg_info)))
+            args = ", ".join(
+                f"{{ .v_handle = &tensor{i} }}" for i in range(len(arg_info))
+            )
             f.write(f"TVMValue args[] = {{ {args} }};\n")
 
             types = ", ".join(["kTVMDLTensorHandle"] * len(arg_info))
             f.write(f"int types[] = {{ {types} }};\n")
 
-            f.write(f"int run(){{ return default_function(args, types, {len(arg_info)}); }}\n")
+            f.write(
+                f"int run(){{ return default_function(args, types, {len(arg_info)}); }}\n"
+            )
             f.flush()
             f.close()
 
@@ -80,53 +93,84 @@ class PulpRunner(Runner):
             try:
                 with tarfile.open(filename) as tar:
                     tar.extractall(model_path)
-                build_result = subprocess.run(["make", "conf", "clean", "all"], capture_output=True, timeout=30, cwd=self.project_dir)
+                build_result = subprocess.run(
+                    ["make", "conf", "clean", "all"],
+                    capture_output=True,
+                    timeout=30,
+                    cwd=self.project_dir,
+                )
                 if build_result.returncode != 0:
-                    results.append(MeasureResult(
-                        ("", build_result.stderr.decode(),),
-                        MeasureErrorNo.COMPILE_HOST,
-                        0,
-                        0
-                    ))
+                    results.append(
+                        MeasureResult(
+                            (
+                                "",
+                                build_result.stderr.decode(),
+                            ),
+                            MeasureErrorNo.COMPILE_HOST,
+                            0,
+                            0,
+                        )
+                    )
                     continue
             except subprocess.TimeoutExpired:
-                results.append(MeasureResult(
-                    ("", "makefile timeout",),
-                    MeasureErrorNo.COMPILE_HOST,
-                    0,
-                    0
-                ))
+                results.append(
+                    MeasureResult(
+                        (
+                            "",
+                            "makefile timeout",
+                        ),
+                        MeasureErrorNo.COMPILE_HOST,
+                        0,
+                        0,
+                    )
+                )
                 continue
 
             try:
-                output = subprocess.check_output(["make", "run", "-s"], timeout=30, cwd=self.project_dir)
+                output = subprocess.check_output(
+                    ["make", "run", "-s"], timeout=30, cwd=self.project_dir
+                )
                 cycles = re.search(rb"cycles:(\d+)", output)
                 if cycles:
-                    results.append(MeasureResult(
-                        int(cycles.group(1)),
-                        MeasureErrorNo.NO_ERROR,
-                        0,
-                        0
-                    ))
+                    results.append(
+                        MeasureResult(
+                            int(cycles.group(1)), MeasureErrorNo.NO_ERROR, 0, 0
+                        )
+                    )
                 else:
-                    results.append(MeasureResult(
-                        ("", "pulp runtime error",),
+                    results.append(
+                        MeasureResult(
+                            (
+                                "",
+                                "pulp runtime error",
+                            ),
+                            MeasureErrorNo.RUNTIME_DEVICE,
+                            0,
+                            0,
+                        )
+                    )
+            except subprocess.TimeoutExpired:
+                results.append(
+                    MeasureResult(
+                        (
+                            "",
+                            "timeout",
+                        ),
+                        MeasureErrorNo.RUN_TIMEOUT,
+                        0,
+                        0,
+                    )
+                )
+            except subprocess.CalledProcessError as e:
+                results.append(
+                    MeasureResult(
+                        (
+                            "",
+                            e.output.decode(),
+                        ),
                         MeasureErrorNo.RUNTIME_DEVICE,
                         0,
-                        0
-                    ))
-            except subprocess.TimeoutExpired:
-                results.append(MeasureResult(
-                    ("", "timeout",),
-                    MeasureErrorNo.RUN_TIMEOUT,
-                    0,
-                    0
-                ))
-            except subprocess.CalledProcessError as e:
-                results.append(MeasureResult(
-                    ("", e.output.decode(),),
-                    MeasureErrorNo.RUNTIME_DEVICE,
-                    0,
-                    0
-                ))
+                        0,
+                    )
+                )
         return results

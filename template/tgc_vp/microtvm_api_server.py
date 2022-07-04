@@ -54,7 +54,9 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
             )
             params = load_param_dict(param_bytes)
             with open(project_dir / "build" / "runner.c", "w") as f:
-                runner(graph, params, f)
+                pass
+                # TODO (gerum): add graph runner
+                # runner(graph, params, f)
 
         shutil.copy(__file__, project_dir)
 

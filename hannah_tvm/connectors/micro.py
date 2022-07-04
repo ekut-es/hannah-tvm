@@ -20,7 +20,7 @@ class MicroTVMTaskConnector(TaskConnector):
         self._target = tvm.target.Target(self.board.target, host=self.board.target_host)
         build_dir = Path("build")
         build_dir.mkdir(exist_ok=True)
-        self.project_dir = build_dir.absolute() / f"microtvm_project"
+        self.project_dir = build_dir.absolute() / "microtvm_project"
 
     def target(self):
         return self._target

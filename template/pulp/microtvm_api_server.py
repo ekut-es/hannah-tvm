@@ -8,12 +8,8 @@ import tarfile
 import typing
 
 import tvm.micro.project_api.server as server
+from relay_runner import runner
 from tvm.relay import load_param_dict
-
-try:
-    from relay_runner import runner
-except:
-    pass
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,17 @@
-import logging
-import tvm
 import pytest
-import tvm
-from tvm import topi, te, micro
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
+import logging
+import os
+
 import numpy as np
+import pytest
+from tvm import micro, te, topi
 
 
 def run_conv2d_bitparallel(B, C, H, W, conv_size, bits, target):

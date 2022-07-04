@@ -120,17 +120,17 @@ model with Relay.
 # Load the pretrained TFLite model from a file in your current
 # directory into a buffer
 
-import os
-import sys
-import numpy as np
 import logging
+import os
 import pathlib
+import sys
 
+import numpy as np
 import tvm
 import tvm.micro as micro
-from tvm.contrib.download import download_testdata
-from tvm.contrib import graph_executor, utils
 from tvm import relay
+from tvm.contrib import graph_executor, utils
+from tvm.contrib.download import download_testdata
 
 
 def _create_header_file(tensor_name, npy_data, output_path):
@@ -265,6 +265,7 @@ with tvm.transform.PassContext(
 #  compiler definition instead of the one above.
 #
 import subprocess
+
 from tvm.micro.contrib import zephyr
 
 repo_root = subprocess.check_output(
@@ -278,7 +279,7 @@ sample = np.array([0.5], dtype="float32")
 output_shape = (1,)
 
 model_files_path = os.path.join(project_dir, "include")
-_create_header_file((f"input_data"), sample, model_files_path)
+_create_header_file(("input_data"), sample, model_files_path)
 _create_header_file(
     "output_data", np.zeros(shape=output_shape, dtype="float32"), model_files_path
 )

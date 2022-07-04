@@ -20,7 +20,6 @@ import tvm.rpc
 import tvm.rpc.tracker
 from matplotlib.style import available
 from omegaconf import OmegaConf
-from tvm.auto_scheduler import search_policy
 from tvm.auto_scheduler.measure_record import dump_record_to_string
 
 from hannah_tvm.dataset import PerformanceDataset
@@ -28,12 +27,11 @@ from hannah_tvm.tuner.autotvm.callbacks import (
     progress_callback as autotvm_progress_callback,
 )
 
-from . import config, load
+from . import config as _config  # noqa
+from . import load, pass_instrument
 from .pass_instrument import PrintIR
 
 logger = logging.getLogger(__name__)
-
-from . import config, load, pass_instrument
 
 MAIN_FUNC_NAME_STR = "__tvm_main__"
 
@@ -316,7 +314,7 @@ class TuningTask:
         target = self._task_connector.target()
 
         build_cfg = {}
-        if str(target.kind) == "c" or self.board_config.disable_vectorize == True:
+        if str(target.kind) == "c" or self.board_config.disable_vectorize is True:
             build_cfg = {"tir.disable_vectorize": True}
 
         if self.board_config.micro:

@@ -7,6 +7,7 @@ import tvm
 import tvm.relay
 from hannah.callbacks.backends import InferenceBackendBase
 from tvm.auto_scheduler.measure import prepare_input_map
+from tvm.contrib import utils
 
 from hannah_tvm.experiment_scheduler import BackendScheduler
 
@@ -114,9 +115,6 @@ class TVMBackend(InferenceBackendBase):
         results = []
 
         for input in features:
-            import numpy as np
-            from tvm.contrib import utils
-
             input = input * 128
             input = input.round()
             input = np.clip(input, -128, 127)

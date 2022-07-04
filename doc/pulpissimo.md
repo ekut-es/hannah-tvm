@@ -28,7 +28,7 @@ TVM is extended with pulp specific compute and schedule functions to tensorize t
 
 # MicroTVM
 
-`template/pulp` contains a template project that can be used with microTVM. Generating and building a project compiles the module with ri5cy instructions, generates a c source file to run an execution graph, and links them to an executable binary that runs the graph and prints the cycles used for execution. 
+`template/pulp` contains a template project that can be used with microTVM. Generating and building a project compiles the module with ri5cy instructions, generates a c source file to run an execution graph, and links them to an executable binary that runs the graph and prints the cycles used for execution.
 
 The template project offers the option `compiler` that can be set to `llvm` or `gcc` to specify the compiler used by the pulp-sdk.
 

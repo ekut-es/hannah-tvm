@@ -1,8 +1,15 @@
+import pytest
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
 import os
 import pathlib
 
 import hannah_tvm.load as load
-
 
 root_dir = path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 

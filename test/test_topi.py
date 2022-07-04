@@ -1,7 +1,14 @@
-import tvm
-import tvm.topi as topi
-import tvm.te as te
+import pytest
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
 import tvm.relay as relay
+import tvm.te as te
+import tvm.topi as topi
 
 
 def get_1dconv(bw_f=8, bw_b=8, bw_w=8, bw_acc=32):

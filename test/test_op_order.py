@@ -1,7 +1,13 @@
+import pytest
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
 import pickle
 from pathlib import Path
-
-import tvm
 
 from hannah_tvm.passes.op_order import calculate_op_order
 
