@@ -43,9 +43,9 @@ class TVMBackend(InferenceBackendBase):
 
     def __init__(
         self,
-        val_batches=1,
-        test_batches=1,
-        val_frequency=1,
+        val_batches: int = 1,
+        test_batches: int = 1,
+        val_frequency: int = 1,
         board=None,
         print_after=[],
         time_passes=False,
@@ -79,8 +79,6 @@ class TVMBackend(InferenceBackendBase):
         model.cpu()
 
         self.torch_model = model
-
-        device = model.device
 
         mod, params = build_relay(model.model, model.example_feature_array)
 

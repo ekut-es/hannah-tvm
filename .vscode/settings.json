@@ -8,6 +8,7 @@
     },
     "cmake.configureOnOpen": false,
     "cSpell.words": [
+        "autotuning",
         "cuda",
         "gvsoc",
         "NHWC",
