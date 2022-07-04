@@ -17,14 +17,15 @@ before_script:
   - poetry config experimental.new-installer false
   - poetry install -E automate
 
-#sca:
-#  stage: build
-#  image: ubuntu:latest
-#  script:
-#    - set -e
-#    - echo "$PWD"
-#  tags:
-#    - docker
+sca:
+  stage: build
+  image: ubuntu:22.04
+  script:
+    - set -e
+    - pip install --user pre-commit
+    - run pre-commit run -a
+  tags:
+    - docker
 
 build_micro:
   stage: build
@@ -46,10 +47,10 @@ build_micro:
   artifacts:
     reports:
       cobertura: coverage.xml
-  cache:
-    key: tvm-micro
-    paths:
-      - external/tvm/build
+  #cache:
+  #  key: tvm-micro
+  #  paths:
+  #    - external/tvm/build
 
 build_full:
   stage: build
@@ -64,10 +65,10 @@ build_full:
     - docker
   interruptible: true
   coverage: '/TOTAL.*\s([.\d]+)%/'
-  cache:
-    key: tvm-full
-    paths:
-      - external/tvm/build
+  #cache:
+  #  key: tvm-full
+  #  paths:
+  #    - external/tvm/build
   artifacts:
     reports:
       cobertura: coverage.xml
