@@ -1,5 +1,6 @@
 import copy
 import logging
+import sys
 
 import numpy as np
 import torch
@@ -9,10 +10,11 @@ from hannah.callbacks.backends import InferenceBackendBase
 from tvm.auto_scheduler.measure import prepare_input_map
 from tvm.contrib import utils
 
-from hannah_tvm.experiment_scheduler import BackendScheduler
+from hannah_tvm.connectors import init_board_connector
 
 from . import pass_instrument
 from .passes.legalize import LegalizeQuantizedTypes
+from .task import ModelConfig, TuningTask
 from .tracer import QuantizationTracer, RelayConverter
 
 
@@ -47,10 +49,8 @@ class TVMBackend(InferenceBackendBase):
         test_batches: int = 1,
         val_frequency: int = 1,
         board=None,
-        print_after=[],
-        time_passes=False,
-        tune=False,
-    ):
+        tuner=None,
+    ) -> None:
         """Instantiate the tvm backend for
 
         Args:
@@ -58,20 +58,12 @@ class TVMBackend(InferenceBackendBase):
             test_batches (int, optional): Number of batches to run through the backend on testing. Defaults to 1.
             val_frequency (int, optional): Validate on every n batches. Defaults to 1.
             board (OmegaconfDict[str, BoardConfig], optional): Dict of target board descriptions. Defaults to None.
-            print_after (list, optional): list of tvm pass names, prints IR after corresponding passes. Defaults to [].
-            time_passes (bool, optional): Extract list of timed values for each pass. Defaults to False.
-            tune (bool, optional): Run autotuning before execution on target. Defaults to False.
         """
         super().__init__(val_batches, test_batches, val_frequency)
 
         self.torch_model = None
-        self.model = None
-        self.params = None
-        self.lib = None
-        self.print_after = print_after
-        self.time_passes = time_passes
         self.board_config = board
-        self.tune = tune
+        self.tuner_config = tuner
 
     def prepare(self, model):
         logging.info("Preparing model for target")
@@ -85,12 +77,25 @@ class TVMBackend(InferenceBackendBase):
         mod = tvm.relay.transform.InferType()(mod)
         mod = LegalizeQuantizedTypes()(mod)
 
-        scheduler = BackendScheduler(
-            {"board": self.board_config, "n_jobs": 0},
-            mod,
-            params,
-            {"x": model.example_feature_array.detach().numpy().astype(np.int8)},
-        )
+        assert len(self.board_config) == 1
+
+        self._connector = init_board_connector(list(self.board_config.values())[0])
+
+        task_connector = self._connector.task_connector()
+
+        model_config = ModelConfig(mod, params, model.example_feature_array)
+        model_key = "backend_model"
+
+        for board_key, board_config in self.board_config.items():
+            task = TuningTask(
+                board_config=board_config,
+                board_key=board_key,
+                model_key=model_key,
+                model_config=model_config,
+                task_connector=task_connector,
+                tuner=self.tuner_config,
+            )
+            task.run()
 
     def characterize(self, model):
         self.prepare(model)
@@ -107,51 +112,17 @@ class TVMBackend(InferenceBackendBase):
         feature = self.torch_model.features(inputs)
         feature = self.torch_model.normalizer(feature)
 
-        features = torch.split(feature, 1)
-
-        features = [x.detach().cpu().numpy() for x in features]
-        results = []
-
-        for input in features:
-            input = input * 128
-            input = input.round()
-            input = np.clip(input, -128, 127)
-
-            temp = utils.tempdir()
-            path_lib = temp.relpath("deploy_lib.tar")
-            self.lib.export_library(path_lib)
-            print(temp.listdir())
-
-            loaded_lib = tvm.runtime.load_module(path_lib)
-            input_data = tvm.nd.array(input)
-
-            module = tvm.contrib.graph_executor.GraphModule(
-                loaded_lib["default"](tvm.cpu())
-            )
-            module.run(data=input_data)
-            out_deploy = module.get_output(0).numpy()
-
-            # Print first 10 elements of output
-            print(out_deploy.flatten()[0:10])
-
-            out = out_deploy.astype(float)
-            out = out / (2**14)
-
-            print(out[0:10])
-
-            results.append(torch.from_numpy(out))
-
-        out = torch.stack(results).squeeze(1)
-        self.torch_model.to(device)
-
         return out, results
 
     def __getstate__(self):
         "Do not pickle and copy auto generated values"
         state = self.__dict__
 
-        state.pop("torch_model")
-        state.pop("params")
-        state.pop("lib")
+        if "_connector" in state:
+            state.pop("_connector")
+        if "_task" in state:
+            state.pop("_task")
+        if "torch_model" in state:
+            state.pop("torch_model")
 
         return state

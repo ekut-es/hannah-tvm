@@ -49,7 +49,7 @@ class TaskStatus(enum.IntEnum):
 
 @dataclass
 class ModelConfig:
-    mod: Any
+    mod: tvm.IRModule
     params: Any
     inputs: Any
 
