@@ -22,8 +22,7 @@ sca:
   image: ubuntu:22.04
   script:
     - set -e
-    - pip install --user pre-commit
-    - run pre-commit run -a
+    - poetry run pre-commit run -a
   tags:
     - docker
 
