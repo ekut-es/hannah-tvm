@@ -6,6 +6,5 @@ export PULP_RISCV_LLVM_TOOLCHAIN=/home/muhcuser/pulp-llvm/build
 pushd /home/muhcuser/pulp-sdk
 source configs/pulpissimo.sh
 source configs/platform-gvsoc.sh
-#make all
 source pkg/sdk/dev/sourceme.sh
 popd

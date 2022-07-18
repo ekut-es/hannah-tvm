@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah-tvm.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import contextlib
 import logging
 import time
@@ -23,12 +41,11 @@ class ExperimentSchedulerBase(ABC):
 
         self.running_tasks = {}
 
-        self.board_connectors = {}
+        self.board_connector = None
 
     def _init_connectors(self):
-        for board_name, board_config in self.config.board.items():
-            connector = init_board_connector(board_config)
-            self.board_connectors[board_config.name] = connector
+        connector = init_board_connector(self.config.board)
+        self.board_connector = connector
 
     @abstractmethod
     def _extract_tasks(self):
@@ -48,15 +65,7 @@ class ExperimentSchedulerBase(ABC):
                         del self.running_tasks[board_name]
                         pbar.update(1)
 
-                    for board_name, board_connector in self.board_connectors.items():
-                        if board_name not in self.running_tasks:
-                            has_pending_tasks = False
-                            for task in self.worklist:
-                                if task.board_config.name == board_name:
-                                    has_pending_tasks = True
-                            if not has_pending_tasks:
-                                board_connector.teardown()
-
+        self.board_connector.teardown()
         self.report()
 
         results = []
@@ -69,7 +78,7 @@ class ExperimentSchedulerBase(ABC):
             for idx, task in list(enumerate(self.worklist)):
                 board_name = task.board_config.name
 
-                if self.board_connectors[board_name].boards_available() > 0:
+                if self.board_connector.boards_available() > 0:
                     if board_name not in self.running_tasks:
                         self.running_tasks[board_name] = task
                         del self.worklist[idx]
@@ -77,15 +86,16 @@ class ExperimentSchedulerBase(ABC):
         return
 
     def _restart_connections(self):
-        for board_name, connector in self.board_connectors.items():
-            if not connector.is_alive():
-                if board_name in self.running_tasks:
-                    logger.info("Connection to %s is no longer alive", board_name)
-                    logger.critical(
-                        "Server process for %s has been terminated during tuning restarting",
-                        board_name,
-                    )
-                    connector.reset()
+        if not self.board_connector.is_alive():
+            if self.running_tasks:
+                logger.info(
+                    "Connection to %s is no longer alive", self.board_config.name
+                )
+                logger.critical(
+                    "Server process for %s has been terminated during tuning restarting",
+                    self.board_config.name,
+                )
+                self.board_connector.reset()
 
     def report(self, filter="all"):
         results = []
@@ -116,9 +126,8 @@ class ExperimentSchedulerBase(ABC):
             )
 
     def finish(self):
-        for connector in self.board_connectors.values():
-            connector.teardown()
-        self.board_connectors = []
+        if self.board_connector is not None:
+            self.board_connector.teardown()
 
     def __del__(self):
         self.finish()
@@ -126,18 +135,14 @@ class ExperimentSchedulerBase(ABC):
 
 class TuningExperimentScheduler(ExperimentSchedulerBase):
     def _extract_tasks(self):
-        for board_name, board_config in self.config.board.items():
-            for model_name, model_config in self.config.model.items():
+        for model_name, model_config in self.config.model.items():
 
-                task = TuningTask(
-                    board_name,
-                    model_name,
-                    board_config,
-                    model_config=model_config,
-                    task_connector=self.board_connectors[
-                        board_config.name
-                    ].task_connector(),
-                    tuner=self.config.tuner,
-                )
-                self.worklist.append(task)
-                self.tasks.append(task)
+            task = TuningTask(
+                model_name,
+                self.config.board,
+                model_config=model_config,
+                task_connector=self.board_connector.task_connector(),
+                tuner=self.config.tuner,
+            )
+            self.worklist.append(task)
+            self.tasks.append(task)

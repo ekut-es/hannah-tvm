@@ -13,6 +13,7 @@
         "gvsoc",
         "NHWC",
         "opencl",
+        "Tensorize",
         "Vitis"
     ]
 }

@@ -16,4 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .relay_viz import RelayVisualizer
+from .gvsoc_builder import GVSOCBuilder
+from .gvsoc_runner import GVSOCRunner
+
+__all__ = ["GVSOCBuilder", "GVSOCRunner"]

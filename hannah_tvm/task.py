@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah-tvm.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import enum
 import json
 import logging
@@ -59,7 +77,6 @@ class TuningTask:
 
     def __init__(
         self,
-        board_key,
         model_key,
         board_config,
         model_config,
@@ -67,21 +84,20 @@ class TuningTask:
         tuner=None,
     ):
         self._task_connector = task_connector
-        self.board_key = board_key
         self.model_key = model_key
         self.board_config = board_config
         self.model_config = model_config
         self.tuner_config = tuner
         tuner_name = self.tuner_config.name if self.tuner_config else "baseline"
-        self.tuner_log_file = f"{board_key}_{model_key}_{tuner_name}.json"
+        self.tuner_log_file = f"{board_config.name}_{model_key}_{tuner_name}.json"
 
         self.results = {}
 
-        self.results["board"] = board_key
+        self.results["board"] = board_config.name
         self.results["model"] = model_key
         self.results["error"] = None
 
-        self.name = f"tuning-task-{board_key}-{model_key}"
+        self.name = f"tuning-task-{board_config.name}-{model_key}"
         self.dataset: Optional[PerformanceDataset] = None
 
         self.status = TaskStatus.CREATED
@@ -147,7 +163,9 @@ class TuningTask:
 
         except Exception as e:
             logger.critical(
-                "Tuning model %s on board %s failed", self.model_key, self.board_key
+                "Tuning model %s on board %s failed",
+                self.model_key,
+                self.board_config.name,
             )
             logger.critical(str(e))
             traceback.print_tb(e.__traceback__)
@@ -415,5 +433,5 @@ class TuningTask:
         self.dataset.add_measurement(self.tuner_config.name, self.model_key, result)
 
     def __str__(self):
-        s = f"TuningTask(board={self.board_key} model={self.model_key})"
+        s = f"TuningTask(board={self.board_config.name} model={self.model_key})"
         return s

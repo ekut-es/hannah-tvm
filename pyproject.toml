@@ -3,7 +3,7 @@ name = "hannah-tvm"
 version = "0.1.0"
 description = ""
 authors = ["Christoph Gerum <christoph.gerum@uni-tuebingen.de>"]
-license = "MIT"
+license = "APACHE-2"
 
 
 [tool.poetry.dependencies]

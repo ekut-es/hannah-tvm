@@ -16,4 +16,21 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-name: auto_scheduler
+name: gvsoc_c_generic
+target: MISSING
+target_host: null
+opencl: false
+cuda: false
+micro:
+  template_dir: ${template_dir:}/gvsoc/
+  project_options:
+    project_type: host_driven
+    compiler: llvm
+
+desired_layouts:
+  nn.conv2d: ["NHWC", "default"]
+  qnn.conv2d: ["NHWC", "default"]
+  nn.conv1d: ["NWC", "OWI"]
+
+rpc_runner: gvsoc
+connector: micro

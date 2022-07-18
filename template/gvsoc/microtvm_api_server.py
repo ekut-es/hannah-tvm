@@ -8,8 +8,9 @@ import tarfile
 import typing
 
 import tvm.micro.project_api.server as server
-from relay_runner import runner
 from tvm.relay import load_param_dict
+
+from hannah_tvm.micro import GVSOCBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
 
     def server_info_query(self, tvm_version: str) -> server.ServerInfo:
         return server.ServerInfo(
-            "pulpissimo",
+            "gvsoc",
             IS_TEMPLATE,
             "" if IS_TEMPLATE else HERE / MODEL,
             PROJECT_OPTIONS,
@@ -102,7 +103,8 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
             )
             params = load_param_dict(param_bytes)
             with open(project_dir / "build" / "runner.c", "w") as f:
-                runner(graph, params, f)
+                builder = GVSOCBuilder()
+                builder.build(graph, params, f)
 
     def generate_run_static(self, model_library_format_path, project_dir):
         pass
