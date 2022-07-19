@@ -99,6 +99,7 @@ def test_simple_conv2d():
         print(tvm.lower(s, [input, filter], simple_mode=True))
 
 
+@pytest.mark.pulp
 def test_conv2d_nhwc_ohwi():
     target = tvm.target.Target(
         "llvm -mtriple=riscv32 -mcpu=generic-rv32 -mattr=+m,+c,+xpulpv -keys=pulp -runtime=c -system-lib=1 --link-params=1"
