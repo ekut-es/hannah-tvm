@@ -1,3 +1,21 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah-tvm.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import re
 import shutil
 from dataclasses import dataclass
@@ -7,8 +25,8 @@ import numpy as np
 import tvm
 from tvm import auto_scheduler, autotvm
 
+from ..micro.gvsoc_runner import GVSOCRunner
 from .core import BoardConnector, BuildArtifactHandle, TaskConnector
-from .pulp_runner import PulpRunner
 
 
 class MicroTVMTaskConnector(TaskConnector):
@@ -20,15 +38,17 @@ class MicroTVMTaskConnector(TaskConnector):
         self._target = tvm.target.Target(self.board.target, host=self.board.target_host)
         build_dir = Path("build")
         build_dir.mkdir(exist_ok=True)
-        self.project_dir = build_dir.absolute() / f"microtvm_project"
+        self.project_dir = build_dir.absolute()
 
     def target(self):
         return self._target
 
     def runner(self, tuner=None):
         if tuner == "autotvm":
-            if self.board.rpc_runner == "pulp":
-                runner = PulpRunner(Path(self.board.micro.template_dir))
+            if self.board.rpc_runner == "gvsoc":
+                runner = GVSOCRunner(
+                    Path(self.board.micro.template_dir) / "host_driven"
+                )
             else:
                 runner = autotvm.RPCRunner(
                     self.board.name,

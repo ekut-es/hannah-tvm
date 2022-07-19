@@ -1,21 +1,38 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah-tvm.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import os
-from pathlib import Path
 import shutil
-import tempfile
 import tarfile
+import tempfile
+from pathlib import Path
 
 import hydra
 import tvm
-from tvm.micro import model_library_format
-import tvm.relay as relay
-import tvm.micro as micro
 import tvm.autotvm as autotvm
+import tvm.micro as micro
+import tvm.relay as relay
 from tvm.contrib import graph_runtime
+from tvm.micro import model_library_format
 
-from . import config
-from . import load
-from . import pass_instrument
+from . import config as _config  # noqa
+from . import load, pass_instrument
 
 logger = logging.getLogger("hannah-tvm-compile")
 
@@ -41,13 +58,12 @@ def compile(config):
                 if board.micro:
                     if target.kind.name == "c":
                         target_aot = tvm.target.Target(
-                           board.target + " -link-params=1 --executor=aot"
+                            board.target + " -link-params=1 --executor=aot"
                         )
 
                         module_aot = relay.build(
                             relay_mod, target=target_aot, params=params
                         )
-
 
             if board.micro:
                 logger.info("Building micro target")

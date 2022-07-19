@@ -1,3 +1,21 @@
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah-tvm.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
 stages:
   - build
   - test
@@ -11,31 +29,31 @@ variables:
 
 before_script:
   - apt-get update
-  - apt-get install -y wget build-essential pkg-config python3-dev curl ninja-build cmake g++ git python3-setuptools gcc libtinfo-dev zlib1g-dev build-essential cmake libedit-dev libxml2-dev llvm-dev
+  - apt-get install -y wget build-essential pkg-config python3-dev curl ninja-build cmake g++ git python3-setuptools gcc libtinfo-dev zlib1g-dev build-essential cmake libedit-dev libxml2-dev llvm-dev libclang-dev
   - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
   - export PATH=${POETRY_HOME}/bin:${PATH}
   - poetry config experimental.new-installer false
   - poetry install -E automate
 
-#sca:
-#  stage: build
-#  image: ubuntu:latest
-#  script:
-#    - set -e
-#    - echo "$PWD"
-#  tags:
-#    - docker
+sca:
+  stage: build
+  image: ubuntu:22.04
+  script:
+    - set -e
+    - poetry run pre-commit run -a
+  tags:
+    - docker
 
 build_micro:
   stage: build
-  image: ubuntu:20.04
+  image: ubuntu:22.04
 
   script:
     - set -e
+    - rm -f external/tvm/build/CMakeCache.txt
     - poetry install -E micro
     - poetry run ./scripts/install_micro.sh
-    - poetry run ./scripts/install_zephyr.sh
-      poetry run ./scripts/install_corstone_vfps.sh
+    - poetry run ./scripts/install_corstone_vfps.sh
     - poetry run coverage run --source=hannah_tvm -m pytest test
     - poetry run coverage report
     - poetry run coverage xml
@@ -53,9 +71,10 @@ build_micro:
 
 build_full:
   stage: build
-  image: ubuntu:20.04
+  image: ubuntu:22.04
   script:
     - set -e
+    - rm -f external/tvm/build/CMakeCache.txt
     - poetry run ./scripts/install_full.sh
     - poetry run coverage run --source=hannah_tvm -m pytest test
     - poetry run coverage report

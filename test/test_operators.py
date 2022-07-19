@@ -1,9 +1,35 @@
-import logging
-import tvm
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah-tvm.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import pytest
-import tvm
-from tvm import topi, te, micro
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
+import logging
+import os
+
 import numpy as np
+import pytest
+from tvm import micro, te, topi
 
 
 def run_conv2d_bitparallel(B, C, H, W, conv_size, bits, target):

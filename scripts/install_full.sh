@@ -1,4 +1,26 @@
 #!/bin/bash -e
+##
+## Copyright (c) 2022 University of Tübingen.
+##
+## This file is part of hannah-tvm.
+## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+
+topdir=${0%/*}/..
+echo "Running in $topdir"
+pushd $topdir
 
 if command -v nvcc;
 then
@@ -41,7 +63,7 @@ else
     cp cmake/nocuda_config.cmake external/tvm/build/config.cmake
 fi
 pushd external/tvm/build
-$CMAKE --cmake-force-configure .. -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER
+$CMAKE  .. -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CXX_COMPILER
 $CMAKE --build .
 popd
 pip install -e external/tvm/python
@@ -53,3 +75,4 @@ pip install -e external/tvm/python
 #$CMAKE ..  -G "$GENERATOR" -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV/ -DCMAKE_CXX_COMPILER=$CXX_COMPILER
 #$CMAKE --build .
 #popd
+popd

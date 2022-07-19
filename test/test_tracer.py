@@ -1,3 +1,29 @@
+#
+# Copyright (c) 2022 University of Tübingen.
+#
+# This file is part of hannah-tvm.
+# See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import pytest
+
+try:
+    import tvm
+except ImportError:
+    pytest.skip("TVM not available", allow_module_level=True)
+
+
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,7 +32,6 @@ import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-import tvm
 import tvm.contrib.debugger.debug_executor
 from hydra import compose, initialize
 from hydra.utils import instantiate
@@ -521,7 +546,9 @@ def test_tracer_model(model):
     import hannah.conf
 
     with initialize(
-        config_path=Path("../../../hannah") / "conf", job_name="test_tracer"
+        config_path=Path("../../../hannah") / "conf",
+        job_name="test_tracer",
+        version_base="1.2",
     ):
         cfg = compose(config_name="config", overrides=[f"model={model}"])
 
