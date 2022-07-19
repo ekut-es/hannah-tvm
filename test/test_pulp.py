@@ -16,12 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pytest
 import tvm
 import tvm.autotvm as autotvm
 import tvm.te as te
 from tvm.topi.pulp import conv2d_nhwc_ohwi, schedule_conv2d_nhwc_ohwi
 
 
+@pytest.mark.pulp
 def test_example():
 
     n = te.var("n")
@@ -37,6 +39,7 @@ def test_example():
     print(tvm.lower(s, [A, B, C], simple_mode=True))
 
 
+@pytest.mark.pulp
 def test_simple_schedule():
 
     b = te.var("batch")
@@ -55,6 +58,7 @@ def test_simple_schedule():
         print(tvm.lower(s, [input], simple_mode=True))
 
 
+@pytest.mark.pulp
 def test_simple_conv2d():
     in_dtype = "int8"
     out_dtype = "int32"
@@ -126,5 +130,5 @@ def test_conv2d_nhwc_ohwi():
 if __name__ == "__main__":
     # test_example()
     # test_simple_schedule()
-    test_conv2d_nhwc_ohwi()
     # test_simple_conv2d()
+    test_conv2d_nhwc_ohwi()
