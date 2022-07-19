@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import datetime
 import logging
 import re
 import shutil
@@ -25,9 +26,13 @@ from pathlib import Path
 
 from tvm.autotvm.measure.measure import MeasureErrorNo, MeasureResult, Runner
 
+from .utils import populate_crt
+
 
 class GVSOCRunner(Runner):
     id = 0
+
+    clock_frequency = 50000000
 
     def __init__(self, template_dir) -> None:
         build_dir = Path("build")
@@ -45,6 +50,8 @@ class GVSOCRunner(Runner):
         shutil.copy(
             template_dir / "utvm_runtime_api.h", self.project_dir / "utvm_runtime_api.h"
         )
+
+        populate_crt(self.project_dir)
 
         super().__init__()
 
@@ -118,6 +125,9 @@ class GVSOCRunner(Runner):
                     timeout=30,
                     cwd=self.project_dir,
                 )
+
+                timestamp = datetime.datetime.now().timestamp()
+
                 if build_result.returncode != 0:
                     results.append(
                         MeasureResult(
@@ -127,7 +137,7 @@ class GVSOCRunner(Runner):
                             ),
                             MeasureErrorNo.COMPILE_HOST,
                             0,
-                            0,
+                            timestamp,
                         )
                     )
                     continue
@@ -140,7 +150,7 @@ class GVSOCRunner(Runner):
                         ),
                         MeasureErrorNo.COMPILE_HOST,
                         0,
-                        0,
+                        timestamp,
                     )
                 )
                 continue
@@ -151,10 +161,9 @@ class GVSOCRunner(Runner):
                 )
                 cycles = re.search(rb"cycles:(\d+)", output)
                 if cycles:
+                    ms = int(cycles.group(1)) / self.clock_frequency * 1000
                     results.append(
-                        MeasureResult(
-                            int(cycles.group(1)), MeasureErrorNo.NO_ERROR, 0, 0
-                        )
+                        MeasureResult(ms, MeasureErrorNo.NO_ERROR, 0, timestamp)
                     )
                 else:
                     results.append(
@@ -165,7 +174,7 @@ class GVSOCRunner(Runner):
                             ),
                             MeasureErrorNo.RUNTIME_DEVICE,
                             0,
-                            0,
+                            timestamp,
                         )
                     )
             except subprocess.TimeoutExpired:
@@ -177,7 +186,7 @@ class GVSOCRunner(Runner):
                         ),
                         MeasureErrorNo.RUN_TIMEOUT,
                         0,
-                        0,
+                        timestamp,
                     )
                 )
             except subprocess.CalledProcessError as e:
@@ -189,7 +198,7 @@ class GVSOCRunner(Runner):
                         ),
                         MeasureErrorNo.RUNTIME_DEVICE,
                         0,
-                        0,
+                        timestamp,
                     )
                 )
         return results

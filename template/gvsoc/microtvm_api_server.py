@@ -28,7 +28,7 @@ import typing
 import tvm.micro.project_api.server as server
 from tvm.relay import load_param_dict
 
-from hannah_tvm.micro import GVSOCBuilder
+from hannah_tvm.micro import GVSOCBuilder, populate_crt
 
 logger = logging.getLogger(__name__)
 
@@ -97,16 +97,7 @@ class PulpProjectAPIHandler(server.ProjectAPIHandler):
         if global_common_dir.exists():
             shutil.copytree(global_common_dir, project_dir, dirs_exist_ok=True)
 
-        # Populate CRT.
-        crt_path = project_dir / "crt"
-        crt_path.mkdir()
-        for item in self.CRT_COPY_ITEMS:
-            src_path = os.path.join(standalone_crt_dir, item)
-            dst_path = crt_path / item
-            if os.path.isdir(src_path):
-                shutil.copytree(src_path, dst_path)
-            else:
-                shutil.copy2(src_path, dst_path)
+        populate_crt(project_dir, self.CRT_COPY_ITEMS, standalone_crt_dir)
 
     def generate_run_host_driven(self, model_library_format_path, project_dir):
         with tarfile.open(model_library_format_path) as tar:

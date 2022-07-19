@@ -18,5 +18,6 @@
 #
 from .gvsoc_builder import GVSOCBuilder
 from .gvsoc_runner import GVSOCRunner
+from .utils import populate_crt
 
-__all__ = ["GVSOCBuilder", "GVSOCRunner"]
+__all__ = ["GVSOCBuilder", "GVSOCRunner", "populate_crt"]
