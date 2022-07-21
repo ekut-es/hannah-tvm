@@ -48,11 +48,16 @@ def main():
             html.H1(children="Tuning Results"),
             # Overview
             html.H2(children="Overview"),
-            dcc.Dropdown(["c", "cuda", "llvm"], "llvm", id="overview-target-selection"),
             dcc.Dropdown(
                 ["Duration StdDev", "Duration PtP"],
                 "Duration StdDev",
                 id="overview-error-selection",
+            ),
+            dcc.Dropdown(
+                ["c", "cuda", "llvm"],
+                "llvm",
+                multi=True,
+                id="overview-target-selection",
             ),
             dcc.Dropdown(
                 models,
