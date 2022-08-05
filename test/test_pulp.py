@@ -129,7 +129,4 @@ def test_conv2d_nhwc_ohwi():
 
 
 if __name__ == "__main__":
-    # test_example()
-    # test_simple_schedule()
-    # test_simple_conv2d()
-    test_conv2d_nhwc_ohwi()
+    pytest.main()

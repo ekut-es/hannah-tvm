@@ -296,6 +296,8 @@ class DatasetFull:
 
             with result_file.open() as result_stream:
                 record = json.load(result_stream)
+                if len(record["Duration (us)"]) == 0:
+                    continue
                 result["Duration (us)"] = np.mean(record["Duration (us)"])
                 result["Duration StdDev"] = np.std(record["Duration (us)"])
                 result["Duration PtP"] = np.ptp(record["Duration (us)"])
