@@ -27,6 +27,8 @@ import typing
 import tvm.micro.project_api.server as server
 from tvm.relay import load_param_dict
 
+from hannah_tvm.micro.utils import populate_crt
+
 HERE = pathlib.Path(__file__).parent
 MODEL = "model.tar"
 IS_TEMPLATE = HERE.parent.name == "template"
@@ -77,20 +79,13 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
         with tarfile.open(model_library_format_path) as tar:
             tar.extractall(project_dir)
 
+        # Copy Common files
+        common_path = pathlib.Path(__file__).parent / ".." / "common"
+        shutil.copytree(common_path, project_dir, dirs_exist_ok=True)
+
         # Copy Template files
         template_path = pathlib.Path(__file__).parent / options["project_type"]
         shutil.copytree(template_path, project_dir, dirs_exist_ok=True)
-
-        # Populate CRT.
-        crt_path = project_dir / "crt"
-        crt_path.mkdir()
-        for item in self.CRT_COPY_ITEMS:
-            src_path = os.path.join(standalone_crt_dir, item)
-            dst_path = crt_path / item
-            if os.path.isdir(src_path):
-                shutil.copytree(src_path, dst_path)
-            else:
-                shutil.copy2(src_path, dst_path)
 
     def build(self, options: dict):
         if IS_TEMPLATE:
@@ -106,13 +101,12 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
     def flash(self, options: dict):
         if IS_TEMPLATE:
             return
-        with open(HERE / "cycles.txt", "wb") as out:
-            subprocess.run(
-                ["make", "run", "-s"],
-                timeout=30,
-                cwd=HERE,
-                stdout=out,
-            )
+
+        subprocess.run(
+            ["make", "run", "-s"],
+            timeout=30,
+            cwd=HERE,
+        )
 
     def write_transport(self, data: bytes, timeout_sec: float):
         return super().write_transport(data, timeout_sec)

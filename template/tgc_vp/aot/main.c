@@ -35,6 +35,7 @@
 #include <tvm/runtime/crt/logging.h>
 #include <tvm/runtime/crt/microtvm_rpc_server.h>
 
+#include "codegen/host/include/tvmgen_default.h"
 #include "crt_config.h"
 #include "uart1.h"
 
@@ -108,32 +109,24 @@ void uart_irq_cb(const struct device* dev, void* user_data) {
 
 }
 
-const void* TVMSystemLibEntryPoint(void) {
-  return NULL;
-}
+float input_data[10000];
+float output_data[10000];
 
 // The main function of this application.
 int main(void) {
   uart1_init(115200);
   // Initialize microTVM RPC server, which will receive commands from the UART and execute them.
-  microtvm_rpc_server_t server = MicroTVMRpcServerInit(write_serial, NULL);
-  TVMLogf("microTVM TGC runtime - running");
-  // The main application loop. We continuously read commands from the UART
-  // and dispatch them to MicroTVMRpcServerLoop().
-  while (1) {
-    size_t bytes_read = uart1_read(serial_buffer_data, SERIAL_BUFFER_SIZE);
-    uint8_t *data = serial_buffer_data;
-    if (bytes_read > 0) {
-      size_t bytes_remaining = bytes_read;
-      while (bytes_remaining > 0) {
-        // Pass the received bytes to the RPC server.
-        tvm_crt_error_t err = MicroTVMRpcServerLoop(server, &data, &bytes_remaining);
-        if (err != kTvmErrorNoError && err != kTvmErrorFramingShortPacket) {
-          TVMPlatformAbort(err);
-        }
-      }
+  printf("microTVM TGC runtime - running\r\n");
 
-    }
-  }
+  struct tvmgen_default_inputs inputs;
+  struct tvmgen_default_outputs  outputs;
+
+  inputs.dense_4_input = input_data;
+  outputs.Identity = output_data;
+
+  tvmgen_default_run(&inputs, &outputs);
+
+  printf("microTVM TGS runtime - stopped\r\n");
+
   return 0;
 }
