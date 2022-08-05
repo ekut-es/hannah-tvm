@@ -50,13 +50,8 @@ class MicroTVMTaskConnector(TaskConnector):
                     Path(self.board.micro.template_dir) / "host_driven"
                 )
             else:
-                runner = autotvm.RPCRunner(
-                    self.board.name,
-                    host="localhost",
-                    port=self._tracker_port,
-                    number=5,
-                    timeout=10,
-                )
+                raise Exception("Autotuning is not supported on board")
+
         elif tuner == "auto_scheduler":
             runner = auto_scheduler.RPCRunner(
                 key=self.board.name, host="localhost", port=self._tracker_port
@@ -88,12 +83,13 @@ class MicroTVMTaskConnector(TaskConnector):
         handle.build()
         handle.flash()
 
-        with open(self.project_dir / "cycles.txt", "r") as f:
-            result = f.read()
-            match = re.match(r"cycles:(\d+)\n", result)
-            if match:
-                cycles = int(match.group(1))
-                return np.array([cycles])
+        if self.board.rpc_runner == "gvsoc":
+            with open(self.project_dir / "cycles.txt", "r") as f:
+                result = f.read()
+                match = re.match(r"cycles:(\d+)\n", result)
+                if match:
+                    cycles = int(match.group(1))
+                    return np.array([cycles])
 
         return np.array([])
 

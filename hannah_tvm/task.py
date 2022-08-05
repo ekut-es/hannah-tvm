@@ -332,12 +332,27 @@ class TuningTask:
         target = self._task_connector.target()
 
         build_cfg = {}
-        if str(target.kind) == "c" or self.board_config.disable_vectorize is True:
+        if self.board_config.build:
+            build_cfg.update(self.board_config.build)
+        elif str(target.kind) == "c" or self.board_config.disable_vectorize is True:
             build_cfg = {"tir.disable_vectorize": True}
 
         if self.board_config.micro:
             serialize = tvm.tir.transform.ConvertForLoopsToSerial()
             build_cfg["tir.add_lower_pass"] = [(1, serialize)]
+
+        executor = tvm.relay.backend.Executor("graph")
+        if self.board_config.executor:
+            executor = tvm.relay.backend.Executor(
+                self.board_config.executor.name,
+                dict(self.board_config.executor.options),
+            )
+
+        runtime = tvm.relay.backend.Runtime("crt")
+        if self.board_config.runtime:
+            runtime = tvm.relay.backend.Runtime(
+                self.board_config.runtime.name, dict(self.board_config.runtime.options)
+            )
 
         if self.tuner_config.name == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
@@ -348,18 +363,28 @@ class TuningTask:
                     instruments=instruments,
                 ):
                     lib = relay.build_module.build(
-                        relay_mod, target=self._task_connector.target(), params=params
+                        relay_mod,
+                        target=self._task_connector.target(),
+                        params=params,
+                        executor=executor,
+                        runtime=runtime,
                     )
         elif self.tuner_config.name == "autotvm":
             if Path(self.tuner_log_file).exists():
                 with autotvm.apply_history_best(self.tuner_log_file):
                     with tvm.transform.PassContext(
-                        opt_level=3, instruments=instruments, config=build_cfg
+                        opt_level=3,
+                        instruments=instruments,
+                        config=build_cfg,
+                        executor=executor,
+                        runtime=runtime,
                     ):
                         lib = relay.build_module.build(
                             relay_mod,
                             target=self._task_connector.target(),
                             params=params,
+                            executor=executor,
+                            runtime=runtime,
                         )
             else:
                 logger.critical("Could not find tuner logs in: %s", self.tuner_log_file)
@@ -367,7 +392,11 @@ class TuningTask:
                     opt_level=3, instruments=instruments, config=build_cfg
                 ):
                     lib = relay.build_module.build(
-                        relay_mod, target=self._task_connector.target(), params=params
+                        relay_mod,
+                        target=self._task_connector.target(),
+                        params=params,
+                        executor=executor,
+                        runtime=runtime,
                     )
 
         else:
@@ -380,6 +409,8 @@ class TuningTask:
                     relay_mod,
                     target=self._task_connector.target(),
                     params=params,
+                    executor=executor,
+                    runtime=runtime,
                 )
 
         main_func_metadata = lib.function_metadata[MAIN_FUNC_NAME_STR]

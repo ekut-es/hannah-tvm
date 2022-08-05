@@ -55,6 +55,18 @@ class MicroConfig:
 
 
 @dataclass
+class ExecutorConfig:
+    name: str
+    options: Dict[str, Any]
+
+
+@dataclass
+class RuntimeConfig:
+    name: str
+    options: Dict[str, Any]
+
+
+@dataclass
 class Board:
     name: Any = MISSING
     target: Any = "llvm"
@@ -64,6 +76,9 @@ class Board:
     cuda: bool = True
     rebuild_runtime: bool = False
     hardware_params: Optional[HardwareParams] = None
+    build: Dict[str, Any] = field(default_factory=dict)
+    executor: Optional[ExecutorConfig] = None
+    runtime: Optional[RuntimeConfig] = None
     micro: Any = None
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)

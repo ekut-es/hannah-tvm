@@ -50,6 +50,9 @@ PROJECT_OPTIONS = [
 
 
 class TGCProjectAPIHandler(server.ProjectAPIHandler):
+    # These files and directories will be recursively copied into generated projects from the CRT.
+    CRT_COPY_ITEMS = ("include", "Makefile", "src")
+
     def server_info_query(self, tvm_version: str) -> server.ServerInfo:
         return server.ServerInfo(
             "tgc_vp", IS_TEMPLATE, "" if IS_TEMPLATE else HERE / MODEL, PROJECT_OPTIONS
@@ -63,30 +66,31 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
         options: dict,
     ):
 
+        project_dir = pathlib.Path(project_dir)
+
+        # Make project directory.and copy ourselves
+        project_dir.mkdir(exist_ok=True)
+        shutil.copy2(__file__, project_dir / os.path.basename(__file__))
+
+        # Extract model
         self.model_library_format_path = model_library_format_path
         with tarfile.open(model_library_format_path) as tar:
-            tar.extractall(project_dir / "model")
-            graph = json.load(tar.extractfile("./executor-config/graph/graph.json"))
-            param_bytes = bytearray(
-                tar.extractfile("./parameters/default.params").read()
-            )
-            params = load_param_dict(param_bytes)
-            with open(project_dir / "build" / "runner.c", "w") as f:
-                pass
-                # TODO (gerum): add graph runner
-                # runner(graph, params, f)
+            tar.extractall(project_dir)
 
-        shutil.copy(__file__, project_dir)
+        # Copy Template files
+        template_path = pathlib.Path(__file__).parent / options["project_type"]
+        shutil.copytree(template_path, project_dir, dirs_exist_ok=True)
 
-        shutil.copy(HERE / "Makefile", project_dir)
-        shutil.copy(HERE / "runner.h", project_dir)
-        shutil.copy(HERE / "test.c", project_dir)
-        shutil.copy(HERE / "utvm_runtime_api.c", project_dir)
-        shutil.copy(HERE / "utvm_runtime_api.h", project_dir)
-
-        if os.path.exists("/tmp/utvm_project"):
-            shutil.rmtree("/tmp/utvm_project")
-        shutil.copytree(project_dir, "/tmp/utvm_project")
+        # Populate CRT.
+        crt_path = project_dir / "crt"
+        crt_path.mkdir()
+        for item in self.CRT_COPY_ITEMS:
+            src_path = os.path.join(standalone_crt_dir, item)
+            dst_path = crt_path / item
+            if os.path.isdir(src_path):
+                shutil.copytree(src_path, dst_path)
+            else:
+                shutil.copy2(src_path, dst_path)
 
     def build(self, options: dict):
         if IS_TEMPLATE:
@@ -94,10 +98,6 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
         subprocess.run(
             [
                 "make",
-                "conf",
-                "clean",
-                "all",
-                f"CONFIG_OPT='compiler={options['compiler']}'",
             ],
             timeout=30,
             cwd=HERE,
@@ -108,7 +108,7 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
             return
         with open(HERE / "cycles.txt", "wb") as out:
             subprocess.run(
-                ["make", "run", "-s", f"CONFIG_OPT='compiler={options['compiler']}'"],
+                ["make", "run", "-s"],
                 timeout=30,
                 cwd=HERE,
                 stdout=out,

@@ -4,7 +4,8 @@
         "iostream": "cpp",
         "iterator": "cpp",
         "*.ipp": "cpp",
-        "platform.h": "c"
+        "platform.h": "c",
+        "stack_allocator.h": "c"
     },
     "cmake.configureOnOpen": false,
     "cSpell.words": [
