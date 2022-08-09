@@ -341,6 +341,7 @@ class TuningTask:
             serialize = tvm.tir.transform.ConvertForLoopsToSerial()
             build_cfg["tir.add_lower_pass"] = [(1, serialize)]
 
+        # TODO (gerum): use target delegates
         executor = tvm.relay.backend.Executor("graph")
         if self.board_config.executor:
             executor = tvm.relay.backend.Executor(
@@ -376,8 +377,6 @@ class TuningTask:
                         opt_level=3,
                         instruments=instruments,
                         config=build_cfg,
-                        executor=executor,
-                        runtime=runtime,
                     ):
                         lib = relay.build_module.build(
                             relay_mod,

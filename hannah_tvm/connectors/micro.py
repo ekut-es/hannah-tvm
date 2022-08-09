@@ -20,19 +20,30 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import tvm
 from tvm import auto_scheduler, autotvm
 
+from hannah_tvm.micro.aot import AOTCompiledModel, AOTModel, build_aot_runner
+
 from ..micro.gvsoc_runner import GVSOCRunner
 from .core import BoardConnector, BuildArtifactHandle, TaskConnector
+
+
+@dataclass
+class MicroBuildArtifactHandle(BuildArtifactHandle):
+    project: Any  # TVM the generated microtvm project
+    project_dir: Path  # The project directory of the generated microtvm project
+    lib: Any  # TVM the built tvm lib
 
 
 class MicroTVMTaskConnector(TaskConnector):
     def __init__(self, board_config):
         self.board = board_config
         self._target = None
+        self._model = None
 
     def setup(self):
         self._target = tvm.target.Target(self.board.target, host=self.board.target_host)
@@ -50,12 +61,10 @@ class MicroTVMTaskConnector(TaskConnector):
                     Path(self.board.micro.template_dir) / "host_driven"
                 )
             else:
-                raise Exception("Autotuning is not supported on board")
+                raise Exception("Autotuner is not supported on this board")
+        else:
+            raise Exception(f"{tuner} is not supported on this board")
 
-        elif tuner == "auto_scheduler":
-            runner = auto_scheduler.RPCRunner(
-                key=self.board.name, host="localhost", port=self._tracker_port
-            )
         return runner
 
     def builder(self, tuner=None):
@@ -66,22 +75,38 @@ class MicroTVMTaskConnector(TaskConnector):
             builder = "local"
         return builder
 
-    def upload(self, mod):
-        for i, m in enumerate(mod.module._collect_dso_modules()):
-            (self.project_dir / "build").mkdir(exist_ok=True, parents=True)
-            with open(self.project_dir / "build" / f"lib{i}.ll", "w") as file:
-                file.write(m.get_source())
-        return tvm.micro.generate_project(
+    def upload(self, mod) -> MicroBuildArtifactHandle:
+        project = tvm.micro.generate_project(
             self.board.micro.template_dir,
             mod,
             self.project_dir,
             dict(self.board.micro.project_options),
         )
 
-    def measure(self, handle, inputs):
+        for i, m in enumerate(mod.module._collect_dso_modules()):
+            if m.format == "llvm":
+                ext = "ll"
+            else:
+                continue
 
-        handle.build()
-        handle.flash()
+            (self.project_dir / "src").mkdir(exist_ok=True, parents=True)
+            with open(self.project_dir / "src" / f"lib{i}.{ext}", "w") as file:
+                file.write(m.get_source())
+
+        handle = MicroBuildArtifactHandle(project, self.project_dir, mod)
+        return handle
+
+    def measure(self, handle: MicroBuildArtifactHandle, inputs):
+        # In case of an AOT build add inputs to build
+        if self.board.executor and self.board.executor.name == "aot":
+
+            model = AOTModel(handle.lib.ir_mod, inputs=inputs, outputs={})
+            compiled_model = AOTCompiledModel(model, handle.lib)
+            build_aot_runner([compiled_model], target_dir=self.project_dir)
+
+        project = handle.project
+        project.build()
+        project.flash()
 
         if self.board.rpc_runner == "gvsoc":
             with open(self.project_dir / "cycles.txt", "r") as f:

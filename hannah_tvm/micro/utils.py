@@ -16,12 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import logging
 import os
+import pathlib
 import shutil
+import string
 from pathlib import Path
 from typing import Iterable, Optional
 
+import tvm
 from tvm.micro.build import get_standalone_crt_dir
+
+logger = logging.getLogger(__name__)
 
 CRT_COPY_ITEMS = ("include", "Makefile", "src")
 

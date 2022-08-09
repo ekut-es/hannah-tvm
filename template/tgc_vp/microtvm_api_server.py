@@ -20,14 +20,14 @@ import json
 import os
 import pathlib
 import shutil
+import string
 import subprocess
 import tarfile
 import typing
 
+import tvm
 import tvm.micro.project_api.server as server
 from tvm.relay import load_param_dict
-
-from hannah_tvm.micro.utils import populate_crt
 
 HERE = pathlib.Path(__file__).parent
 MODEL = "model.tar"
@@ -87,9 +87,17 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
         template_path = pathlib.Path(__file__).parent / options["project_type"]
         shutil.copytree(template_path, project_dir, dirs_exist_ok=True)
 
+        metadata_path = project_dir / "metadata.json"
+        with metadata_path.open() as metadata_file:
+            metadata = json.load(metadata_file)
+        print("Module Metadata:")
+        print("================")
+        print(json.dumps(metadata, indent=4))
+
     def build(self, options: dict):
         if IS_TEMPLATE:
             return
+
         subprocess.run(
             [
                 "make",

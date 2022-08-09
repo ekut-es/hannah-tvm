@@ -2,7 +2,7 @@ TARGET  = aot_runner
 C_SRCS  = $(wildcard *.c) $(wildcard runtime/src/runtime/crt/*/*.c) $(wildcard cxx_support/*.c) $(wildcard codegen/host/src/*.c)
 CXX_SRCS = $(wildcard *.cc) $(wildcard runtime/src/runtime/crt/*/*.cc) $(wildcard cxx_support/*.cc)
 HEADERS = $(wildcard *.h)
-CFLAGS += -O0 -g -Iruntime/include -I. -I codegen/host/include -ffunction-sections -fdata-sections
+CFLAGS += -O0 -g -Iinclude -Iruntime/include -I. -I codegen/host/include -ffunction-sections -fdata-sections
 CXXFLAGS += -O0 -g -fno-exceptions -fno-rtti -ffunction-sections -fdata-sections
 
 BOARD=tgfs-vp
