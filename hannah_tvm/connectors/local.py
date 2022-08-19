@@ -75,7 +75,7 @@ class LocalTaskConnector(TaskConnector):
         # Upload module to device
         return LocalBuildArtifactHandle(lib)
 
-    def measure(self, remote_handle, inputs):
+    def measure(self, remote_handle, inputs, reference_outputs):
         dev = self._remote_dev()
         lib = remote_handle.lib
         module = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))

@@ -63,7 +63,7 @@ class AOTModel(NamedTuple):
         IRModule to generate AOT executor for
     inputs: Dict[str, np.array]
         Dict of input names to value arrays
-    outputs: List[np.array]
+    outputs: Dict[str, np.array]
         Dict of output names to value arrays
     output_tolerance: Optional[Union[int, float]]
         Allowed tolerance of the output
@@ -553,7 +553,7 @@ def build_aot_runner(
     """This function generates a main function and associated data files to run models compiled for AOT runner
 
     Args:
-        model (_type_): _description_
+        model (List[AOTModel]): _description_
         prologue (str): Code to prepend to the main function
         epilogue (str): Code to append to the main function
         includes (List[str]): Additional includes required to run the AOT test runner
@@ -585,6 +585,7 @@ def build_aot_runner(
             model = compiled_model.model
             workspace_bytes += model.extra_memory_in_bytes
             for key in model.inputs:
+                print("Creating input:", key)
                 sanitized_tensor_name = re.sub(r"\W", "_", key)
                 _create_header_file(
                     f'{_mangle_name(model.name, "input_data")}_{sanitized_tensor_name}',
@@ -594,6 +595,7 @@ def build_aot_runner(
                 )
 
             for key in model.outputs:
+                print("Creating output:", key)
                 sanitized_tensor_name = re.sub(r"\W", "_", key)
                 _create_header_file(
                     f'{_mangle_name(model.name, "output_data")}_{sanitized_tensor_name}',

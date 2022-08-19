@@ -53,7 +53,7 @@ class TaskConnector(ABC):
         pass
 
     @abstractmethod
-    def measure(self, handle, inputs):
+    def measure(self, handle, inputs, reference_outputs):
         """Measure a full neural network"""
         pass
 

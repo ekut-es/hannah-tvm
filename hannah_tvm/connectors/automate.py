@@ -96,7 +96,7 @@ class AutomateTaskConnector(TaskConnector):
         logger.info("Upload finished")
         return AutomateBuildArtifactHandle(remote, rlib, lib)
 
-    def measure(self, remote_handle, inputs):
+    def measure(self, remote_handle, inputs, reference_outputs):
         dev = self._remote_dev(remote_handle.remote)
         rlib = remote_handle.rlib
         lib = remote_handle.lib

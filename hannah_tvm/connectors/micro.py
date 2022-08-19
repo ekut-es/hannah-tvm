@@ -96,11 +96,15 @@ class MicroTVMTaskConnector(TaskConnector):
         handle = MicroBuildArtifactHandle(project, self.project_dir, mod)
         return handle
 
-    def measure(self, handle: MicroBuildArtifactHandle, inputs):
+    def measure(self, handle: MicroBuildArtifactHandle, inputs, reference_outputs):
         # In case of an AOT build add inputs to build
         if self.board.executor and self.board.executor.name == "aot":
 
-            model = AOTModel(handle.lib.ir_mod, inputs=inputs, outputs={})
+            model = AOTModel(
+                handle.lib.ir_mod,
+                inputs=inputs,
+                outputs=reference_outputs if reference_outputs else {},
+            )
             compiled_model = AOTCompiledModel(model, handle.lib)
             build_aot_runner([compiled_model], target_dir=self.project_dir)
 
