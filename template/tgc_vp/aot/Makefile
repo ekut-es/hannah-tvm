@@ -9,7 +9,7 @@ BOARD=tgfs-vp
 LINK_TARGET=flash
 RISCV_ARCH:=rv32i
 RISCV_ABI:=ilp32
-LDFLAGS := -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -Wl,--gc-sections
+LDFLAGS := -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -Wl,--gc-sections -lm
 
 compiler := $(shell which riscv32-unknown-elf-gcc)
 TOOL_DIR=$(dir $(compiler))
