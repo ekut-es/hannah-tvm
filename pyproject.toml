@@ -33,7 +33,7 @@ graphviz = "^0.19.1"
 
 pyserial = {version="^3.5", optional=true}
 usb = {version="^0.0.83-alpha.0", optional=true}
-west =  {version="^0.11.0", optional=true}
+west =  "^0.13.1"
 onnxoptimizer = "^0.2.6"
 xgboost = "1.5.2"
 dash = {version="^2.3.1", optional=true}
@@ -43,6 +43,7 @@ PTable = {version="^0.9.2", optional=true}
 #automate = {path = "external/automate", optional = true, extras = ["postgres"], develop = true}
 #jinja2 = {version = ">3.0,<3.1", optional = true}
 #automate = {git = "git@atreus.informatik.uni-tuebingen.de:ties/timing/schrank/automate.git", optional = true, extras = ["postgres"], develop = true}
+board-automate = {version="^0.1.0", optional = true, extras = ["postgres"]}
 
 
 [tool.poetry.scripts]
@@ -52,7 +53,7 @@ hannah-tvm-memory = 'hannah_tvm.analysis:memory_main'
 hannah-tvm-dashboard = 'hannah_tvm.dashboard.app:main'
 
 [tool.poetry.extras]
-#automate = ["automate", "jinja2"]
+automate = ["board-automate"]
 micro = ["pyserial", "usb", "west", "PTable"]
 dash = ["dash"]
 
