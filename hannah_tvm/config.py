@@ -109,8 +109,20 @@ class Config:
     tuner: Optional[TunerConfig] = None
 
 
+@dataclass
+class BackendConfig:
+    _target_: str = "hannah_tvm.backend.TVMBackend"
+    val_batches: int = 1
+    test_batches: int = 1
+    val_frequency: int = 1
+    board: Board = MISSING
+    tuner: Optional[TunerConfig] = None
+
+
 cs = ConfigStore.instance()
 cs.store(name="base_config", node=Config)
+
+cs.store(group="backend", name="base_tvm", node=BackendConfig)
 
 
 # Custom OmegaConf resolvers
