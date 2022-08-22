@@ -24,6 +24,8 @@ def build(setup_kwargs: Dict[str, Any]) -> Dict[str, Any]:
     print("Building byod extension for arbitrary precision datatypes")
     print("setup_kwargs", setup_kwargs)
 
+    raise Exception("test")
+
     subprocess.check_call("make", cwd="hannah_tvm/datatypes")
 
     return setup_kwargs
