@@ -25,11 +25,11 @@ import numpy as np
 import torch
 import tvm
 import tvm.relay
-from hannah.callbacks.backends import InferenceBackendBase
+from hannah_tvm.connectors import init_board_connector
 from tvm.auto_scheduler.measure import prepare_input_map
 from tvm.contrib import utils
 
-from hannah_tvm.connectors import init_board_connector
+from hannah.callbacks.backends import InferenceBackendBase
 
 from . import pass_instrument
 from .config import Board, TunerConfig
@@ -102,7 +102,25 @@ class TVMBackend(InferenceBackendBase):
 
         task_connector = self._connector.task_connector()
 
-        model_config = ModelConfig(mod, params, model.example_feature_array)
+        input_names = []
+        input_types = []
+        for gvar, func in mod.functions.items():
+            if gvar.name_hint == "main":
+                for param in func.params:
+                    if param.name_hint not in params:
+                        input_names.append(param.name_hint)
+                        input_types.append(param.type_annotation.dtype)
+
+        assert len(input_names) == 1
+
+        input = model.example_feature_array.detach()
+
+        if hasattr(model, "normalizer"):
+            input = model.normalizer(input)
+        input = input.numpy()
+        input = input.astype(input_types[0])
+
+        model_config = ModelConfig(mod, params, {input_names[0]: input})
         # FIXME (gerum): set a proper model key
         model_key = "backend_model"
 

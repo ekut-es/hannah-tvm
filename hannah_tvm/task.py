@@ -36,14 +36,13 @@ import tvm.contrib.debugger.debug_runtime
 import tvm.relay as relay
 import tvm.rpc
 import tvm.rpc.tracker
-from matplotlib.style import available
-from omegaconf import OmegaConf
-from tvm.auto_scheduler.measure_record import dump_record_to_string
-
 from hannah_tvm.dataset import PerformanceDataset
 from hannah_tvm.tuner.autotvm.callbacks import (
     progress_callback as autotvm_progress_callback,
 )
+from matplotlib.style import available
+from omegaconf import OmegaConf
+from tvm.auto_scheduler.measure_record import dump_record_to_string
 
 from . import config as _config  # noqa
 from . import load, pass_instrument
@@ -69,8 +68,8 @@ class TaskStatus(enum.IntEnum):
 @dataclass
 class ModelConfig:
     mod: tvm.IRModule
-    params: Any
-    inputs: Any
+    params: Dict[str, np.ndarray]
+    inputs: Dict[str, np.ndarray]
 
 
 class TuningTask:

@@ -19,4 +19,5 @@
 defaults:
   - base_tvm
   - board: tgc_vp
+  - tuner: baseline
   - _self_
