@@ -636,7 +636,17 @@ def build_aot_runner(
 
 
 def generate_ref_data(mod, input_data, params=None, target="llvm"):
-    """Generate reference data through executing the relay module"""
+    """Generate reference data through executing the relay module
+
+    Args:
+        mod (tvm.ir.Module): the module containing the main function for the neural network
+        input_data (Dict[str, np.ndarray]): the input data for the neural network
+        params (Dict[str, np.ndarray], optional): The parameters of of the neural network
+        target (str, optional): tvm target to use for generation of reference data. Defaults to "llvm".
+
+    Returns:
+        Dict[str, np.ndarray]: Mapping of output tensor name to reference outputs
+    """
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=target, params=params)
 

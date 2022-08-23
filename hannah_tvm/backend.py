@@ -25,11 +25,11 @@ import numpy as np
 import torch
 import tvm
 import tvm.relay
-from hannah_tvm.connectors import init_board_connector
+from hannah.callbacks.backends import InferenceBackendBase
 from tvm.auto_scheduler.measure import prepare_input_map
 from tvm.contrib import utils
 
-from hannah.callbacks.backends import InferenceBackendBase
+from hannah_tvm.connectors import init_board_connector
 
 from . import pass_instrument
 from .config import Board, TunerConfig
