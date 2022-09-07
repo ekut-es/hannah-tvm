@@ -42,6 +42,23 @@ class HardwareParams:
 
 
 @dataclass
+class AOTConfig:
+    """Configuration for microtvm AOT code generation"""
+
+    prologue: str = ""
+    epilogue: str = ""
+    includes: List[str] = field(default_factory=list)
+    pass_config: Dict[str, Any] = field(default_factory=dict)
+    interface_api: str = "c"
+    workspace_byte_alignment: int = 8
+    constant_byte_alignment: int = 8
+    # FIXME: support linkage sections
+    # data_linkage: AOTDataLinkage = None
+    use_workspace_io: bool = False
+    workspace_bytes: int = 256 * 1024
+
+
+@dataclass
 class MicroConfig:
     "MicroTVM configuration"
     compiler: Any
@@ -52,18 +69,7 @@ class MicroConfig:
     ldflags: List[str] = field(default_factory=list)
     include_dirs: List[str] = field(default_factory=list)
     libs: List[str] = field(default_factory=list)
-
-
-@dataclass
-class ExecutorConfig:
-    name: str
-    options: Dict[str, Any]
-
-
-@dataclass
-class RuntimeConfig:
-    name: str
-    options: Dict[str, Any]
+    aot: Optional[AOTConfig] = None
 
 
 @dataclass
@@ -72,13 +78,11 @@ class Board:
     target: Any = "llvm"
     target_host: Any = ""
     tracker: Optional[str] = None
-    opencl: bool = True
-    cuda: bool = True
+    opencl: bool = False
+    cuda: bool = False
     rebuild_runtime: bool = False
     hardware_params: Optional[HardwareParams] = None
     build: Dict[str, Any] = field(default_factory=dict)
-    executor: Optional[ExecutorConfig] = None
-    runtime: Optional[RuntimeConfig] = None
     micro: Any = None
     setup: List[str] = field(default_factory=list)
     teardown: List[str] = field(default_factory=list)
@@ -121,7 +125,7 @@ class BackendConfig:
 
 cs = ConfigStore.instance()
 cs.store(name="base_config", node=Config)
-
+cs.store(group="board", name="base_board", node=Board)
 cs.store(group="backend", name="base_tvm", node=BackendConfig)
 
 

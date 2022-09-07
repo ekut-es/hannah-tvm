@@ -98,8 +98,7 @@ class MicroTVMTaskConnector(TaskConnector):
 
     def measure(self, handle: MicroBuildArtifactHandle, inputs, reference_outputs):
         # In case of an AOT build add inputs to build
-        if self.board.executor and self.board.executor.name == "aot":
-
+        if self.board.micro.aot:
             model = AOTModel(
                 handle.lib.ir_mod,
                 inputs=inputs,
@@ -120,7 +119,7 @@ class MicroTVMTaskConnector(TaskConnector):
                     cycles = int(match.group(1))
                     return np.array([cycles])
 
-        return np.array([])
+        return np.array([-1])
 
     def profile(self, handle, inputs):
         pass

@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Common functions for AOT test cases"""
+"""Common functions for AOT model generation"""
 import datetime
 import logging
 import os

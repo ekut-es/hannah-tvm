@@ -345,23 +345,30 @@ class TuningTask:
         elif str(target.kind) == "c" or self.board_config.disable_vectorize is True:
             build_cfg = {"tir.disable_vectorize": True}
 
+        executor = tvm.relay.backend.Executor("graph")
+        runtime = tvm.relay.backend.Runtime("crt")
         if self.board_config.micro:
             serialize = tvm.tir.transform.ConvertForLoopsToSerial()
             build_cfg["tir.add_lower_pass"] = [(1, serialize)]
 
-        # TODO (gerum): use target delegates
-        executor = tvm.relay.backend.Executor("graph")
-        if self.board_config.executor:
-            executor = tvm.relay.backend.Executor(
-                self.board_config.executor.name,
-                dict(self.board_config.executor.options),
-            )
+            if self.board_config.micro.aot:
+                aot_config = self.board_config.micro.aot
+                build_cfg.update(aot_config.pass_config)
 
-        runtime = tvm.relay.backend.Runtime("crt")
-        if self.board_config.runtime:
-            runtime = tvm.relay.backend.Runtime(
-                self.board_config.runtime.name, dict(self.board_config.runtime.options)
-            )
+                runtime = tvm.relay.backend.Runtime("crt")
+                executor = tvm.relay.backend.Executor(
+                    "aot",
+                    {
+                        "workspace-byte-alignment": aot_config.get(
+                            "workspace_byte_alignment", 8
+                        ),
+                        "constant-byte-alignment": aot_config.get(
+                            "constant_byte_alignment", 8
+                        ),
+                        "interface-api": aot_config.get("interface_api", "c"),
+                        "unpacked-api": aot_config.get("use_unpacked_api", True),
+                    },
+                )
 
         if self.tuner_config.name == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):

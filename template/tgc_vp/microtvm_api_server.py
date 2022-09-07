@@ -112,7 +112,7 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
 
         subprocess.run(
             ["make", "run", "-s"],
-            timeout=30,
+            timeout=180,
             cwd=HERE,
         )
 
