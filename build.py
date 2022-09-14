@@ -17,13 +17,18 @@
 # limitations under the License.
 #
 import subprocess
+from pathlib import Path
 from typing import Any, Dict
 
 
 def build(setup_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    path = Path(__file__).parent
+    datatypes_build_dir = path / "hannah_tvm" / "datatypes"
+
     print("Building byod extension for arbitrary precision datatypes")
     print("setup_kwargs", setup_kwargs)
+    print("Project path:", path)
 
-    subprocess.check_call("make", cwd="hannah_tvm/datatypes")
+    subprocess.check_call("make", cwd=datatypes_build_dir)
 
     return setup_kwargs

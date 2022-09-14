@@ -27,6 +27,7 @@ variables:
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: noninteractive
+  PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
 
 before_script:
   - apt-get update

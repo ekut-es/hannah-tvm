@@ -55,7 +55,6 @@ micro = ["pyserial", "usb", "PTable", "west"]
 dash = ["dash"]
 
 [tool.poetry.dev-dependencies]
-flake8 = ">=3.9.0"
 black = ">=22.3.0"
 pre-commit = ">=2.12.1"
 pytest = ">=6.2.5"
