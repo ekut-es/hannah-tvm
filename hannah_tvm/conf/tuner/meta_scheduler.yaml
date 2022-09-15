@@ -16,8 +16,4 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-defaults:
-  - base_tvm
-  - board: tgc_vp
-  - tuner: baseline
-  - _self_
+name: meta_scheduler

@@ -16,6 +16,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+
 stages:
   - build
   - test
@@ -26,14 +27,15 @@ variables:
   POETRY_HOME: "$CI_PROJECT_DIR/.poetry"
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: noninteractive
+  PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
 
 before_script:
   - apt-get update
   - apt-get install -y wget build-essential pkg-config python3-dev curl ninja-build cmake g++ git python3-setuptools gcc libtinfo-dev zlib1g-dev build-essential cmake libedit-dev libxml2-dev llvm-dev libclang-dev
-  - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
+  - curl -sSL https://install.python-poetry.org/ | python3 -
   - export PATH=${POETRY_HOME}/bin:${PATH}
   - poetry config experimental.new-installer false
-  - poetry install -E automate
+  - poetry install
 
 sca:
   stage: build

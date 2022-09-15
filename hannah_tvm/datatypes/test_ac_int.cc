@@ -16,6 +16,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-void operator delete(void*, unsigned int){
+#include <ac_int.h>
 
+#include <iostream>
+
+#define SIZE 65
+
+int main(int argc, char const *argv[])
+{
+    ac_int<SIZE,true> val;
+
+
+    std::cout << "Size of " << SIZE << " bit ac_int: " << sizeof(val) << std::endl;
+
+    return 0;
 }

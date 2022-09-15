@@ -1,8 +1,11 @@
 *.pyc
 *.o
+*.so
 *.a
+*.dis
+ac_int.cc
 zephyrproject/
 outputs/
 poetry.lock
-
+*.egg-info/
 .vscode/*.log

@@ -20,10 +20,12 @@ import json
 import os
 import pathlib
 import shutil
+import string
 import subprocess
 import tarfile
 import typing
 
+import tvm
 import tvm.micro.project_api.server as server
 from tvm.relay import load_param_dict
 
@@ -50,6 +52,9 @@ PROJECT_OPTIONS = [
 
 
 class TGCProjectAPIHandler(server.ProjectAPIHandler):
+    # These files and directories will be recursively copied into generated projects from the CRT.
+    CRT_COPY_ITEMS = ("include", "Makefile", "src")
+
     def server_info_query(self, tvm_version: str) -> server.ServerInfo:
         return server.ServerInfo(
             "tgc_vp", IS_TEMPLATE, "" if IS_TEMPLATE else HERE / MODEL, PROJECT_OPTIONS
@@ -63,41 +68,39 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
         options: dict,
     ):
 
+        project_dir = pathlib.Path(project_dir)
+
+        # Make project directory.and copy ourselves
+        project_dir.mkdir(exist_ok=True)
+        shutil.copy2(__file__, project_dir / os.path.basename(__file__))
+
+        # Extract model
         self.model_library_format_path = model_library_format_path
         with tarfile.open(model_library_format_path) as tar:
-            tar.extractall(project_dir / "model")
-            graph = json.load(tar.extractfile("./executor-config/graph/graph.json"))
-            param_bytes = bytearray(
-                tar.extractfile("./parameters/default.params").read()
-            )
-            params = load_param_dict(param_bytes)
-            with open(project_dir / "build" / "runner.c", "w") as f:
-                pass
-                # TODO (gerum): add graph runner
-                # runner(graph, params, f)
+            tar.extractall(project_dir)
 
-        shutil.copy(__file__, project_dir)
+        # Copy Common files
+        common_path = pathlib.Path(__file__).parent / ".." / "common"
+        shutil.copytree(common_path, project_dir, dirs_exist_ok=True)
 
-        shutil.copy(HERE / "Makefile", project_dir)
-        shutil.copy(HERE / "runner.h", project_dir)
-        shutil.copy(HERE / "test.c", project_dir)
-        shutil.copy(HERE / "utvm_runtime_api.c", project_dir)
-        shutil.copy(HERE / "utvm_runtime_api.h", project_dir)
+        # Copy Template files
+        template_path = pathlib.Path(__file__).parent / options["project_type"]
+        shutil.copytree(template_path, project_dir, dirs_exist_ok=True)
 
-        if os.path.exists("/tmp/utvm_project"):
-            shutil.rmtree("/tmp/utvm_project")
-        shutil.copytree(project_dir, "/tmp/utvm_project")
+        metadata_path = project_dir / "metadata.json"
+        with metadata_path.open() as metadata_file:
+            metadata = json.load(metadata_file)
+        print("Module Metadata:")
+        print("================")
+        print(json.dumps(metadata, indent=4))
 
     def build(self, options: dict):
         if IS_TEMPLATE:
             return
+
         subprocess.run(
             [
                 "make",
-                "conf",
-                "clean",
-                "all",
-                f"CONFIG_OPT='compiler={options['compiler']}'",
             ],
             timeout=30,
             cwd=HERE,
@@ -106,13 +109,12 @@ class TGCProjectAPIHandler(server.ProjectAPIHandler):
     def flash(self, options: dict):
         if IS_TEMPLATE:
             return
-        with open(HERE / "cycles.txt", "wb") as out:
-            subprocess.run(
-                ["make", "run", "-s", f"CONFIG_OPT='compiler={options['compiler']}'"],
-                timeout=30,
-                cwd=HERE,
-                stdout=out,
-            )
+
+        subprocess.run(
+            ["make", "run", "-s"],
+            timeout=180,
+            cwd=HERE,
+        )
 
     def write_transport(self, data: bytes, timeout_sec: float):
         return super().write_transport(data, timeout_sec)

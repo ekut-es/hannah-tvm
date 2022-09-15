@@ -19,6 +19,7 @@
 import copy
 import logging
 import sys
+from typing import Optional
 
 import numpy as np
 import torch
@@ -31,6 +32,7 @@ from tvm.contrib import utils
 from hannah_tvm.connectors import init_board_connector
 
 from . import pass_instrument
+from .config import Board, TunerConfig
 from .passes.legalize import LegalizeQuantizedTypes
 from .task import ModelConfig, TuningTask
 from .tracer import QuantizationTracer, RelayConverter
@@ -63,19 +65,20 @@ class TVMBackend(InferenceBackendBase):
 
     def __init__(
         self,
+        board: Board,
+        tuner: Optional[TunerConfig] = None,
         val_batches: int = 1,
         test_batches: int = 1,
         val_frequency: int = 1,
-        board=None,
-        tuner=None,
     ) -> None:
-        """Instantiate the tvm backend for
+        """Instantiate the tvm backend for a target board and tuner configuration
 
         Args:
+            board (BoardConfig): Target board description
+            tuner (TunerConfig): Tuner configuration
             val_batches (int, optional): Number of batches to run through the backend on validation. Defaults to 1.
             test_batches (int, optional): Number of batches to run through the backend on testing. Defaults to 1.
             val_frequency (int, optional): Validate on every n batches. Defaults to 1.
-            board (OmegaconfDict[str, BoardConfig], optional): Dict of target board descriptions. Defaults to None.
         """
         super().__init__(val_batches, test_batches, val_frequency)
 
@@ -95,25 +98,40 @@ class TVMBackend(InferenceBackendBase):
         mod = tvm.relay.transform.InferType()(mod)
         mod = LegalizeQuantizedTypes()(mod)
 
-        assert len(self.board_config) == 1
-
-        self._connector = init_board_connector(list(self.board_config.values())[0])
+        self._connector = init_board_connector(self.board_config)
 
         task_connector = self._connector.task_connector()
 
-        model_config = ModelConfig(mod, params, model.example_feature_array)
+        input_names = []
+        input_types = []
+        for gvar, func in mod.functions.items():
+            if gvar.name_hint == "main":
+                for param in func.params:
+                    if param.name_hint not in params:
+                        input_names.append(param.name_hint)
+                        input_types.append(param.type_annotation.dtype)
+
+        assert len(input_names) == 1
+
+        input = model.example_feature_array.detach()
+
+        if hasattr(model, "normalizer"):
+            input = model.normalizer(input)
+        input = input.numpy()
+        input = input.astype(input_types[0])
+
+        model_config = ModelConfig(mod, params, {input_names[0]: input})
+        # FIXME (gerum): set a proper model key
         model_key = "backend_model"
 
-        for board_key, board_config in self.board_config.items():
-            task = TuningTask(
-                board_config=board_config,
-                board_key=board_key,
-                model_key=model_key,
-                model_config=model_config,
-                task_connector=task_connector,
-                tuner=self.tuner_config,
-            )
-            task.run()
+        task = TuningTask(
+            board_config=self.board_config,
+            model_key=model_key,
+            model_config=model_config,
+            task_connector=task_connector,
+            tuner=self.tuner_config,
+        )
+        task.run()
 
     def characterize(self, model):
         self.prepare(model)

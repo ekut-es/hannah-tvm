@@ -285,3 +285,7 @@ set(USE_PAPI OFF)
 # Aborted (core dumped)
 # Reference: https://github.com/apache/tvm/issues/9362
 set(HIDE_PRIVATE_SYMBOLS ON)
+
+
+# Enable UMA
+set(USE_UMA ON)

@@ -26,7 +26,7 @@ import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from re import M
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import tvm
@@ -47,6 +47,7 @@ from hannah_tvm.tuner.autotvm.callbacks import (
 
 from . import config as _config  # noqa
 from . import load, pass_instrument
+from .micro.aot import generate_ref_data
 from .pass_instrument import PrintIR
 
 logger = logging.getLogger(__name__)
@@ -68,8 +69,8 @@ class TaskStatus(enum.IntEnum):
 @dataclass
 class ModelConfig:
     mod: tvm.IRModule
-    params: Any
-    inputs: Any
+    params: Dict[str, np.ndarray]
+    inputs: Dict[str, np.ndarray]
 
 
 class TuningTask:
@@ -82,6 +83,7 @@ class TuningTask:
         model_config,
         task_connector,
         tuner=None,
+        verbose=True,
     ):
         self._task_connector = task_connector
         self.model_key = model_key
@@ -90,6 +92,7 @@ class TuningTask:
         self.tuner_config = tuner
         tuner_name = self.tuner_config.name if self.tuner_config else "baseline"
         self.tuner_log_file = f"{board_config.name}_{model_key}_{tuner_name}.json"
+        self.verbose = verbose
 
         self.results = {}
 
@@ -99,6 +102,7 @@ class TuningTask:
 
         self.name = f"tuning-task-{board_config.name}-{model_key}"
         self.dataset: Optional[PerformanceDataset] = None
+        self.reference_outputs: Sequence[np.dtype] = []
 
         self.status = TaskStatus.CREATED
 
@@ -118,6 +122,9 @@ class TuningTask:
                 )
             else:
                 relay_mod, params, inputs = load.load_model(self.model_config)
+
+            # FIXME: Allow to specifiy reference outputs in config
+            self.reference_outputs = generate_ref_data(relay_mod, inputs, params)
 
             if self.board_config.desired_layouts:
                 desired_layouts = self.board_config.desired_layouts
@@ -326,18 +333,42 @@ class TuningTask:
     def _build(self, relay_mod, params):
         logger.info("Compile...")
 
-        # instruments=[pass_instrument.PrintIR("all")]
         instruments = []
+        if self.verbose:
+            instruments.append(pass_instrument.PrintIR("all"))
 
         target = self._task_connector.target()
 
         build_cfg = {}
-        if str(target.kind) == "c" or self.board_config.disable_vectorize is True:
+        if self.board_config.build:
+            build_cfg.update(self.board_config.build)
+        elif str(target.kind) == "c" or self.board_config.disable_vectorize is True:
             build_cfg = {"tir.disable_vectorize": True}
 
+        executor = tvm.relay.backend.Executor("graph")
+        runtime = tvm.relay.backend.Runtime("crt")
         if self.board_config.micro:
             serialize = tvm.tir.transform.ConvertForLoopsToSerial()
             build_cfg["tir.add_lower_pass"] = [(1, serialize)]
+
+            if self.board_config.micro.aot:
+                aot_config = self.board_config.micro.aot
+                build_cfg.update(aot_config.pass_config)
+
+                runtime = tvm.relay.backend.Runtime("crt")
+                executor = tvm.relay.backend.Executor(
+                    "aot",
+                    {
+                        "workspace-byte-alignment": aot_config.get(
+                            "workspace_byte_alignment", 8
+                        ),
+                        "constant-byte-alignment": aot_config.get(
+                            "constant_byte_alignment", 8
+                        ),
+                        "interface-api": aot_config.get("interface_api", "c"),
+                        "unpacked-api": aot_config.get("use_unpacked_api", True),
+                    },
+                )
 
         if self.tuner_config.name == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
@@ -348,18 +379,26 @@ class TuningTask:
                     instruments=instruments,
                 ):
                     lib = relay.build_module.build(
-                        relay_mod, target=self._task_connector.target(), params=params
+                        relay_mod,
+                        target=self._task_connector.target(),
+                        params=params,
+                        executor=executor,
+                        runtime=runtime,
                     )
         elif self.tuner_config.name == "autotvm":
             if Path(self.tuner_log_file).exists():
                 with autotvm.apply_history_best(self.tuner_log_file):
                     with tvm.transform.PassContext(
-                        opt_level=3, instruments=instruments, config=build_cfg
+                        opt_level=3,
+                        instruments=instruments,
+                        config=build_cfg,
                     ):
                         lib = relay.build_module.build(
                             relay_mod,
                             target=self._task_connector.target(),
                             params=params,
+                            executor=executor,
+                            runtime=runtime,
                         )
             else:
                 logger.critical("Could not find tuner logs in: %s", self.tuner_log_file)
@@ -367,7 +406,11 @@ class TuningTask:
                     opt_level=3, instruments=instruments, config=build_cfg
                 ):
                     lib = relay.build_module.build(
-                        relay_mod, target=self._task_connector.target(), params=params
+                        relay_mod,
+                        target=self._task_connector.target(),
+                        params=params,
+                        executor=executor,
+                        runtime=runtime,
                     )
 
         else:
@@ -380,6 +423,8 @@ class TuningTask:
                     relay_mod,
                     target=self._task_connector.target(),
                     params=params,
+                    executor=executor,
+                    runtime=runtime,
                 )
 
         main_func_metadata = lib.function_metadata[MAIN_FUNC_NAME_STR]
@@ -411,7 +456,9 @@ class TuningTask:
         # Create graph executor
         logger.info("Start evaluation")
 
-        prof_res = self._task_connector.measure(remote_handle, inputs)
+        prof_res = self._task_connector.measure(
+            remote_handle, inputs, self.reference_outputs
+        )
 
         logger.info(
             "Mean inference time (std dev): %.2f us (%.2f us)"

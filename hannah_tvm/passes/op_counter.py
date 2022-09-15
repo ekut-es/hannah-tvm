@@ -16,25 +16,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import logging
-
-import hydra
-from omegaconf import OmegaConf
-
-from .experiment_scheduler import TuningExperimentScheduler
-
-logger = logging.getLogger(__name__)
+import tvm
+import tvm.tir as tir
 
 
-@hydra.main(config_name="config", config_path="conf", version_base="1.2")
-def main(config):
-    logging.captureWarnings(True)
-    logger.info(OmegaConf.to_yaml(config))
+class OpCounter:
+    def __init__(self):
+        self.counts = 0
 
-    scheduler = TuningExperimentScheduler(config)
-    scheduler.run()
+    def __call__(self, f):
+        return self.count(f)
+
+    def count(self, f):
+        print(f.attrs)
 
 
-if __name__ == "__main__":
-    main()
+def op_counter():
+    counter = OpCounter()
+
+    return tvm.tir.transform.prim_func_pass(
+        counter, opt_level=0, name="hannah_tvm.tir.op_counter"
+    )
