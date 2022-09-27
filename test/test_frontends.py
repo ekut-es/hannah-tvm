@@ -31,6 +31,7 @@ import hannah_tvm.config  # noqa
 from hannah_tvm.tune import main
 
 
+@pytest.mark.xfail(reason="models have been removed")
 def test_tflite():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
