@@ -124,7 +124,7 @@ class BackendConfig:
 
 
 cs = ConfigStore.instance()
-cs.store(name="base_config", node=Config)
+cs.store(name="hannah_tvm_config", node=Config)
 cs.store(group="board", name="base_board", node=Board)
 cs.store(group="backend", name="base_tvm", node=BackendConfig)
 

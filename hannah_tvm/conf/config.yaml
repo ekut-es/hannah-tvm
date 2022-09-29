@@ -17,7 +17,7 @@
 ## limitations under the License.
 ##
 defaults:
-  - base_config
+  - hannah_tvm_config
   - board:
       - jetsonnano_cpu
       - jetsontx2_cpu

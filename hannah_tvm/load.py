@@ -20,6 +20,7 @@ import logging
 import sys
 from pathlib import Path
 
+import fsspec
 import numpy as np
 import tvm
 import tvm.relay as relay
@@ -39,7 +40,7 @@ def _load_torch(model_path, input_shapes):
         logger.error("Could not import torch, please make sure it is installed")
         sys.exit(-1)
 
-    script_model = torch.jit.load(model_path)
+    script_model = torch.jit.load(fsspec.open(model_path, "rb"))
 
     input_info = []
     for name, shape in input_shapes:
@@ -63,7 +64,9 @@ def _load_onnx(model_path, input_shapes):
         logger.error("Could not import onnx, please make sure it is installed")
         sys.exit(-1)
 
-    onnx_model = onnx.load(model_path)
+    model_file = fsspec.open(model_path)
+    with model_file as f:
+        onnx_model = onnx.load(f)
     onnx.checker.check_model(onnx_model)
     # onnx_model = onnx.version_converter.convert_version(onnx_model, 11)
     onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
@@ -142,35 +145,36 @@ def _load_tflite(model_path, input_shapes):
             assert model.SubgraphsLength() == 1
             g = model.Subgraphs(0)
 
-            self.inTensors = []
+            self.in_tensors = []
             for i in range(0, g.InputsLength()):
                 t = g.Tensors(g.Inputs(i))
-                self.inTensors.append(TensorInfo(t))
+                self.in_tensors.append(TensorInfo(t))
 
-            self.outTensors = []
+            self.out_tensors = []
             for i in range(0, g.OutputsLength()):
                 t = g.Tensors(g.Outputs(i))
-                self.outTensors.append(TensorInfo(t))
+                self.out_tensors.append(TensorInfo(t))
 
-    modelBuf = open(model_path, "rb").read()
+    model_file = fsspec.open(model_path, "rb").read()
 
-    tflModel = tflite.Model.GetRootAsModel(modelBuf, 0)
+    with model_file as model_buf:
+        tflite_model = tflite.Model.GetRootAsModel(model_buf, 0)
 
     shapes = {}
     types = {}
 
-    modelInfo = ModelInfo(tflModel)
-    for t in modelInfo.inTensors:
+    model_info = ModelInfo(tflite_model)
+    for t in model_info.in_tensors:
         logger.info(f'Input, "{t.name}" {t.ty} {t.shape}')
         shapes[t.name] = t.shape
         types[t.name] = t.ty
 
     mod, params = relay.frontend.from_tflite(
-        tflModel, shape_dict=shapes, dtype_dict=types
+        tflite_model, shape_dict=shapes, dtype_dict=types
     )
 
     inputs = {}
-    for tensor_info in modelInfo.inTensors:
+    for tensor_info in model_info.in_tensors:
         inputs[t.name] = np.random.uniform(size=t.shape).astype(t.ty)
 
     return mod, params, inputs
@@ -226,16 +230,18 @@ def _load_tensorflow(model_path, input_shapes):
 
 
 def load_model(model):
-    model_path = Path(to_absolute_path(model.file))
+    model_path = model.file
     input_shapes = model.input_shapes
 
-    if model_path.suffix == ".onnx":
+    suffix = model_path.split(".")[-1]
+
+    if suffix == "onnx":
         return _load_onnx(model_path, input_shapes)
-    elif model_path.suffix == ".pt":
+    elif suffix == "pt":
         return _load_torch(model_path, input_shapes)
-    elif model_path.suffix == ".tflite":
+    elif suffix == "tflite":
         return _load_tflite(model_path, input_shapes)
-    elif model_path.suffix == ".pb":
+    elif suffix == "pb":
         return _load_tensorflow(model_path, input_shapes)
     else:
-        raise Exception(f"File format not supported {model_path.suffix}")
+        raise Exception(f"File format not supported {suffix}")

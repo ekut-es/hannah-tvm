@@ -17,4 +17,4 @@
 ## limitations under the License.
 ##
 densenet-121:
-  file: ${models_dir:}/densenet-9.onnx
+  file: https://github.com/onnx/models/blob/main/vision/classification/densenet-121/model/densenet-9.onnx
