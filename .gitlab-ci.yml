@@ -118,6 +118,11 @@ deploy to github:
 
   only:
     - main
-  script: ./scripts/git-push git@github.com:ekut-es/hannah-tvm.git main
+  script:
+    - echo "Setting new url for tvm"
+    - git submodule set-url -- external/tvm https://github.com/ekut-es/tvm
+    - git commit -m "Change submodule url for tvm" -a
+    - echo "Pushing upstream"
+    - ./scripts/git-push git@github.com:ekut-es/hannah-tvm.git main
   tags:
     - docker

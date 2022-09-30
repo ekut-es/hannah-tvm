@@ -17,9 +17,10 @@
 # limitations under the License.
 #
 import logging
+import os
 import sys
-from pathlib import Path
 
+import appdirs
 import fsspec
 import numpy as np
 import tvm
@@ -29,6 +30,8 @@ from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
 
 logger = logging.getLogger("hannah-tvm.compile")
+
+cache_dir = appdirs.user_cache_dir("hannah-tvm")
 
 
 def _load_torch(model_path, input_shapes):
@@ -64,12 +67,15 @@ def _load_onnx(model_path, input_shapes):
         logger.error("Could not import onnx, please make sure it is installed")
         sys.exit(-1)
 
-    model_file = fsspec.open(model_path)
+    model_file = fsspec.open(
+        "filecache::" + model_path,
+        filecache={"cache_storage": os.path.join(cache_dir, "models")},
+    )
     with model_file as f:
         onnx_model = onnx.load(f)
-    onnx.checker.check_model(onnx_model)
-    # onnx_model = onnx.version_converter.convert_version(onnx_model, 11)
-    onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
+        onnx.checker.check_model(onnx_model)
+        # onnx_model = onnx.version_converter.convert_version(onnx_model, 11)
+        onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
     # onnx_model = onnxoptimizer.optimize(onnx_model, fixed_point=True)
 
     graph = onnx_model.graph
@@ -118,8 +124,7 @@ def _load_tflite(model_path, input_shapes):
         import tflite
         from tflite.TensorType import TensorType as TType
     except ModuleNotFoundError:
-        logger.error("Could not import tflite")
-        sys.exit(-1)
+        raise Exception("Could not import tflite")
 
     class TensorInfo:
         def __init__(self, t):
