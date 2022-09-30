@@ -123,7 +123,7 @@ deploy to github:
     - git config --global user.email "christoph.gerum@uni-tuebingen.de"
     - git config --global user.name "Christoph Gerum"
     - git submodule set-url -- external/tvm https://github.com/ekut-es/tvm
-    - git submodule sync
+    - git status
     - git commit -m "Change submodule url for tvm" -a
     - echo "Pushing upstream"
     - ./scripts/git-push git@github.com:ekut-es/hannah-tvm.git main
