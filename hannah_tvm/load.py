@@ -76,8 +76,6 @@ def _load_onnx(model_path, input_shapes):
         onnx.checker.check_model(onnx_model)
         # onnx_model = onnx.version_converter.convert_version(onnx_model, 11)
         onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
-    # onnx_model = onnxoptimizer.optimize(onnx_model, fixed_point=True)
-
     graph = onnx_model.graph
 
     type_map = {
