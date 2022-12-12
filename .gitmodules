@@ -1,6 +1,6 @@
 [submodule "external/tvm"]
 	path = external/tvm
-	url = ../../tvm/tvm.git
+	url = ../tvm.git
 [submodule "external/utvm_staticrt_codegen"]
 	path = external/utvm_staticrt_codegen
 	url = https://github.com/tum-ei-eda/utvm_staticrt_codegen.git
