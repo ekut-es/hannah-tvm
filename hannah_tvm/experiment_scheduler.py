@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -44,7 +44,7 @@ class ExperimentSchedulerBase(ABC):
         self.board_connector = None
 
     def _init_connectors(self):
-        connector = init_board_connector(self.config.board)
+        connector = init_board_connector(self.config.backend.board)
         self.board_connector = connector
 
     @abstractmethod
@@ -139,10 +139,10 @@ class TuningExperimentScheduler(ExperimentSchedulerBase):
 
             task = TuningTask(
                 model_name,
-                self.config.board,
+                self.config.backend.board,
                 model_config=model_config,
                 task_connector=self.board_connector.task_connector(),
-                tuner=self.config.tuner,
+                tuner=self.config.backend.tuner,
             )
             self.worklist.append(task)
             self.tasks.append(task)

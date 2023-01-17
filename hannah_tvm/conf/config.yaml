@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -18,11 +18,8 @@
 ##
 defaults:
   - hannah_tvm_config
-  - board:
-      - jetsonnano_cpu
-      - jetsontx2_cpu
-      - jetsonagx_cpu
-      - n1sdp
+  - backend/board: jetsonnano_cpu
+
   - model:
       - conv-net-trax
       - densenet-121
@@ -39,7 +36,7 @@ defaults:
       - tinyml_kws01
       - tinyml_vww01
       - resnext50-224
-  - tuner: autotvm
+  - backend/tuner: autotvm
   - override hydra/job_logging: silent
   - _self_
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -36,7 +36,11 @@ def test_tflite():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
-            overrides=["board=local_cpu", "tuner=baseline", "model=tinyml_ad01"],
+            overrides=[
+                "backend/board=local_cpu",
+                "backend/tuner=baseline",
+                "model=tinyml_ad01",
+            ],
         )
         main(cfg)
 
@@ -45,7 +49,11 @@ def test_onnx():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
-            overrides=["board=local_cpu", "tuner=baseline", "model=conv-net-trax"],
+            overrides=[
+                "backend/board=local_cpu",
+                "backend/tuner=baseline",
+                "model=conv-net-trax",
+            ],
         )
         main(cfg)
 
@@ -54,7 +62,11 @@ def test_pytorch():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
-            overrides=["board=local_cpu", "tuner=baseline", "model=resnext50-224"],
+            overrides=[
+                "backend/board=local_cpu",
+                "backend/tuner=baseline",
+                "model=resnext50-224",
+            ],
         )
         main(cfg)
 
