@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -16,9 +16,15 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-defaults:
-  - gvsoc_base
-  - _self_
+name: n1sdp
+target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mattr=v8.2a,+dotprod"
+target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mattr=v8.2a,+dotprod"
+opencl: false
+cuda: false
+rebuild_runtime: false
 
-name: gvsoc_c_generic
-target: "c -runtime=c -system-lib=1 --link-params=1"
+tracker: null
+hardware_params: null
+micro: null
+setup: []
+teardown: []

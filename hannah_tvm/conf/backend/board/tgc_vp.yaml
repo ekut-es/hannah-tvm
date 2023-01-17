@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -16,21 +16,29 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-name: gvsoc_c_generic
-target: MISSING
+defaults:
+  - base_board
+name: tgc_vp
+target: "c"
 target_host: null
 opencl: false
 cuda: false
+
 micro:
-  template_dir: ${template_dir:}/gvsoc/
+  template_dir: ${template_dir:}/tgc_vp/
   project_options:
-    project_type: host_driven
-    compiler: llvm
+    project_type: aot
+  aot:
+    pass_config:
+      tir.disable_vectorize: True
+      tir.disable_storage_rewrite: True
+      tir.usmp.enable: True
+      tir.usmp.algorithm: greedy_by_conflicts
+
 
 desired_layouts:
   nn.conv2d: ["NHWC", "default"]
   qnn.conv2d: ["NHWC", "default"]
   nn.conv1d: ["NWC", "OWI"]
 
-rpc_runner: gvsoc
 connector: micro

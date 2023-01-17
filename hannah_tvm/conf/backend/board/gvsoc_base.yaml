@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -16,14 +16,21 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-name: jetsonnano
-target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57"
-target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57"
-opencl: True
-cuda: True
-setup:
-  - sudo nvpmodel -m 0
-  - sudo jetson_clocks --fan
+name: gvsoc_c_generic
+target: MISSING
+target_host: null
+opencl: false
+cuda: false
+micro:
+  template_dir: ${template_dir:}/gvsoc/
+  project_options:
+    project_type: host_driven
+    compiler: llvm
 
-teardown:
-  - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang
+desired_layouts:
+  nn.conv2d: ["NHWC", "default"]
+  qnn.conv2d: ["NHWC", "default"]
+  nn.conv1d: ["NWC", "OWI"]
+
+rpc_runner: gvsoc
+connector: micro

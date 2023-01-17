@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -16,18 +16,4 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-name: jetsontx2
-target: "nvidia/jetson-tx2"
-target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -model=jetsontx2"
-opencl: False
-cuda: True
-rebuild_runtime: false
-hardware_params:
-  max_shared_memory_per_block: 65536
-
-setup:
-  - sudo nvpmodel -m 0
-  - sudo jetson_clocks --fan
-
-teardown:
-  - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang
+name: meta_scheduler

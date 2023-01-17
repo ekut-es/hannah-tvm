@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -107,13 +107,6 @@ class TunerConfig:
 
 
 @dataclass
-class Config:
-    board: Board = MISSING
-    model: Dict[str, Model] = MISSING
-    tuner: Optional[TunerConfig] = None
-
-
-@dataclass
 class BackendConfig:
     _target_: str = "hannah_tvm.backend.TVMBackend"
     val_batches: int = 1
@@ -123,11 +116,16 @@ class BackendConfig:
     tuner: Optional[TunerConfig] = None
 
 
+@dataclass
+class Config:
+    model: Dict[str, Model] = MISSING
+    backend: BackendConfig = MISSING
+
+
 cs = ConfigStore.instance()
 cs.store(name="hannah_tvm_config", node=Config)
-cs.store(group="board", name="base_board", node=Board)
 cs.store(group="backend", name="base_tvm", node=BackendConfig)
-
+cs.store(group="backend/board", name="base_board", node=Board)
 
 # Custom OmegaConf resolvers
 OmegaConf.register_new_resolver(

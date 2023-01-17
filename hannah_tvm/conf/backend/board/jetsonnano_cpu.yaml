@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -16,10 +16,10 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-name: jetsontx2
-target: "llvm -mtriple=aarch64-linux-gnu -mattr=+neon -device=arm_cpu"
-target_host: "llvm -mtriple=aarch64-linux-gnu -mattr=+neon -device=arm_cpu"
-opencl: False
+name: jetsonnano
+target: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57"
+target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -mcpu=cortex-a57"
+opencl: True
 cuda: True
 setup:
   - sudo nvpmodel -m 0

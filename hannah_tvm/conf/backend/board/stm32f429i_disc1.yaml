@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -16,14 +16,12 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-name: jetsonagx
-target: "cuda -arch=sm_72"
-target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
+name: stm32f429_disc1
+target: "c -mcpu=cortex-m4 -march=armv7e-m -runtime=c --system-lib=1 -model=stm32f4xx"
 opencl: false
-cuda: True
-setup:
-  - sudo nvpmodel -m 0
-  - sudo jetson_clocks --fan
-
-teardown:
-  - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang
+cuda: false
+micro:
+  template_dir: ${tvm_root:}/apps/microtvm/zephyr/template_project/
+  project_options:
+    project_type: host_driven
+    zephyr_board: stm32f429i_disc1
