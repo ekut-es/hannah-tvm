@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -346,7 +346,7 @@ class TuningTask:
             build_cfg = {"tir.disable_vectorize": True}
 
         executor = tvm.relay.backend.Executor("graph")
-        runtime = tvm.relay.backend.Runtime("crt")
+        runtime = tvm.relay.backend.Runtime("cpp")
         if self.board_config.micro:
             serialize = tvm.tir.transform.ConvertForLoopsToSerial()
             build_cfg["tir.add_lower_pass"] = [(1, serialize)]
