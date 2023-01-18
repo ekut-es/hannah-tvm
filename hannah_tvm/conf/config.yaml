@@ -26,17 +26,17 @@ defaults:
       - efficientnet-lite4
       - efficientnet-lite4-int8
       - mobilenet-v2
-      - resnet-18
-      - resnet-50
-      - shufflenet
-      - squeezenet-1.1
-      - vgg16
-      - vgg19
-      - tinyml_ad01
-      - tinyml_ic01
-      - tinyml_kws01
-      - tinyml_vww01
-      - resnext50-224
+      #- resnet-18
+      #- resnet-50
+      #- shufflenet
+      #- squeezenet-1.1
+      #- vgg16
+      #- vgg19
+      #- tinyml_ad01
+      #- tinyml_ic01
+      #- tinyml_kws01
+      #- tinyml_vww01
+      #- resnext50-224
   - backend/tuner: autotvm
   - override hydra/job_logging: silent
   - _self_
