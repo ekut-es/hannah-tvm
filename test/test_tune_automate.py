@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -46,7 +46,11 @@ def test_auto_scheduler(board, tuner, model):
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
-            overrides=[f"model={model}", f"board={board}", f"tuner={tuner}"],
+            overrides=[
+                f"model={model}",
+                f"backend/board={board}",
+                f"backend/tuner={tuner}",
+            ],
         )
 
         current_automate_context = automate_context()
@@ -54,20 +58,17 @@ def test_auto_scheduler(board, tuner, model):
         locked_boards = []
         try:
             have_lock = False
-            for id, config in cfg.board.items():
-                try:
-                    # Try to get board to check availability
-                    current_automate_context.board(config.name)
-                except Exception:
-                    have_lock = False
-                    break
-
-                have_lock = current_automate_context.board(config.name).trylock()
-                if not have_lock:
-                    break
-                locked_boards.append(config.name)
+            board_name = cfg.backend.board.name
+            try:
+                # Try to get board to check availability
+                current_automate_context.board(board_name)
+            except Exception:
+                have_lock = False
+            else:
+                have_lock = current_automate_context.board(board_name).trylock()
 
             if have_lock:
+                locked_boards.append(board_name)
                 main(cfg)
         finally:
             for board_name in locked_boards:
