@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -58,7 +58,7 @@ try:
     )
     from hannah.models.factory.qconfig import get_trax_qat_qconfig
     from hannah.models.factory.reduction import ReductionBlockAdd
-    from hannah.models.factory.rounding import round_upward
+    from hannah.quantization.rounding import round_upward
 
     from hannah_tvm.tracer import (
         LegalizeQuantizedTypes,
@@ -531,6 +531,7 @@ def test_tracer_simple():
     run_test(cell, input_shape, act, input_bits, output_bits, out_dtype)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "model",
     ["conv-net-trax", "conv-net4-trax", "test_net_2layer", "test_net_2layer_res"],

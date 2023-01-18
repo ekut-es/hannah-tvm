@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -34,7 +34,11 @@ def test_auto_scheduler():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
-            overrides=["model=sine", "board=local_cpu", "tuner=auto_scheduler"],
+            overrides=[
+                "model=sine",
+                "backend/board=local_cpu",
+                "backend/tuner=auto_scheduler",
+            ],
         )
         main(cfg)
 
@@ -43,7 +47,11 @@ def test_autotvm():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
             config_name="config",
-            overrides=["model=sine", "board=local_cpu", "tuner=autotvm"],
+            overrides=[
+                "model=sine",
+                "backend/board=local_cpu",
+                "backend/tuner=autotvm",
+            ],
         )
         main(cfg)
 
