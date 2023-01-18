@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -94,8 +94,8 @@ class TVMBackend(InferenceBackendBase):
         self.torch_model = model
 
         mod, params = build_relay(model.model, model.example_feature_array)
-
         mod = tvm.relay.transform.InferType()(mod)
+
         mod = LegalizeQuantizedTypes()(mod)
 
         self._connector = init_board_connector(self.board_config)

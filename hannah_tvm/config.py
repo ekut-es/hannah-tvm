@@ -94,7 +94,8 @@ class Board:
 
 @dataclass
 class Model:
-    file: str = MISSING
+    url: str = MISSING
+    filename: Optional[str] = None
     input_shapes: Any = None  # Input shapes for models from sources that do not encode input shapes e.g. PyTorch/TorchScript
 
 

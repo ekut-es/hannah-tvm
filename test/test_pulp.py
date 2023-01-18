@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -124,8 +124,6 @@ def test_conv2d_nhwc_ohwi():
         with tvm.transform.PassContext(opt_level=3):
             module = tvm.build(schedule, [act, weight], target=target, name="conv2d")
         print(module.get_source())
-        # breakpoint()
-        print(module)
 
 
 if __name__ == "__main__":

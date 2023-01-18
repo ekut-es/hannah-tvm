@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -27,34 +27,33 @@ except ImportError:
 import os
 import pathlib
 
+from hydra import compose, initialize
+
+import hannah_tvm.config as config
 import hannah_tvm.load as load
 
 root_dir = path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
 
-def test_tflite():
-    import tflite
-
-    model_path = (
-        pathlib.Path(root_dir)
-        / "models"
-        / "tiny_ml_perf"
-        / "keyword_spotting"
-        / "kws_ref_model.tflite"
-    )
-    assert model_path.exists()
-
-    with model_path.open("rb") as model_file:
-        modelBuf = model_file.read()
-        tflModel = tflite.Model.GetRootAsModel(modelBuf, 0)
-
-        print(tflModel)
-
-        assert tflModel.SubgraphsLength() == 1
-        g = tflModel.Subgraphs(0)
-
-        print(g)
+models = []
+config_path = pathlib.Path("..") / "hannah_tvm" / "conf"
+with initialize(config_path=str(config_path), version_base=None):
+    cfg = compose(config_name="config")
+    for model_name, model in cfg.model.items():
+        models.append((model_name, model))
 
 
-if __name__ == "__main__":
-    test_tflite()
+@pytest.mark.parametrize("model_name,model_cfg", models)
+def test_loader(model_name, model_cfg):
+    print("")
+    print("Testing loading of:", model_name)
+    print(model_cfg)
+    print("")
+
+    assert "url" in model_cfg
+    assert "filename" in model_cfg
+    assert "input_shapes" in model_cfg
+
+    model = load.load_model(model_cfg)
+
+    print("model:", model)

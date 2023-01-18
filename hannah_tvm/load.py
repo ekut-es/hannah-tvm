@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 University of Tübingen.
+# Copyright (c) 2023 University of Tübingen.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -158,9 +158,10 @@ def _load_tflite(model_path, input_shapes):
                 t = g.Tensors(g.Outputs(i))
                 self.out_tensors.append(TensorInfo(t))
 
-    model_file = fsspec.open(model_path, "rb").read()
+    model_file = fsspec.open(model_path, "rb")
 
-    with model_file as model_buf:
+    with model_file as f:
+        model_buf = f.read()
         tflite_model = tflite.Model.GetRootAsModel(model_buf, 0)
 
     shapes = {}
@@ -233,10 +234,14 @@ def _load_tensorflow(model_path, input_shapes):
 
 
 def load_model(model):
-    model_path = model.file
+    model_path = model.url
     input_shapes = model.input_shapes
+    filename = model.filename
 
-    suffix = model_path.split(".")[-1]
+    if filename is not None:
+        suffix = filename.split(".")[-1]
+    else:
+        suffix = model_path.split(".")[-1]
 
     if suffix == "onnx":
         return _load_onnx(model_path, input_shapes)

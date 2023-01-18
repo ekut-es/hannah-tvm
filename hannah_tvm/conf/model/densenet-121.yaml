@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2022 University of Tübingen.
+## Copyright (c) 2023 University of Tübingen.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -17,4 +17,4 @@
 ## limitations under the License.
 ##
 densenet-121:
-  file: https://github.com/onnx/models/raw/main/vision/classification/densenet-121/model/densenet-9.onnx
+  url: https://github.com/onnx/models/raw/main/vision/classification/densenet-121/model/densenet-9.onnx
