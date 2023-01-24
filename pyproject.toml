@@ -25,7 +25,6 @@ tflite = "^2.4.0"
 colorama = "^0.4.4"
 decorator = "^5.1.0"
 tqdm = "^4.62.3"
-torch = "^1.13.1"
 networkx = ">=2.6.3"
 matplotlib = "^3.4.3"
 tensorflow = ">=2.7.0"
@@ -44,6 +43,7 @@ board-automate = {version=">=0.2.0", optional=true, extras=["postgres"]}
 fsspec = {version = "^2022.8.2", extras=["git", "http"]}
 appdirs = "^1.4.4"
 typing-extensions = "^4.4.0"
+torch = "^1.12.0+cu113"
 
 
 [tool.poetry.scripts]
