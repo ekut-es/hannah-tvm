@@ -141,5 +141,6 @@ build_m3:
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
       --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
       --cache=true
+      --compressed-caching=false
   #rules:
   #  - if: $CI_COMMIT_TAG
