@@ -44,6 +44,7 @@ fsspec = {version = "^2022.8.2", extras=["git", "http"]}
 appdirs = "^1.4.4"
 typing-extensions = "^4.4.0"
 torch = "^1.12.0+cu113"
+pyusb = {version = "^1.2.1", optional = true}
 
 
 [tool.poetry.scripts]
@@ -54,7 +55,7 @@ hannah-tvm-dashboard = 'hannah_tvm.dashboard.app:main'
 
 [tool.poetry.extras]
 automate = ["board-automate"]
-micro = ["pyserial", "usb", "PTable", "west"]
+micro = ["pyserial", "usb", "PTable", "west", "pyusb"]
 dash = ["dash"]
 
 [tool.poetry.dev-dependencies]
