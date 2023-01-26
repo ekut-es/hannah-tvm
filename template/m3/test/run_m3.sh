@@ -20,8 +20,8 @@
 
 rm -rf project_m3
 
-wget -c https://github.com/tensorflow/tflite-micro/raw/main/tensorflow/lite/micro/examples/magic_wand/magic_wand.tflite
-#tvmc compile magic_wand.tflite \
+# wget -c https://github.com/tensorflow/tflite-micro/raw/main/tensorflow/lite/micro/examples/magic_wand/magic_wand.tflite
+# tvmc compile magic_wand.tflite \
 #    --target='c -keys=cpu -model=host' \
 #    --runtime=crt \
 #    --runtime-crt-system-lib 1 \
@@ -39,8 +39,6 @@ tvmc micro build \
     project_m3 \
     template \
     --template-dir ..
-
-exit 0
 
 tvmc micro flash \
     project_m3 \
