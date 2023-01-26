@@ -1,1 +1,3 @@
 project_*
+*.tflite
+model.tar

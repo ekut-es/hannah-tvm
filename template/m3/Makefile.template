@@ -1,0 +1,103 @@
+M3_BASE ?= /local/gerum/speech_recognition/external/hannah-tvm/m3
+CXX = $(M3_BASE)/build/cross-riscv/bin/riscv64-unknown-elf-g++
+CC = $(M3_BASE)/build/cross-riscv/bin/riscv64-unknown-elf-gcc
+
+INCLUDES = -I$(M3_BASE)/src/include \
+  -I$(M3_BASE)/src/libs/musl/arch/riscv64 \
+  -I$(M3_BASE)/src/libs/musl/arch/generic \
+  -I$(M3_BASE)/src/libs/musl/m3/include/riscv \
+  -I$(M3_BASE)/src/libs/musl/m3/include/riscv \
+  -I$(M3_BASE)/src/libs/musl/include \
+  -I$(M3_BASE)/build/cross-riscv/include/c++/10.1.0 \
+  -I$(M3_BASE)/build/cross-riscv/include/c++/10.1.0/riscv64-unknown-elf \
+  -Icrt/include \
+  -Icrt_config
+
+CFLAGS = -Wall \
+  -Wextra \
+  -Wsign-conversion \
+  -fdiagnostics-color=always \
+  -ffreestanding \
+  -fno-strict-aliasing \
+  -gdwarf-2 \
+  -fno-omit-frame-pointer \
+  -fno-threadsafe-statics \
+  -fno-stack-protector \
+  -Wno-address-of-packed-member \
+  -O2 \
+  -DNDEBUG \
+  -flto \
+  -march=rv64imafdc \
+  -mabi=lp64 \
+  -D__gem5__ \
+  -U_FORTIFY_SOURCE \
+  -D_GNU_SOURCE
+
+CXXFLAGS = -std=c++20 \
+  -Wall \
+  -Wextra \
+  -Wsign-conversion \
+  -fdiagnostics-color=always \
+  -ffreestanding \
+  -fno-strict-aliasing \
+  -gdwarf-2 \
+  -fno-omit-frame-pointer \
+  -fno-threadsafe-statics \
+  -fno-stack-protector \
+  -Wno-address-of-packed-member \
+  -O2 \
+  -DNDEBUG \
+  -flto \
+  -march=rv64imafdc \
+  -mabi=lp64 \
+  -D__gem5__ \
+  -U_FORTIFY_SOURCE \
+  -D_GNU_SOURCE
+
+LDFLAGS = -Wl,--no-gc-sections \
+  -Wno-lto-type-mismatch \
+  -fno-stack-protector \
+  -O2 \
+  -flto \
+  -march=rv64imafdc \
+  -mabi=lp64 \
+  -static \
+  -Wl,--build-id=none \
+  -Wl,-z,max-page-size=4096 \
+  -Wl,-z,common-page-size=4096 \
+  -Wl,-T,$(M3_BASE)/build/gem5-riscv-release/./ld-default.conf \
+  -Wl,--section-start=.text=0x10a00000 \
+  -B$(M3_BASE)/build/gem5-riscv-release/bin \
+  -L$(M3_BASE)/build/cross-riscv/lib \
+  -Lbuild/gem5-riscv-release/bin \
+  -Wl,--start-group \
+  -lgcc \
+  -lc \
+  -lgem5 \
+  -lm \
+  -lgloss \
+  -lstdc++ \
+  -lsupc++ \
+  -lbase \
+  -lm3 \
+  -lthread \
+  -lc -Wl,--end-group
+
+OBJ_FILES = @obj_files
+
+all: @target
+
+%.o: %.cc
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+
+%.o: %.C
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+@{target}: $(OBJ_FILES)
+	$(CXX) $(LDFLAGS) -o $@ $+

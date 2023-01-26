@@ -22,6 +22,7 @@ import collections
 import collections.abc
 import enum
 import fcntl
+import glob
 import json
 import logging
 import os
@@ -32,6 +33,7 @@ import re
 import shlex
 import shutil
 import stat
+import string
 import struct
 import subprocess
 import sys
@@ -41,9 +43,6 @@ import threading
 from typing import Union
 
 import psutil
-import serial
-import serial.tools.list_ports
-import usb
 import yaml
 from tvm.micro.project_api import server
 
@@ -53,7 +52,7 @@ _LOG = logging.getLogger(__name__)
 API_SERVER_DIR = pathlib.Path(os.path.dirname(__file__) or os.path.getcwd())
 
 
-BUILD_DIR = API_SERVER_DIR / "build"
+BUILD_DIR = API_SERVER_DIR
 
 
 MODEL_LIBRARY_FORMAT_RELPATH = "model.tar"
@@ -206,62 +205,37 @@ class Handler(server.ProjectAPIHandler):
         #    with tarfile.open(extra_files_tar, mode="r:*") as tf:
         #        tf.extractall(project_dir)
 
+        with open(API_SERVER_DIR / "Makefile.template", "r") as template_file:
+            template = MakefileTemplate(template_file.read())
+
+        srcs = (
+            list(project_dir.glob("**/*.c"))
+            + list(project_dir.glob("**/*.cc"))
+            + list(project_dir.glob("**/*.cpp"))
+        )
+        objs = [str(f.with_suffix(".o")) for f in srcs]
+
+        objs_str = " \\\n  ".join(objs)
+
+        make_file_str = template.safe_substitute(
+            {"obj_files": objs_str, "target": project_type}
+        )
+
+        with open(project_dir / "Makefile", "w") as make_file:
+            make_file.write(make_file_str)
+
     def build(self, options):
         verbose = options.get("verbose")
+        env = os.environ.copy()
 
-    #         if BUILD_DIR.exists():
-    #             shutil.rmtree(BUILD_DIR)
-    #         BUILD_DIR.mkdir()
+        args = ["make"]
 
-    #         zephyr_board = _find_board_from_cmake_file(API_SERVER_DIR / CMAKELIST_FILENAME)
-    #         emu_platform = _find_platform_from_cmake_file(API_SERVER_DIR / CMAKELIST_FILENAME)
+        if verbose:
+            print("Building target code ...")
+            print(" ".join(args))
+            env["VERBOSE"] = "1"
 
-    #         env = os.environ
-    #         if self._is_fvp(zephyr_board, emu_platform == "armfvp"):
-    #             env["ARMFVP_BIN_PATH"] = str((API_SERVER_DIR / "fvp-hack").resolve())
-    #             # Note: We need to explicitly modify the file permissions and make it an executable to pass CI tests.
-    #             # [To Do]: Move permission change to Build.groovy.j2
-    #             st = os.stat(env["ARMFVP_BIN_PATH"] + "/FVP_Corstone_SSE-300_Ethos-U55")
-    #             os.chmod(
-    #                 env["ARMFVP_BIN_PATH"] + "/FVP_Corstone_SSE-300_Ethos-U55",
-    #                 st.st_mode | stat.S_IEXEC,
-    #             )
-
-    #         check_call(["cmake", "-GNinja", ".."], cwd=BUILD_DIR, env=env)
-
-    #         args = ["ninja"]
-    #         if verbose:
-    #             args.append("-v")
-    #         check_call(args, cwd=BUILD_DIR, env=env)
-
-    #     # A list of all zephyr_board values which are known to launch using QEMU. Many platforms which
-    #     # launch through QEMU by default include "qemu" in their name. However, not all do. This list
-    #     # includes those tested platforms which do not include qemu.
-    #     _KNOWN_QEMU_ZEPHYR_BOARDS = ["mps2_an521", "mps3_an547"]
-
-    #     # A list of all zephyr_board values which are known to launch using ARM FVP (this script configures
-    #     # Zephyr to use that launch method).
-    #     _KNOWN_FVP_ZEPHYR_BOARDS = ["mps3_an547"]
-
-    #     @classmethod
-    #     def _is_fvp(cls, board, use_fvp):
-    #         if use_fvp:
-    #             assert (
-    #                 board in cls._KNOWN_FVP_ZEPHYR_BOARDS
-    #             ), "FVP can't be used to emulate this board on Zephyr"
-    #             return True
-    #         return False
-
-    #     @classmethod
-    #     def _is_qemu(cls, board, use_fvp=False):
-    #         return "qemu" in board or (
-    #             board in cls._KNOWN_QEMU_ZEPHYR_BOARDS and not cls._is_fvp(board, use_fvp)
-    #         )
-
-    #     @classmethod
-    #     def _has_fpu(cls, zephyr_board):
-    #         fpu_boards = [name for name, board in BOARD_PROPERTIES.items() if board["fpu"]]
-    #         return zephyr_board in fpu_boards
+        check_call(args, cwd=BUILD_DIR, env=env)
 
     def flash(self, options):
         serial_number = options.get("serial_number")
@@ -784,6 +758,11 @@ class Handler(server.ProjectAPIHandler):
 
 #     def write(self, data, timeout_sec):
 #         self._target.stdin.write(data)
+
+
+class MakefileTemplate(string.Template):
+    delimiter = "@"
+
 
 if __name__ == "__main__":
     server.main(Handler())

@@ -21,25 +21,26 @@
 rm -rf project_m3
 
 wget -c https://github.com/tensorflow/tflite-micro/raw/main/tensorflow/lite/micro/examples/magic_wand/magic_wand.tflite
-tvmc compile magic_wand.tflite \
-    --target='c -keys=cpu -model=host' \
-    --runtime=crt \
-    --runtime-crt-system-lib 1 \
-    --executor='graph' \
-    --executor-graph-link-params 0 \
-    --output model.tar \
-    --output-format mlf \
-    --pass-config tir.disable_vectorize=1 \
-    --disabled-pass=AlterOpLayout
+#tvmc compile magic_wand.tflite \
+#    --target='c -keys=cpu -model=host' \
+#    --runtime=crt \
+#    --runtime-crt-system-lib 1 \
+#    --executor='graph' \
+#    --executor-graph-link-params 0 \
+#    --output model.tar \
+#    --output-format mlf \
+#    --pass-config tir.disable_vectorize=1 \
+#    --disabled-pass=AlterOpLayout
 
 
 tvmc micro create project_m3 model.tar template --template-dir $PWD/.. --project-option verbose=true project_type=host_driven board=gem5 # --list-options
-exit 0
-
 
 tvmc micro build \
     project_m3 \
-    zephyr
+    template \
+    --template-dir ..
+
+exit 0
 
 tvmc micro flash \
     project_m3 \
