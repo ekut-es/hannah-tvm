@@ -43,7 +43,9 @@ def _load_torch(model_path, input_shapes):
         logger.error("Could not import torch, please make sure it is installed")
         sys.exit(-1)
 
-    script_model = torch.jit.load(fsspec.open(model_path, "rb"))
+    script_model_file = fsspec.open(model_path, "rb")
+    with script_model_file as f:
+        script_model = torch.jit.load(f)
 
     input_info = []
     for name, shape in input_shapes:
