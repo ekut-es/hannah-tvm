@@ -57,7 +57,6 @@ hannah-tvm-dashboard = 'hannah_tvm.dashboard.app:main'
 automate = ["board-automate"]
 micro = ["pyserial", "usb", "PTable", "west", "pyusb"]
 dash = ["dash"]
-dvc = ["dvc", "dvclive"]
 
 
 [tool.poetry.dev-dependencies]
