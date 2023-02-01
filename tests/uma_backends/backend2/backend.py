@@ -16,3 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from tvm.relay.backend.contrib.uma.backend import UMABackend
+
+
+class MyBackend2(UMABackend):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def target_name(self):
+        return "backend2"
