@@ -91,7 +91,7 @@ class AutomateServer(multiprocessing.Process):
                         with board_connection.forward_local(local_port, local_port):
                             logger.info("Starting remote server")
                             promise = board_connection.run(
-                                f"python3.6 -m tvm.exec.rpc_server --key {name} --host localhost --port={local_port} --port-end={local_port+1} --tracker=localhost:{tracker_port}",
+                                f"python3 -m tvm.exec.rpc_server --key {name} --host localhost --port={local_port} --port-end={local_port+1} --tracker=localhost:{tracker_port}",
                                 env={"PYTHONPATH": str(python_path)},
                                 shell=True,
                                 warn=True,
