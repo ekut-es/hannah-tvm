@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -24,7 +24,6 @@ def pytest_addoption(parser):
 
 
 def pytest_runtest_setup(item):
-
     if "pulp" in item.keywords and not item.config.getoption("--enable-pulp"):
         pytest.skip("need --pulp option to run this test")
 

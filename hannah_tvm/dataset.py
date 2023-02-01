@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -63,7 +63,6 @@ class NetworkResult:
 
     @property
     def measurement(self):
-
         with self.measurement_file.open() as result_stream:
             record = json.load(result_stream)
 
@@ -156,7 +155,6 @@ class PerformanceDataset:
         if scheduler == "auto_scheduler":
             print(results)
             for inp, res in results:
-
                 workload_key = inp.task.workload_key
                 base_filename = clean_file_name(f"{workload_key}_{self.target}")
                 target_file = base_folder / base_filename

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -18,7 +18,6 @@
 #
 def progress_callback(step_progress, progress):
     def _callback(tuner, inputs, results):
-
         with progress.get_lock():
             progress.value += step_progress * len(results)
 

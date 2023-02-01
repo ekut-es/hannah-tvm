@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -47,7 +47,6 @@ def get_1dconv(bw_f=8, bw_b=8, bw_w=8, bw_acc=32):
 
 
 def test_conv1d():
-
     conv = get_1dconv()
     print(conv)
     mod = tvm.IRModule.from_expr(conv)

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -112,7 +112,6 @@ def main():
         Input("network-info-tuner", "value"),
     )
     def update_network_details(target, model, board, tuner):
-
         network_info_figure = go.Figure()
 
         selected_result = None

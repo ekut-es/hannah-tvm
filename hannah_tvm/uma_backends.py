@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -93,7 +93,6 @@ def _scan_all(top_level: List[Any]) -> List[Type[UMABackend]]:
                             sys.modules[modname] = loaded_mod
 
                 if len(recorded_warnings) > 0:
-
                     for w in recorded_warnings:
                         warnings.showwarning(
                             message=w.message,

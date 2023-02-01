@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -25,7 +25,6 @@ from tvm.topi.pulp import conv2d_nhwc_ohwi, schedule_conv2d_nhwc_ohwi
 
 @pytest.mark.pulp
 def test_example():
-
     n = te.var("n")
     A = te.placeholder((n,), name="A")
     B = te.placeholder((n,), name="B")
@@ -41,7 +40,6 @@ def test_example():
 
 @pytest.mark.pulp
 def test_simple_schedule():
-
     b = te.var("batch")
     o = te.var("out_height")
     input = te.placeholder((b, o), name="input")
@@ -53,7 +51,6 @@ def test_simple_schedule():
     )
 
     with target:
-
         s = te.create_schedule([output.op])
         print(tvm.lower(s, [input], simple_mode=True))
 
