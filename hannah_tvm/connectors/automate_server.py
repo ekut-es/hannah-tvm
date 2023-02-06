@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -68,7 +68,6 @@ class AutomateServer(multiprocessing.Process):
         try:
             with board.lock_ctx():
                 with board.connect() as board_connection:
-
                     if self.board_config.rebuild_runtime:
                         self._build_runtime(board_connection, board)
 

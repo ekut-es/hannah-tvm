@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -56,7 +56,6 @@ from hannah_tvm import datatypes
 def test_simple(dtype: str):
     try:
         with tvm.transform.PassContext(config={"tir.disable_vectorize": True}):
-
             x = relay.var("x", shape=(3,), dtype="float32")
             y = relay.var("y", shape=(3,), dtype="float32")
             x_myfloat = relay.cast(x, dtype=f"custom[{dtype}]32")

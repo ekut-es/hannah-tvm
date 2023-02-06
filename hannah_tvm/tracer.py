@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -197,7 +197,6 @@ class LegalizeQuantizedTypes(tvm.relay.expr_functor.ExprMutator):
 
 
 class QuantizationTracer(torch.fx.Tracer):
-
     LEAF_MODULES = [
         qat.Conv1d,
         qat.Conv2d,

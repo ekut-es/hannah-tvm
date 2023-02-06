@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 University of Tübingen.
+# Copyright (c) 2023 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -55,7 +55,6 @@ PROJECT_OPTIONS = [
 
 
 class PulpProjectAPIHandler(server.ProjectAPIHandler):
-
     CRT_COPY_ITEMS = ("include", "Makefile", "src")
 
     def server_info_query(self, tvm_version: str) -> server.ServerInfo:
