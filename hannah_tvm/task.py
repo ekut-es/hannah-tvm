@@ -302,7 +302,7 @@ class TuningTask:
                     tuner.tune(
                         tune_option,
                         per_task_early_stopping=512,
-                        adapative_training=True,
+                        adaptive_training=True,
                         search_policy=search_policy,
                     )
             else:
@@ -321,7 +321,7 @@ class TuningTask:
                 tuner.tune(
                     tune_option,
                     per_task_early_stopping=512,
-                    adapative_training=True,
+                    adaptive_training=True,
                     search_policy=search_policy,
                 )
         finally:
