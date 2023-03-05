@@ -63,7 +63,7 @@ hannah-tvm-dashboard = 'hannah_tvm.dashboard.app:main'
 
 [tool.poetry.extras]
 automate = ["board-automate"]
-micro = ["pyserial", "usb", "PTable", "west", "pyusb"]
+micro = ["pyserial",  "PTable", "west", "pyusb"]
 dash = ["dash"]
 onnx = ["onnx", "onnxoptimizer"]
 tensorflow = ["tensorflow", "tflite"]
