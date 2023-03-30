@@ -53,7 +53,7 @@ build_micro:
   script:
     - set -e
     - rm -f external/tvm/build/CMakeCache.txt
-    - poetry install -E micro -E tensorflow
+    - poetry install -E micro -E tensorflow -E onnx
     - poetry run ./scripts/install_micro.sh
     - poetry run ./scripts/install_corstone_vfps.sh
     - poetry run coverage run --source=hannah_tvm -m pytest test
