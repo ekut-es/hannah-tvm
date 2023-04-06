@@ -39,6 +39,7 @@ def main():
 
     print(args)
 
+    export_successful = False
     for network_result in dataset.network_results():
         if network_model != "all" and network_result.model != network_model:
             continue
@@ -76,6 +77,11 @@ def main():
             result_gen.json_export_to(args.export_path)
             print(f"Exported hannah-tvm-tune result JSON to: {args.export_path}")
             print()
+
+        export_successful = True
+
+    if not export_successful:
+        raise ValueError("No results found for the given parameters!")
 
 
 def parse_args():
