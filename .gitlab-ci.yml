@@ -34,7 +34,6 @@ before_script:
   - apt-get install -y wget build-essential pkg-config python3-dev curl ninja-build cmake g++ git python3-setuptools gcc libtinfo-dev zlib1g-dev build-essential cmake libedit-dev libxml2-dev llvm-dev libclang-dev
   - curl -sSL https://install.python-poetry.org/ | python3 -
   - export PATH=${POETRY_HOME}/bin:${PATH}
-  - poetry config experimental.new-installer false
   - poetry install -E onnx -E tensorflow
 
 sca:
