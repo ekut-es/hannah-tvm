@@ -25,7 +25,6 @@ import fsspec
 import numpy as np
 import tvm
 import tvm.relay as relay
-import tvm.relay.testing.tf as tf_testing
 from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
 
@@ -186,6 +185,8 @@ def _load_tflite(model_path, input_shapes):
 
 
 def _load_tensorflow(model_path, input_shapes):
+    import tvm.relay.testing.tf as tf_testing
+
     try:
         import tensorflow as tf
     except ImportError:

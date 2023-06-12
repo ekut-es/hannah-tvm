@@ -7,9 +7,8 @@ license = "Apache-2.0"
 #build = "build.py"
 
 [tool.poetry.dependencies]
-python = ">3.8 <3.11"
+python = ">3.8 <3.12"
 hydra-core = "^1.1.0"
-onnx = "^1.8.1"
 importlib-metadata = "^4.0.1"
 Twisted = "^21.2.0"
 prettytable = "^2.1.0"
@@ -21,31 +20,43 @@ openpyxl = "^3.0.7"
 XlsxWriter = "^1.4.0"
 PyYAML = "^5.4.1"
 numpy = "^1.20.2"
-tflite = "^2.4.0"
 colorama = "^0.4.4"
 decorator = "^5.1.0"
 tqdm = "^4.62.3"
 networkx = ">=2.6.3"
 matplotlib = "^3.4.3"
-tensorflow = ">=2.7.0"
 graphviz = ">=0.19.1"
 
-pyserial = {version=">=3.5", optional=true}
-usb = {version=">=0.0.83.dev0", optional=true}
-west =  {version=">=0.13.1", optional=true}
-onnxoptimizer = ">=0.2.6"
 xgboost = "1.5.2"
-dash = {version="^2.3.1", optional=true}
 pandas = "<1.4.0"
 tabulate = ">=0.8.9"
-PTable = {version=">=0.9.2", optional=true}
-board-automate = {version = "^0.2.2", optional = true, extras = ["postgres"]}
 fsspec = {version = "^2022.8.2", extras=["git", "http"]}
 appdirs = "^1.4.4"
 typing-extensions = "^4.4.0"
-torch = "^1.12.0+cu113"
+torch = "^2.0.0"
+
+# Tensorflow dependencies
+tensorflow = {version = ">=2.7.0", optional = true}
+tflite = {version = "^2.4.0", optional = true}
+
+# ONNX dependencies
+onnxoptimizer = {version = ">=0.2.6", optional = true}
+onnx = {version = "^1.8.1", optional = true}
+
+# Automate dependencies
+board-automate = {version = "^0.3.0", optional = true, extras = ["postgres"]}
+
+# micro dependencies
+PTable = {version=">=0.9.2", optional=true}
+pyserial = {version=">=3.5", optional=true}
+west =  {version=">=0.13.1", optional=true}
 pyusb = {version = "^1.2.1", optional = true}
 
+# dashboard dependencies
+dash = {version="^2.3.1", optional=true}
+ipykernel = {version = "^6.21.2", optional = true}
+jupyter = {version = "^1.0.0", optional = true}
+nbconvert = {version = "^7.2.9", optional = true}
 
 [tool.poetry.scripts]
 hannah-tvm-compile = 'hannah_tvm.compile:main'
@@ -55,27 +66,21 @@ hannah-tvm-dashboard = 'hannah_tvm.dashboard.app:main'
 
 [tool.poetry.extras]
 automate = ["board-automate"]
-micro = ["pyserial", "usb", "PTable", "west", "pyusb"]
+micro = ["pyserial",  "PTable", "west", "pyusb"]
 dash = ["dash"]
+onnx = ["onnx", "onnxoptimizer"]
+tensorflow = ["tensorflow", "tflite"]
+notebook = ["ipykernel", "jupyter", "nbconvert"]
 
-
-[tool.poetry.dev-dependencies]
-black = ">=22.3.0"
-pre-commit = ">=2.12.1"
-pytest = ">=6.2.5"
-isort = ">=5.10.1"
-coverage = ">=6.3.2"
-pyment = "^0.3.3"
-
-[[tool.poetry.source]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu113"
-default = false
-secondary = true
 
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^3.0.4"
+pre-commit = ">=3.0.4"
+black = ">=22.3.0"
+pytest = ">=6.2.5"
+isort = ">=5.10.1"
+coverage = ">=6.3.2"
+pyment = ">=0.3.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
