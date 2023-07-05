@@ -108,7 +108,8 @@ class AutomateTaskConnector(TaskConnector):
 
         # Evaluate on Graph Executor
         logger.info("Evaluate inference time cost...")
-        ftimer = module.module.time_evaluator("run", dev, repeat=10, min_repeat_ms=500)
+        # ftimer = module.module.time_evaluator("run", dev, repeat=10, min_repeat_ms=500)
+        ftimer = module.module.time_evaluator("run", dev, repeat=25, min_repeat_ms=500)
         prof_res = np.array(ftimer().results) * 1e6  # convert to microsecond
 
         return prof_res
