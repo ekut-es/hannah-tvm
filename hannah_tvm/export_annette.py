@@ -21,6 +21,7 @@ import json
 from collections import OrderedDict
 from pprint import pprint
 
+import numpy as np
 from tvm.ir import Op
 from tvm.relay import ExprVisitor
 
@@ -187,12 +188,26 @@ class AnnetteResultGenerator(ExprVisitor):
 
     def add_durations(self, measurement):
         # Insert duration into executed layer data structure:
-        for i, (k, v) in enumerate(self.layers.items()):
-            orig_hash = k.split("-")[0]
-            assert orig_hash == measurement["calls"][i]["Hash"]["string"]
-            v["duration (us)"] = measurement["calls"][i]["Duration (us)"][
-                "microseconds"
-            ]
+        pprint(self.layers)
+        ############################################
+        # TODO: Hard-coded for TensorRT! Change!!!!
+        ############################################
+        if True:  # Single-layer benchmark
+            if len(self.layers) == 2:
+                self.layers.pop(list(self.layers.keys())[1])
+            v = list(self.layers.values())[0]
+            v["duration (us)"] = np.median(measurement["Duration (us)"])
+        else:
+            for i, (k, v) in enumerate(self.layers.items()):
+                orig_hash = k.split("-")[0]
+                if (
+                    "Hash" in measurement["calls"][i].keys()
+                ):  # Does not exist for TensorRT
+                    assert orig_hash == measurement["calls"][i]["Hash"]["string"]
+
+                v["duration (us)"] = measurement["calls"][i]["Duration (us)"][
+                    "microseconds"
+                ]
 
         # Insert total network duration:
         board_type = list(measurement["device_metrics"].keys())[0]
