@@ -60,7 +60,9 @@ class UMAUltraTrailBackend(InferenceBackendBase):
         self.torch_model = copy.deepcopy(model)
         self.torch_model.cpu()
 
-        mod, params = build_relay(self.torch_model.model, self.torch_model.example_feature_array)
+        mod, params = build_relay(
+            self.torch_model.model, self.torch_model.example_feature_array
+        )
         mod = tvm.relay.transform.InferType()(mod)
 
         self.ut_backend.register()
@@ -72,7 +74,7 @@ class UMAUltraTrailBackend(InferenceBackendBase):
             return None
 
         inputs = inputs.cpu()
-        inputs = inputs[:self.limit_batch_size]
+        inputs = inputs[: self.limit_batch_size]
 
         x = self.torch_model._extract_features(inputs)
         x = self.torch_model.normalizer(x)
