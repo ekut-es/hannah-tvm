@@ -39,6 +39,7 @@ import tvm.rpc.tracker
 from matplotlib.style import available
 from omegaconf import OmegaConf
 from tvm.auto_scheduler.measure_record import dump_record_to_string
+from tvm.relay.op.contrib.tensorrt import get_tensorrt_target, partition_for_tensorrt
 
 from hannah_tvm.dataset import PerformanceDataset
 from hannah_tvm.tuner.autotvm.callbacks import (
@@ -160,6 +161,9 @@ class TuningTask:
                 self.results["tuning_duration"] = final_time - start_time
             elif self.tuner_config.name == "baseline":
                 self.results["tuning_duration"] = 0.0
+            elif self.tuner_config.name == "tensorrt":
+                logger.info(f"Current TensorRT target: {get_tensorrt_target()}")
+                relay_mod = partition_for_tensorrt(relay_mod, params, target)
             else:
                 raise Exception(f"Unknown tuner {self.tuner_config.name}")
 
@@ -302,7 +306,7 @@ class TuningTask:
                     tuner.tune(
                         tune_option,
                         per_task_early_stopping=512,
-                        adapative_training=True,
+                        adaptive_training=True,
                         search_policy=search_policy,
                     )
             else:
@@ -321,7 +325,7 @@ class TuningTask:
                 tuner.tune(
                     tune_option,
                     per_task_early_stopping=512,
-                    adapative_training=True,
+                    adaptive_training=True,
                     search_policy=search_policy,
                 )
         finally:
@@ -412,6 +416,26 @@ class TuningTask:
                         executor=executor,
                         runtime=runtime,
                     )
+
+        elif self.tuner_config.name == "tensorrt":
+            logger.info(f"Current target: {self._task_connector.target()}")
+            logger.info(f"Current build_cfg: {build_cfg}")
+            logger.info(f"Current executor: {executor}")
+            logger.info(f"Current runtime: {runtime}")
+            logger.info(f"Current instruments: {instruments}")
+            with tvm.transform.PassContext(
+                opt_level=3,
+                instruments=instruments,
+                config=build_cfg,
+                # config={"relay.ext.tensorrt.options": self.tensorrt_config},
+            ):
+                lib = relay.build(
+                    relay_mod,
+                    target=self._task_connector.target(),
+                    params=params,
+                    executor=executor,
+                    runtime=runtime,
+                )
 
         else:
             with tvm.transform.PassContext(
