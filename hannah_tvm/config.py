@@ -115,6 +115,7 @@ class BackendConfig:
     val_frequency: int = 1
     board: Board = MISSING
     tuner: Optional[TunerConfig] = None
+    tune: bool = False
 
 
 @dataclass

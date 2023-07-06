@@ -39,6 +39,7 @@ import tvm.rpc.tracker
 from matplotlib.style import available
 from omegaconf import OmegaConf
 from tvm.auto_scheduler.measure_record import dump_record_to_string
+from tvm.micro import export_model_library_format
 
 from hannah_tvm.dataset import PerformanceDataset
 from hannah_tvm.tuner.autotvm.callbacks import (
@@ -83,7 +84,7 @@ class TuningTask:
         model_config,
         task_connector,
         tuner=None,
-        verbose=True,
+        verbose=False,
     ):
         self._task_connector = task_connector
         self.model_key = model_key
@@ -93,7 +94,6 @@ class TuningTask:
         tuner_name = self.tuner_config.name if self.tuner_config else "baseline"
         self.tuner_log_file = f"{board_config.name}_{model_key}_{tuner_name}.json"
         self.verbose = verbose
-
         self.results = {}
 
         self.results["board"] = board_config.name
@@ -302,7 +302,7 @@ class TuningTask:
                     tuner.tune(
                         tune_option,
                         per_task_early_stopping=512,
-                        adapative_training=True,
+                        adaptive_training=True,
                         search_policy=search_policy,
                     )
             else:
@@ -321,7 +321,7 @@ class TuningTask:
                 tuner.tune(
                     tune_option,
                     per_task_early_stopping=512,
-                    adapative_training=True,
+                    adaptive_training=True,
                     search_policy=search_policy,
                 )
         finally:
@@ -434,9 +434,10 @@ class TuningTask:
             len(main_relay) == 1
         ), "The main function should be a single relay function"
 
-        self.dataset.add_measurement_network(
-            self.tuner_config.name, self.model_key, main_relay[0]
-        )
+        if self.dataset is not None:
+            self.dataset.add_measurement_network(
+                self.tuner_config.name, self.model_key, main_relay[0]
+            )
 
         primfuncs = []
         for name, function_metadata in lib.function_metadata.items():
@@ -446,11 +447,25 @@ class TuningTask:
 
             primfuncs.extend(tir_primfuncs)
 
-        self.dataset.add_measurement_primfuncs(
-            self.tuner_config.name, self.model_key, primfuncs
-        )
+        if self.dataset is not None:
+            self.dataset.add_measurement_primfuncs(
+                self.tuner_config.name, self.model_key, primfuncs
+            )
 
         return lib
+
+    def export(self, file_name: str = "model.tar"):
+        """Export the built library to a file, uses model library format for tuning micro targets"""
+
+        self._task_connector.setup()
+
+        lib = self._build(self.model_config.mod, self.model_config.params)
+        if self.board_config.micro:
+            export_model_library_format(lib, file_name)
+        else:
+            lib.export_library(file_name)
+
+        self._task_connector.teardown()
 
     def _evaluate(self, inputs, remote_handle):
         # Create graph executor

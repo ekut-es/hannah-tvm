@@ -37,13 +37,24 @@ from .passes.legalize import LegalizeQuantizedTypes
 from .task import ModelConfig, TuningTask
 from .tracer import QuantizationTracer, RelayConverter
 
+logger = logging.getLogger(__name__)
+
 
 def build_relay(model, dummy_input):
-    tracer = QuantizationTracer()
-
-    traced_graph = tracer.trace(model)
-    converter = RelayConverter(torch.fx.GraphModule(model, traced_graph))
-    mod, params = converter.run(dummy_input)
+    try:
+        tracer = QuantizationTracer()
+        traced_graph = tracer.trace(model)
+        converter = RelayConverter(torch.fx.GraphModule(model, traced_graph))
+        mod, params = converter.run(dummy_input)
+    except Exception as e:
+        logging.warning(
+            "Failed to convert model to relay, using fx converter trying with legacy converter"
+        )
+        model = torch.ao.quantization.quantize_fx.convert(model)
+        script_module = torch.jit.trace(model, dummy_input)
+        mod, params = tvm.relay.frontend.from_pytorch(
+            script_module, [("input", (dummy_input.shape, "float"))]
+        )
 
     return mod, params
 
@@ -70,6 +81,7 @@ class TVMBackend(InferenceBackendBase):
         val_batches: int = 1,
         test_batches: int = 1,
         val_frequency: int = 1,
+        tune=False,
     ) -> None:
         """Instantiate the tvm backend for a target board and tuner configuration
 
@@ -79,12 +91,14 @@ class TVMBackend(InferenceBackendBase):
             val_batches (int, optional): Number of batches to run through the backend on validation. Defaults to 1.
             test_batches (int, optional): Number of batches to run through the backend on testing. Defaults to 1.
             val_frequency (int, optional): Validate on every n batches. Defaults to 1.
+            tune (bool, optional): Tune the model. Defaults to False.
         """
-        super().__init__(val_batches, test_batches, val_frequency)
+        super().__init__(val_batches, test_batches, val_frequency, tune)
 
         self.torch_model = None
         self.board_config = board
         self.tuner_config = tuner
+        self.task = None
 
     def prepare(self, model):
         logging.info("Preparing model for target")
@@ -96,7 +110,11 @@ class TVMBackend(InferenceBackendBase):
         mod, params = build_relay(model.model, model.example_feature_array)
         mod = tvm.relay.transform.InferType()(mod)
 
-        mod = LegalizeQuantizedTypes()(mod)
+        try:
+            mod = LegalizeQuantizedTypes()(mod)
+        except Exception as e:
+            logger.warning("Failed to legalize quantized types")
+            logger.warning(e)
 
         self._connector = init_board_connector(self.board_config)
 
@@ -124,14 +142,18 @@ class TVMBackend(InferenceBackendBase):
         # FIXME (gerum): set a proper model key
         model_key = "backend_model"
 
-        task = TuningTask(
+        self.task = TuningTask(
             board_config=self.board_config,
             model_key=model_key,
             model_config=model_config,
             task_connector=task_connector,
             tuner=self.tuner_config,
         )
-        task.run()
+        if self.tune:
+            self.task.run()
+
+    def export(self):
+        self.task.export()
 
     def characterize(self, model):
         self.prepare(model)
