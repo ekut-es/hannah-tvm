@@ -35,7 +35,7 @@ repos:
           args: ["-t", ".copyright.tmpl", "-n", "hannah-tvm", "-u", "https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm", "-o", "hannah-tvm contributors", "-cy", "-f"]
 
   - repo: https://github.com/psf/black
-    rev: 23.1.0
+    rev: 23.3.0
     hooks:
     -   id: black
   - repo: https://github.com/pycqa/isort
