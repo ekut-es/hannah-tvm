@@ -50,7 +50,8 @@ def build_relay(model, dummy_input):
         logging.warning(
             "Failed to convert model to relay, using fx converter trying with legacy converter"
         )
-        model = torch.ao.quantization.quantize_fx.convert(model)
+        if isinstance(model, torch.fx.graph_module.GraphModule):
+            model = torch.ao.quantization.quantize_fx.convert(model)
         script_module = torch.jit.trace(model, dummy_input)
         mod, params = tvm.relay.frontend.from_pytorch(
             script_module, [("input", (dummy_input.shape, "float"))]
