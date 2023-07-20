@@ -66,8 +66,8 @@ def main():
         pprint(measurements)
 
         result_gen = AnnetteResultGenerator(relay)
-        res = result_gen.generate_layer_dir()
-        res = result_gen.add_durations(measurements)
+        res = result_gen.generate_layer_dict()
+        res = result_gen.add_durations(measurements, tuner)
 
         print()
         print("Result:")
@@ -182,28 +182,30 @@ class AnnetteResultGenerator(ExprVisitor):
         self.layers = new_layer_dict
         return f"{hash}-{num_collisions}"
 
-    def generate_layer_dir(self):
+    def generate_layer_dict(self):
         self.visit(self.relay_graph)
         return self.layers
 
-    def add_durations(self, measurement):
+    def add_durations(self, measurement, tuner):
         # Insert duration into executed layer data structure:
         pprint(self.layers)
-        ############################################
-        # TODO: Hard-coded for TensorRT! Change!!!!
-        ############################################
-        if True:  # Single-layer benchmark
-            if len(self.layers) == 2:
-                self.layers.pop(list(self.layers.keys())[1])
-            v = list(self.layers.values())[0]
-            v["duration (us)"] = np.median(measurement["Duration (us)"])
+
+        if tuner == "tensorrt":
+            # Results for TensorRT are currently not reported per layer.
+            # Additional layers are therefore removed from the result section.
+            # !!! Only single-layer benchmarks are possible right now !!!
+            for l_hash in list(self.layers.keys())[1:]:
+                l_name = self.layers[l_hash]["ops"][0]["name"]
+                print(f"Annette Export: Removed layer {l_name} ({l_hash})")
+                self.layers.pop(l_hash)
+
+            l_target = list(self.layers.values())[0]
+            l_target["duration (us)"] = np.median(measurement["Duration (us)"])
+
         else:
             for i, (k, v) in enumerate(self.layers.items()):
                 orig_hash = k.split("-")[0]
-                if (
-                    "Hash" in measurement["calls"][i].keys()
-                ):  # Does not exist for TensorRT
-                    assert orig_hash == measurement["calls"][i]["Hash"]["string"]
+                assert orig_hash == measurement["calls"][i]["Hash"]["string"]
 
                 v["duration (us)"] = measurement["calls"][i]["Duration (us)"][
                     "microseconds"
