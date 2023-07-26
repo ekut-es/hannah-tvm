@@ -58,6 +58,7 @@ jupyter = {version = "^1.0.0", optional = true}
 nbconvert = {version = "^7.2.9", optional = true}
 psutil = "^5.9.5"
 tornado = "^6.3.2"
+importlib-metadata = "^6.8.0"
 
 [tool.poetry.scripts]
 hannah-tvm-compile = 'hannah_tvm.compile:main'
