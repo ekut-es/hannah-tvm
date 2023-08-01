@@ -16,12 +16,27 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+
 name: stm32f429_disc1
-target: "c -mcpu=cortex-m4 -march=armv7e-m -runtime=c --system-lib=1 -model=stm32f4xx"
+target: "c -mcpu=cortex-m4 -march=armv7e-m -model=stm32f4xx"
 opencl: false
 cuda: false
+
 micro:
   template_dir: ${tvm_root:}/apps/microtvm/zephyr/template_project/
   project_options:
     project_type: host_driven
     zephyr_board: stm32f429i_disc1
+
+  aot:
+    prologue: ""
+    epilogue: ""
+    includes: []
+    pass_config: {}
+    interface_api: "c"
+    workspace_byte_alignment: 8
+    constant_byte_alignment: 8
+    # FIXME: support linkage sections
+    # data_linkage: AOTDataLinkage = None
+    use_workspace_io:  false
+    workspace_bytes: 256 * 1024

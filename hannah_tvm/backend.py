@@ -40,21 +40,47 @@ from .tracer import QuantizationTracer, RelayConverter
 logger = logging.getLogger(__name__)
 
 
+def remove_dropout(gm):
+    for node in gm.graph.nodes:
+        if node.op == "call_function":
+            if node.target == torch.nn.functional.dropout:
+                node.replace_all_uses_with(node.args[0])
+                gm.graph.erase_node(node)
+
+    gm.recompile()
+    gm.graph.lint()
+
+    return gm
+
+
 def build_relay(model, dummy_input):
     try:
-        tracer = QuantizationTracer()
-        traced_graph = tracer.trace(model)
-        converter = RelayConverter(torch.fx.GraphModule(model, traced_graph))
+        if not isinstance(model, torch.fx.graph_module.GraphModule):
+            tracer = QuantizationTracer()
+            traced_graph = tracer.trace(model)
+            graph_module = torch.fx.GraphModule(model, traced_graph)
+        else:
+            graph_module = model
+        converter = RelayConverter(graph_module)
         mod, params = converter.run(dummy_input)
     except Exception as e:
         logging.warning(
             "Failed to convert model to relay, using fx converter trying with legacy converter"
         )
+
         if isinstance(model, torch.fx.graph_module.GraphModule):
-            model = torch.ao.quantization.quantize_fx.convert(model)
+            model = remove_dropout(model)
+
+        model.cpu()
+        dummy_input.cpu()
+
         script_module = torch.jit.trace(model, dummy_input)
+
         mod, params = tvm.relay.frontend.from_pytorch(
-            script_module, [("input", (dummy_input.shape, "float"))]
+            script_module,
+            [("input", (dummy_input.shape, "float"))],
+            use_parser_friendly_name=True,
+            keep_quantized_weight=True,
         )
 
     return mod, params
@@ -103,7 +129,7 @@ class TVMBackend(InferenceBackendBase):
 
     def prepare(self, model):
         logging.info("Preparing model for target")
-        model = copy.deepcopy(model)
+        model.eval()
         model.cpu()
 
         self.torch_model = model
@@ -140,7 +166,6 @@ class TVMBackend(InferenceBackendBase):
         input = input.astype(input_types[0])
 
         model_config = ModelConfig(mod, params, {input_names[0]: input})
-        # FIXME (gerum): set a proper model key
         model_key = "backend_model"
 
         self.task = TuningTask(

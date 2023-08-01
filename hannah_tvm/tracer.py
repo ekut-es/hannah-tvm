@@ -27,6 +27,8 @@ import tvm
 import tvm.relay as relay
 from hannah.models.factory import pooling, qat, qconfig
 from matplotlib import use
+from torch.ao.nn import quantized as nnq
+from torch.ao.nn.intrinsic import quantized as nni
 
 logger = logging.getLogger("__name__")
 
@@ -264,6 +266,7 @@ class RelayConverter(torch.fx.Interpreter):
             torch.nn.Dropout: self._handle_identity,
             torch.nn.Identity: self._handle_identity,
             torch.nn.Flatten: self._handle_flatten,
+            nni.ConvReLU2d: self._handle_nni_conv,
         }
 
     def _gen_requantize(
@@ -333,6 +336,32 @@ class RelayConverter(torch.fx.Interpreter):
             if input_bits != output_bits:
                 output = relay.cast(output, output_dtype)
         return output
+
+    def _handle_nni_conv(self, node, module, result):
+        inputs = list(node.all_input_nodes)
+        data = self.outputs[inputs[0].name]
+        weight = module.weight()
+        weight_int = weight.int_repr().detach().numpy()
+
+        output_scale = module.scale
+
+        if result.dtype == torch.qint8:
+            output_dtype = "int8"
+        elif result.dtype == torch.qint32:
+            output_dtype = "int32"
+        elif result.dtype == torch.quint8:
+            output_dtype = "uint8"
+        elif result.dtype == torch.quint32:
+            output_dtype = "uint32"
+
+        output_zero_point = module.zero_point
+        output_shape = result.shape
+        if module.bias() is not None:
+            raise Exception("Bias is not supported")
+
+        return tvm.relay.qnn.op.conv2d(
+            data, weight, output_scale, output_zero_point, output_dtype, output_shape
+        )
 
     def _handle_flatten(self, node, module, result):
         inputs = list(node.all_input_nodes)
@@ -653,11 +682,28 @@ class RelayConverter(torch.fx.Interpreter):
         self.outputs[node.name] = requantize
         self.tensor_info[node.name] = output_metadata
 
+    def _handle_getattr(self, node, result):
+        target = self.fetch_attr(node.target)
+
+        if torch.is_tensor(target):
+            var = relay.var(
+                node.target, relay.TensorType(result.shape, dtype=self.input_dtype)
+            )
+            self.outputs[node.target] = var
+            dtype, bits = parse_dtype(self.input_dtype)
+            self.tensor_info[node.target] = TensorMetadata(
+                shape=result.shape, dtype=dtype, bits=bits, scale=self.input_scale
+            )
+            self.func_args.append(var)
+        else:
+            raise Exception(f"Unhandled target: {target}")
+
     def _handle_module(self, node, result):
-        module = self.modules[node.target]  # TODO use self.fetch_attr
+        module = self.modules[node.target]
         if type(module) in self.module_map:
             self.module_map[type(module)](node, module, result)
         else:
+            # breakpoint()
             raise Exception(f"Support for module: {module} is not supported")
 
     def _handle_placeholder(self, node, result):
@@ -744,6 +790,13 @@ class RelayConverter(torch.fx.Interpreter):
             self.outputs[node.name] = div
             output_info = copy.deepcopy(self.tensor_info[inputs[0].name])
             self.tensor_info[node.name] = output_info
+
+        elif target == torch.quantize_per_tensor:
+            inputs = list(node.all_input_nodes)
+            self.outputs[node.name] = self.outputs[node.args[0].name]
+            output_info = copy.deepcopy(self.tensor_info[inputs[0].name])
+            self.tensor_info[node.name] = output_info
+
         else:
             raise Exception(f"Unandled function {target}")
 
@@ -758,6 +811,8 @@ class RelayConverter(torch.fx.Interpreter):
             result_metadata = self._handle_output(node, result)
         elif node.op == "placeholder":
             result_metadata = self._handle_placeholder(node, result)
+        elif node.op == "get_attr":
+            result_metadata = self._handle_getattr(node, result)
         else:
             raise Exception(f"Node {node} with op {node.op} is not supported")
 

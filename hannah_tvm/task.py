@@ -347,14 +347,16 @@ class TuningTask:
         if self.board_config.build:
             build_cfg.update(self.board_config.build)
         elif str(target.kind) == "c" or self.board_config.disable_vectorize is True:
-            build_cfg = {"tir.disable_vectorize": True}
+            build_cfg = {
+                "tir.disable_vectorize": True,
+                "tir.usmp.enable": True,
+            }
 
         executor = tvm.relay.backend.Executor("graph")
         runtime = tvm.relay.backend.Runtime("cpp")
         if self.board_config.micro:
             serialize = tvm.tir.transform.ConvertForLoopsToSerial()
             build_cfg["tir.add_lower_pass"] = [(1, serialize)]
-
             if self.board_config.micro.aot:
                 aot_config = self.board_config.micro.aot
                 build_cfg.update(aot_config.pass_config)
