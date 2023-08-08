@@ -198,7 +198,9 @@ class TVMBackend(InferenceBackendBase):
         features = self.torch_model.features(inputs)
         features = self.torch_model.normalizer(features)
 
-        mod, params = build_relay(self.torch_model.model, self.torch_model.example_feature_array)
+        mod, params = build_relay(
+            self.torch_model.model, self.torch_model.example_feature_array
+        )
         mod = tvm.relay.transform.InferType()(mod)
 
         try:
@@ -207,23 +209,26 @@ class TVMBackend(InferenceBackendBase):
             logger.warning("Failed to legalize quantized types")
             logger.warning(e)
 
-        #FIXME: Make AOT compile and run optional
-        #FIXME: Fix hardcoded input and output scaling
-        compile_and_run = False
+        # FIXME: Make AOT compile and run optional
+        # FIXME: Fix hardcoded input and output scaling
+        aot_compile = False
         results = []
         for feature in features:
             x = {"x": (feature.numpy() * 2**7).astype("int8")}
-            output_list = generate_ref_data(mod, x, params) # This takes a lot of time
-            if compile_and_run:
+            output_list = generate_ref_data(mod, x, params)  # This takes a lot of time
+            if aot_compile:
                 compile_and_run(
-                    AOTTestModel(module=mod, inputs=x, outputs=output_list, params=params),
+                    AOTTestModel(
+                        module=mod, inputs=x, outputs=output_list, params=params
+                    ),
                     AOT_DEFAULT_RUNNER,
                     interface_api="c",
                     use_unpacked_api=True,
                 )
 
             results.append(
-                torch.tensor(output_list["output"].squeeze().astype("float32")) / 2**14
+                torch.tensor(output_list["output"].squeeze().astype("float32"))
+                / 2**14
             )
 
         return torch.stack(results, dim=0)
