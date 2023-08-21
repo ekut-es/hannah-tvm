@@ -131,6 +131,7 @@ class TVMBackend(InferenceBackendBase):
 
     def prepare(self, model):
         logging.info("Preparing model for target")
+        model = copy.deepcopy(model)
         model.eval()
         model.cpu()
 
