@@ -4,7 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["Christoph Gerum <christoph.gerum@uni-tuebingen.de>"]
 license = "Apache-2.0"
-#build = "build.py"
 
 [tool.poetry.dependencies]
 python = ">3.8 <3.12"
