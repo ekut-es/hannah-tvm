@@ -4,7 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["Christoph Gerum <christoph.gerum@uni-tuebingen.de>"]
 license = "Apache-2.0"
-#build = "build.py"
 
 [tool.poetry.dependencies]
 python = ">3.8 <3.12"
@@ -18,7 +17,7 @@ pyvcd = "^0.2.4"
 pyelftools = "^0.27"
 openpyxl = "^3.0.7"
 XlsxWriter = "^1.4.0"
-PyYAML = "^5.4.1"
+PyYAML = "^6.0.1"
 numpy = "^1.20.2"
 colorama = "^0.4.4"
 decorator = "^5.1.0"
