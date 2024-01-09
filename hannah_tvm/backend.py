@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 hannah-tvm contributors.
+# Copyright (c) 2024 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -196,8 +196,12 @@ class TVMBackend(InferenceBackendBase):
         self.torch_model.cpu()
         inputs = inputs.cpu()
 
-        features = self.torch_model.features(inputs)
-        features = self.torch_model.normalizer(features)
+        features = inputs
+        if hasattr(self.torch_model, "features"):
+            features = self.torch_model.features(features)
+
+        if hasattr(self.torch_model, "normalizer"):
+            features = self.torch_model.normalizer(features)
 
         mod, params = build_relay(
             self.torch_model.model, self.torch_model.example_feature_array
