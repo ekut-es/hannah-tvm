@@ -26,7 +26,6 @@ matplotlib = ">=3.4.3"
 graphviz = ">=0.19.1"
 
 xgboost = "1.5.2"
-pandas = "<1.4.0"
 tabulate = ">=0.8.9"
 fsspec = {version = "^2022.8.2", extras=["git", "http"]}
 appdirs = "^1.4.4"

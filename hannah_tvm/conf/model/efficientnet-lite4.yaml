@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2023 hannah-tvm contributors.
+## Copyright (c) 2024 hannah-tvm contributors.
 ##
 ## This file is part of hannah-tvm.
 ## See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -17,4 +17,4 @@
 ## limitations under the License.
 ##
 efficientnet-lite4:
-  url: https://github.com/onnx/models/raw/main/vision/classification/efficientnet-lite4/model/efficientnet-lite4-11.onnx
+  url: https://github.com/onnx/models/raw/main/Computer_Vision/tf_efficientnet_lite4_Opset16_timm/tf_efficientnet_lite4_Opset16.onnx

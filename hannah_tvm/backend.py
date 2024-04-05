@@ -25,7 +25,7 @@ import numpy as np
 import torch
 import tvm
 import tvm.relay
-from hannah.callbacks.backends import InferenceBackendBase
+from hannah.backends.base import InferenceBackendBase
 from tvm.auto_scheduler.measure import prepare_input_map
 from tvm.contrib import utils
 from tvm.micro.testing.aot_test_utils import AOT_DEFAULT_RUNNER
@@ -35,69 +35,12 @@ from hannah_tvm.connectors import init_board_connector
 
 from . import pass_instrument
 from .config import Board, TunerConfig
+from .export import build_relay
 from .passes.legalize import LegalizeQuantizedTypes
 from .task import ModelConfig, TuningTask
 from .tracer import QuantizationTracer, RelayConverter
 
 logger = logging.getLogger(__name__)
-
-
-def remove_dropout(gm):
-    for node in gm.graph.nodes:
-        if node.op == "call_function":
-            if node.target == torch.nn.functional.dropout:
-                node.replace_all_uses_with(node.args[0])
-                gm.graph.erase_node(node)
-
-    gm.recompile()
-    gm.graph.lint()
-
-    return gm
-
-
-def build_relay(model, dummy_input):
-    try:
-        if not isinstance(model, torch.fx.graph_module.GraphModule):
-            tracer = QuantizationTracer()
-            traced_graph = tracer.trace(model)
-            graph_module = torch.fx.GraphModule(model, traced_graph)
-        else:
-            graph_module = model
-        converter = RelayConverter(graph_module)
-        mod, params = converter.run(dummy_input)
-    except Exception as e:
-        logging.warning(
-            "Failed to convert model to relay, using fx converter trying with legacy converter"
-        )
-
-        if isinstance(model, torch.fx.graph_module.GraphModule):
-            model = remove_dropout(model)
-
-        model.cpu()
-        dummy_input.cpu()
-
-        script_module = torch.jit.trace(model, dummy_input)
-
-        mod, params = tvm.relay.frontend.from_pytorch(
-            script_module,
-            [("input", (dummy_input.shape, "float"))],
-            use_parser_friendly_name=True,
-            keep_quantized_weight=True,
-        )
-
-    return mod, params
-
-
-def export_relay(model, dummy_input, model_file="model.relay", param_file="params.bin"):
-    mod, params = build_relay(model, dummy_input)
-
-    mod_txt = mod.astext()
-    with open("model.relay", "w") as f:
-        f.write(mod_txt)
-
-    params_bin = tvm.runtime.save_param_dict(params)
-    with open("params.bin", "wb") as f:
-        f.write(params_bin)
 
 
 class TVMBackend(InferenceBackendBase):
