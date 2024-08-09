@@ -21,9 +21,9 @@ target: "cuda -arch=sm_72"
 target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu"
 opencl: false
 cuda: True
-  #setup:
-  #- sudo nvpmodel -m 0
-  #- sudo jetson_clocks --fan
+setup:
+  - sudo nvpmodel -m 0
+  - sudo jetson_clocks --fan
 
 teardown:
   - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang
