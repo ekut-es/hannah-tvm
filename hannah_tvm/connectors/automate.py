@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 hannah-tvm contributors.
+# Copyright (c) 2024 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -24,8 +24,8 @@ from typing import Any, Union
 import numpy as np
 import tvm
 import tvm.auto_scheduler as auto_scheduler
-import tvm.meta_schedule as ms
 import tvm.autotvm as autotvm
+import tvm.meta_schedule as ms
 import tvm.rpc as rpc
 
 from .automate_server import AutomateServer, automate_context
@@ -71,8 +71,15 @@ class AutomateTaskConnector(TaskConnector):
                 key=self._board_config.name, host="127.0.0.1", port=self._tracker_port
             )
         elif tuner == "meta_scheduler":
-            runner = ms.RPCRunner(
-                key=self._board_config.name, host="127.0.0.1", port=self._tracker_port
+            rpc_config = ms.runner.RPCConfig(
+                tracker_key=self._board_config.name,
+                tracker_host="127.0.0.1",
+                tracker_port=self._tracker_port,
+                session_timeout_sec=10,
+                session_priority=0,
+            )
+            runner = ms.runner.RPCRunner(
+                rpc_config=rpc_config,
             )
         return runner
 
@@ -82,8 +89,8 @@ class AutomateTaskConnector(TaskConnector):
         elif tuner == "auto_scheduler":
             builder = "local"
         elif tuner == "meta_scheduler":
-            builder = ms.LocalBuilder()
-            
+            builder = ms.builder.LocalBuilder()
+
         return builder
 
     def upload(self, lib):
@@ -197,7 +204,7 @@ class AutomateBoardConnector(BoardConnector):
         self._tracker = rpc.tracker.Tracker(
             host, port=9000, port_end=9090, silent=False
         )
-        
+
         time.sleep(1.0)
         self._tracker_port = self._tracker.port
         self._tracker_conn = rpc.connect_tracker("127.0.0.1", self._tracker.port)
