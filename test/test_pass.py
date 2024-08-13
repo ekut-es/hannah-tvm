@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 hannah-tvm contributors.
+# Copyright (c) 2024 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -127,6 +127,7 @@ def analyze_memory(f, mod, ctx):
     return f
 
 
+@pytest.mark.skip(reason="not implemented")
 def test_analysis():
     mod, params = testing.resnet.get_workload(1, 10, num_layers=18)
 

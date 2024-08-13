@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 hannah-tvm contributors.
+# Copyright (c) 2024 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -45,6 +45,7 @@ def test_tflite():
         main(cfg)
 
 
+@pytest.mark.xfail(reason="models have been removed")
 def test_onnx():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
@@ -58,6 +59,7 @@ def test_onnx():
         main(cfg)
 
 
+@pytest.mark.xfail(reason="models have been removed")
 def test_pytorch():
     with initialize(config_path="../hannah_tvm/conf", version_base="1.2"):
         cfg = compose(
