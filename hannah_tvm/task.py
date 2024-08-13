@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 hannah-tvm contributors.
+# Copyright (c) 2024 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -33,6 +33,7 @@ import tvm
 import tvm.auto_scheduler as auto_scheduler
 import tvm.autotvm as autotvm
 import tvm.contrib.debugger.debug_runtime
+import tvm.meta_schedule as ms
 import tvm.relay as relay
 import tvm.rpc
 import tvm.rpc.tracker
@@ -93,7 +94,9 @@ class TuningTask:
         self.model_config = model_config
         self.tuner_config = tuner
         tuner_name = self.tuner_config.name if self.tuner_config else "baseline"
-        self.tuner_log_file = f"{board_config.name}_{model_key}_{tuner_name}.json"
+        self.tuner_log_file = f"{board_config.name}_{model_key}_{tuner_name}" + (
+            "" if self.tuner_config.name == "meta_scheduler" else ".json"
+        )
         self.verbose = verbose
         self.results = {}
 
@@ -159,6 +162,10 @@ class TuningTask:
                 self._run_autotvm(relay_mod, params)
                 final_time = time.time()
                 self.results["tuning_duration"] = final_time - start_time
+            elif self.tuner_config.name == "meta_scheduler":
+                start_time = time.time()
+                self._run_meta_scheduler(relay_mod, params)
+                final_time = time.time()
             elif self.tuner_config.name == "baseline":
                 self.results["tuning_duration"] = 0.0
             elif self.tuner_config.name == "tensorrt":
@@ -334,6 +341,29 @@ class TuningTask:
             records = zip(*records)
             self.dataset.add_tuning_results("auto_scheduler", records)
 
+    def _run_meta_scheduler(self, relay_mod, params):
+        logger.info("Running meta scheduler")
+
+        runner = self._task_connector.runner("meta_scheduler")
+        builder = self._task_connector.builder("meta_scheduler")
+
+        if not os.path.exists(self.tuner_log_file):
+            os.makedirs(self.tuner_log_file)
+
+        database = ms.database.JSONDatabase(work_dir=self.tuner_log_file)
+
+        database = ms.relay_integration.tune_relay(
+            relay_mod,
+            params,
+            self._task_connector.target(),
+            self.tuner_log_file,
+            max_trials_global=10000,
+            runner=runner,
+            builder=builder,
+            database=database,
+            max_trials_per_task=self.tuner_config.task_budget,
+        )
+
     def _build(self, relay_mod, params):
         logger.info("Compile...")
 
@@ -406,6 +436,17 @@ class TuningTask:
                             executor=executor,
                             runtime=runtime,
                         )
+            elif self.tuner_config.name == "meta_scheduler":
+                database = ms.database.JSONDatabase(work_dir=self.tuner_log_file)
+                lib = ms.relay_integration.compile_relay(
+                    database=database,
+                    mod=relay_mod,
+                    params=params,
+                    target=self._task_connector.target(),
+                    instruments=instruments,
+                    build_cfg=build_cfg,
+                )
+
             else:
                 logger.critical("Could not find tuner logs in: %s", self.tuner_log_file)
                 with tvm.transform.PassContext(

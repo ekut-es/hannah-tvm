@@ -16,5 +16,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-squeezenet-1.0:
-  url:  ${models_dir:}/squeezenet1.0-9.onnx
+name: jetsonorin
+target: "nvidia/jetson-agx-orin-64gb"
+target_host: "llvm -mtriple=aarch64-linux-gnu -device=arm_cpu -model=jetsontx2"
+opencl: False
+cuda: True
+rebuild_runtime: false
+setup:
+  - sudo jetson_clocks --fan
+
+teardown:
+  - sudo shutdown -r now & exit # Need the exit to make sure the connection does not hang

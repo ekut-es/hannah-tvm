@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 hannah-tvm contributors.
+# Copyright (c) 2024 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -34,6 +34,7 @@ from hannah_tvm.connectors.automate_server import automate_available, automate_c
 from hannah_tvm.tune import main
 
 
+@mark.skip(reason="takes to long")
 @mark.parametrize(
     "board,tuner,model",
     [("jetsontx2_cpu", "autotvm", "sine"), ("jetsontx2_cpu", "auto_scheduler", "sine")],
