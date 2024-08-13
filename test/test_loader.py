@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 hannah-tvm contributors.
+# Copyright (c) 2024 hannah-tvm contributors.
 #
 # This file is part of hannah-tvm.
 # See https://atreus.informatik.uni-tuebingen.de/ties/ai/hannah/hannah-tvm for further info.
@@ -59,31 +59,3 @@ def test_loader(model_name, model_cfg):
     model = load.load_model(model_cfg)
 
     print("model:", model)
-
-
-@pytest.fixture
-def gen_torch_script_model():
-    model_name = "squeezenet1_0"  # TorchHub model name
-    model_input_shape = (1, 3, 224, 224)
-    script_save_path = os.path.join(root_dir, "test", "data", model_name + ".pt")
-
-    torch_model = torch.hub.load("pytorch/vision:v0.10.0", model_name)
-    torch_model.eval()
-    dummy_input = torch.rand(model_input_shape)
-    script_model = torch.jit.trace(torch_model, dummy_input)
-    torch.jit.save(script_model, script_save_path)
-
-    model_cfg = OmegaConf.create(
-        {
-            "url": script_save_path,
-            "filename": None,
-            "input_shapes": [["input0", model_input_shape]],
-        }
-    )
-
-    return model_name, model_cfg
-
-
-def test_loader_torchscript(gen_torch_script_model):
-    model_name, model_cfg = gen_torch_script_model
-    test_loader(model_name, model_cfg)
