@@ -41,6 +41,7 @@ from omegaconf import OmegaConf
 from tvm.auto_scheduler.measure_record import dump_record_to_string
 from tvm.micro import export_model_library_format
 from tvm.relay.op.contrib.tensorrt import get_tensorrt_target, partition_for_tensorrt
+import tvm.meta_schedule as ms
 
 from hannah_tvm.dataset import PerformanceDataset
 from hannah_tvm.tuner.autotvm.callbacks import (
@@ -159,6 +160,10 @@ class TuningTask:
                 self._run_autotvm(relay_mod, params)
                 final_time = time.time()
                 self.results["tuning_duration"] = final_time - start_time
+            elif self.tuner_config.name == "meta_scheduler":
+                start_time = time.time()
+                self._run_meta_scheduler(relay_mod, params)
+                final_time = time.time()
             elif self.tuner_config.name == "baseline":
                 self.results["tuning_duration"] = 0.0
             elif self.tuner_config.name == "tensorrt":
@@ -333,6 +338,11 @@ class TuningTask:
             records = record_reader.read_lines(skip_lines=preloaded_measurements)
             records = zip(*records)
             self.dataset.add_tuning_results("auto_scheduler", records)
+            
+    def _run_meta_scheduler(self, relay_mod, params):
+        logger.info("Running meta scheduler")
+        
+        tasks = ms.extract_tasks(relay_mod["main"], params, self._task_connector.target())
 
     def _build(self, relay_mod, params):
         logger.info("Compile...")

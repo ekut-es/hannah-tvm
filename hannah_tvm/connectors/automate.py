@@ -24,6 +24,7 @@ from typing import Any, Union
 import numpy as np
 import tvm
 import tvm.auto_scheduler as auto_scheduler
+import tvm.meta_schedule as ms
 import tvm.autotvm as autotvm
 import tvm.rpc as rpc
 
@@ -58,7 +59,7 @@ class AutomateTaskConnector(TaskConnector):
         if tuner == "autotvm":
             runner = autotvm.RPCRunner(
                 self._board_config.name,
-                host="localhost",
+                host="127.0.0.1",
                 port=self._tracker_port,
                 number=1,
                 repeat=10,
@@ -67,7 +68,11 @@ class AutomateTaskConnector(TaskConnector):
             )
         elif tuner == "auto_scheduler":
             runner = auto_scheduler.RPCRunner(
-                key=self._board_config.name, host="localhost", port=self._tracker_port
+                key=self._board_config.name, host="127.0.0.1", port=self._tracker_port
+            )
+        elif tuner == "meta_scheduler":
+            runner = ms.RPCRunner(
+                key=self._board_config.name, host="127.0.0.1", port=self._tracker_port
             )
         return runner
 
@@ -76,6 +81,9 @@ class AutomateTaskConnector(TaskConnector):
             builder = autotvm.LocalBuilder(build_func="default")
         elif tuner == "auto_scheduler":
             builder = "local"
+        elif tuner == "meta_scheduler":
+            builder = ms.LocalBuilder()
+            
         return builder
 
     def upload(self, lib):
@@ -87,7 +95,7 @@ class AutomateTaskConnector(TaskConnector):
         # Upload module to device
         logger.info("Upload...")
         remote = auto_scheduler.utils.request_remote(
-            self._board_config.name, "localhost", self._tracker_port, timeout=10000
+            self._board_config.name, "127.0.0.1", self._tracker_port, timeout=10000
         )
 
         remote.upload(tmp.relpath(filename))
@@ -189,9 +197,10 @@ class AutomateBoardConnector(BoardConnector):
         self._tracker = rpc.tracker.Tracker(
             host, port=9000, port_end=9090, silent=False
         )
+        
         time.sleep(1.0)
         self._tracker_port = self._tracker.port
-        self._tracker_conn = rpc.connect_tracker("localhost", self._tracker.port)
+        self._tracker_conn = rpc.connect_tracker("127.0.0.1", self._tracker.port)
 
     def _start_server(self):
         """Start connection to server process"""
