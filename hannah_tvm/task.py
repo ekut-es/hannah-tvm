@@ -352,18 +352,27 @@ class TuningTask:
 
         database = ms.database.JSONDatabase(work_dir=self.tuner_log_file)
 
-        database = ms.relay_integration.tune_relay(
-            relay_mod,
-            params,
-            self._task_connector.target(),
-            self.tuner_log_file,
-            max_trials_global=10000,
-            runner=runner,
-            builder=builder,
-            database=database,
-            max_trials_per_task=self.tuner_config.task_budget,
-        )
+        profiler = ms.Profiler()    
 
+        with profiler:
+           database = ms.relay_integration.tune_relay(
+                relay_mod,
+                params,
+                self._task_connector.target(),
+                self.tuner_log_file,
+                max_trials_global=10000,
+                runner=runner,
+                builder=builder,
+                database=database,
+                max_trials_per_task=self.tuner_config.task_budget,
+                cost_model = 'random', 
+            )
+           
+        print(profiler.table())
+        
+        
+
+        
     def _build(self, relay_mod, params):
         logger.info("Compile...")
 

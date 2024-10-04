@@ -4,6 +4,15 @@ version = "0.1.0"
 description = ""
 authors = ["Christoph Gerum <christoph.gerum@uni-tuebingen.de>"]
 license = "Apache-2.0"
+readme = "README.md"
+
+
+
+packages = [
+    { include = "hannah_tvm", from = "." },
+    { include = "tvm", from = "external/tvm/python" }
+]
+
 
 [tool.poetry.dependencies]
 python = ">3.9 <3.12"
@@ -85,6 +94,9 @@ pytest = ">=6.2.5"
 isort = ">=5.10.1"
 coverage = ">=6.3.2"
 pyment = ">=0.3.3"
+
+[tool.poetry.build]
+script = "build.py"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
