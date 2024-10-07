@@ -21,11 +21,12 @@ defaults:
   - backend/board: jetsonnano_cpu
 
   - model:
-      # FIXME: provide download url for conv-net-trax- conv-net-trax
-      - densenet-121
-      - efficientnet-lite4
-      - efficientnet-lite4-int8
-      - mobilenet-v2
+        - sine
+      
+      #- densenet-121
+      #- efficientnet-lite4
+      #- efficientnet-lite4-int8
+      #- mobilenet-v2
       #- resnet-18
       #- resnet-50
       #- shufflenet

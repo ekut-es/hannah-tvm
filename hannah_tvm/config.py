@@ -129,6 +129,7 @@ cs.store(name="hannah_tvm_config", node=Config)
 cs.store(group="backend", name="base_tvm", node=BackendConfig)
 cs.store(group="backend/board", name="base_board", node=Board)
 
+
 # Custom OmegaConf resolvers
 OmegaConf.register_new_resolver(
     "models_dir",

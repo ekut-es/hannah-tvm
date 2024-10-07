@@ -23,6 +23,7 @@ from typing import Any
 import numpy as np
 import tvm
 from tvm import auto_scheduler, autotvm
+import tvm.meta_schedule as ms
 
 from .core import BoardConnector, BuildArtifactHandle, TaskConnector
 
@@ -57,6 +58,8 @@ class LocalTaskConnector(TaskConnector):
             if self.auto_scheduler_ctx is None:
                 self.auto_scheduler_ctx = auto_scheduler.LocalRPCMeasureContext()
             runner = self.auto_scheduler_ctx.runner
+        elif tuner == "meta_scheduler":
+            runner = ms.runner.LocalRunner()
         return runner
 
     def builder(self, tuner=None):
@@ -64,6 +67,8 @@ class LocalTaskConnector(TaskConnector):
             builder = autotvm.LocalBuilder(build_func="default")
         elif tuner == "auto_scheduler":
             builder = "local"
+        elif tuner == "meta_scheduler":
+            builder = ms.builder.LocalBuilder()
         return builder
 
     def upload(self, lib):

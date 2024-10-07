@@ -127,10 +127,7 @@ class TuningTask:
             else:
                 relay_mod, params, inputs = load.load_model(self.model_config)
 
-            # FIXME: Allow to specifiy reference outputs in config
-            self.reference_outputs = generate_ref_data(relay_mod, inputs, params)
-
-            if self.board_config.desired_layouts:
+            if self.board_config.get("desired_layouts", []):
                 desired_layouts = self.board_config.desired_layouts
                 if OmegaConf.is_config(desired_layouts):
                     desired_layouts = OmegaConf.to_container(desired_layouts)
@@ -186,7 +183,10 @@ class TuningTask:
                 self.board_config.name,
             )
             logger.critical(str(e))
-            traceback.print_tb(e.__traceback__)
+            logger.critical("Traceback:")
+            tb_str = traceback.format_tb(e.__traceback__)
+            
+            logger.critical("\n".join(tb_str))    
 
             self.status = TaskStatus.FAILED
             self.results["error"] = e
@@ -352,6 +352,7 @@ class TuningTask:
 
         database = ms.database.JSONDatabase(work_dir=self.tuner_log_file)
 
+        # This profile is used to profile the TuningEfficiency not the actual performance on the target board
         profiler = ms.Profiler()    
 
         with profiler:
@@ -364,8 +365,8 @@ class TuningTask:
                 runner=runner,
                 builder=builder,
                 database=database,
-                max_trials_per_task=self.tuner_config.task_budget,
-                cost_model = 'random', 
+                max_trials_per_task=self.tuner_config.get("task_budget", 4),
+                cost_model=self.tuner_config.get('mode', 'xgb'), 
             )
            
         print(profiler.table())
@@ -383,9 +384,9 @@ class TuningTask:
         target = self._task_connector.target()
 
         build_cfg = {}
-        if self.board_config.build:
+        if self.board_config.get('build', {}):
             build_cfg.update(self.board_config.build)
-        elif str(target.kind) == "c" or self.board_config.disable_vectorize is True:
+        elif str(target.kind) == "c" or self.board_config.get('disable_vectorize', True) is True:
             build_cfg = {
                 "tir.disable_vectorize": True,
                 "tir.usmp.enable": True,
@@ -393,7 +394,7 @@ class TuningTask:
 
         executor = tvm.relay.backend.Executor("graph")
         runtime = tvm.relay.backend.Runtime("cpp")
-        if self.board_config.micro:
+        if self.board_config.get('micro', None):
             serialize = tvm.tir.transform.ConvertForLoopsToSerial()
             build_cfg["tir.add_lower_pass"] = [(1, serialize)]
             if self.board_config.micro.aot:
@@ -414,7 +415,7 @@ class TuningTask:
                         "unpacked-api": aot_config.get("use_unpacked_api", True),
                     },
                 )
-
+        
         if self.tuner_config.name == "auto_scheduler":
             with auto_scheduler.ApplyHistoryBest(self.tuner_log_file):
                 build_cfg["relay.backend.use_auto_scheduler"] = True
@@ -445,17 +446,6 @@ class TuningTask:
                             executor=executor,
                             runtime=runtime,
                         )
-            elif self.tuner_config.name == "meta_scheduler":
-                database = ms.database.JSONDatabase(work_dir=self.tuner_log_file)
-                lib = ms.relay_integration.compile_relay(
-                    database=database,
-                    mod=relay_mod,
-                    params=params,
-                    target=self._task_connector.target(),
-                    instruments=instruments,
-                    build_cfg=build_cfg,
-                )
-
             else:
                 logger.critical("Could not find tuner logs in: %s", self.tuner_log_file)
                 with tvm.transform.PassContext(
@@ -469,6 +459,18 @@ class TuningTask:
                         runtime=runtime,
                     )
 
+        elif self.tuner_config.name == "meta_scheduler":
+            database = ms.database.JSONDatabase(work_dir=self.tuner_log_file)
+            lib = ms.relay_integration.compile_relay(
+                database=database,
+                mod=relay_mod,
+                params=params,
+                target=self._task_connector.target(),
+                instruments=instruments,
+                pass_config=build_cfg,
+            )
+
+        
         elif self.tuner_config.name == "tensorrt":
             logger.info(f"Current target: {self._task_connector.target()}")
             logger.info(f"Current build_cfg: {build_cfg}")
@@ -573,3 +575,7 @@ class TuningTask:
     def __str__(self):
         s = f"TuningTask(board={self.board_config.name} model={self.model_key})"
         return s
+
+    def device(self):
+        # Return the task connector for the target device
+        return self._task_connector.device()    

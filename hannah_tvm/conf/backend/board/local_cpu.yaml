@@ -17,6 +17,6 @@
 ## limitations under the License.
 ##
 name: ${hostname:}
-target: "llvm"
-target_host: "llvm"
+target: "llvm -num-cores=8"
+target_host: "llvm -num-cores=8"
 connector: local

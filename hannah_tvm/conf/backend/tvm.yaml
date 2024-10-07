@@ -17,7 +17,7 @@
 ## limitations under the License.
 ##
 defaults:
-  - base_tvm
+  #- base_tvm
   - board: tgc_vp
   - tuner: baseline
   - _self_
